@@ -2,7 +2,7 @@ level:
   path: data/levels
 
 theme:
-  default: paper
+  default: default
   path: config/themes
   styles:
     base: config/themes/base.css

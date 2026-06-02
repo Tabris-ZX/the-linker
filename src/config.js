@@ -10,7 +10,7 @@ export const appConfig = {
     path: normalizePath(rawConfig.level?.path ?? "data/levels")
   },
   theme: {
-    default: rawConfig.theme?.default ?? "paper",
+    default: rawConfig.theme?.default ?? "default",
     path: normalizePath(rawConfig.theme?.path ?? "config/themes"),
     styles: rawConfig.theme?.styles ?? {}
   },
@@ -32,6 +32,7 @@ export const pointDefinitions = colorConfigs.points?.points ?? {};
 export const fallbackLevel = {
   id: "level-001",
   name: "First Link",
+  difficulty: 1,
   gridType: "square",
   width: 5,
   height: 5,

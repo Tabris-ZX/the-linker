@@ -214,6 +214,24 @@ h2 {
   background: var(--paper);
 }
 
+.level-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.current-level-label {
+  max-width: 140px;
+  overflow: hidden;
+  padding: 5px 8px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  font: 900 0.95rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .view-tab {
   border: 0;
   box-shadow: none;
@@ -226,6 +244,12 @@ h2 {
   padding: 6px 9px;
   box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
   white-space: nowrap;
+}
+
+.challenge-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .challenge-actions {
@@ -325,6 +349,109 @@ h2 {
   transform: translateY(-20px);
 }
 
+.level-picker-panel {
+  position: absolute;
+  top: 16px;
+  right: 28px;
+  z-index: 8;
+  display: grid;
+  gap: 10px;
+  width: min(460px, calc(100vw - 56px));
+  max-height: min(620px, calc(var(--page-height) - var(--topbar-height) - 44px));
+  padding: 14px;
+  overflow: hidden;
+}
+
+.level-picker-header,
+.level-picker-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.level-picker-header strong {
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.level-picker-filters label {
+  display: inline-grid;
+  grid-template-columns: auto minmax(92px, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font: 700 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.level-picker-filters select {
+  min-width: 92px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.level-group-list {
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.level-group h2 {
+  margin: 0 0 6px;
+  color: var(--accent-strong);
+  font-size: 0.95rem;
+}
+
+.level-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+}
+
+.level-card {
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  padding: 10px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+}
+
+.level-card strong,
+.level-card span,
+.level-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.level-card span,
+.level-card small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.level-card.is-active,
+.level-card:hover {
+  color: #fff;
+  background: var(--accent);
+}
+
+.level-card.is-active span,
+.level-card.is-active small,
+.level-card:hover span,
+.level-card:hover small {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.level-card.is-completed {
+  border-color: var(--success);
+}
+
 .board-wrap {
   display: grid;
   place-items: center;
@@ -362,24 +489,6 @@ h2 {
   stroke-linecap: square;
   stroke-width: 7px;
   vector-effect: non-scaling-stroke;
-}
-
-.blocked-lines {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-
-.blocked-lines line {
-  stroke: var(--danger);
-  stroke-linecap: round;
-  stroke-width: 12px;
-  vector-effect: non-scaling-stroke;
-  opacity: 0.72;
 }
 
 .edge-lines {
@@ -433,6 +542,14 @@ h2 {
   width: 30px;
   height: 30px;
   fill: var(--success);
+}
+
+.victory-mark strong {
+  padding: 3px 8px;
+  border: 2px solid var(--success);
+  border-radius: 999px;
+  color: var(--success);
+  font: 900 0.9rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
 .node {
@@ -501,15 +618,23 @@ h2 {
     outline-color 160ms ease;
 }
 
-.node.active .dot,
-.node.active {
-  outline: 4px solid rgba(15, 118, 110, 0.45);
-  outline-offset: 2px;
+.node.target .dot {
+  animation: target-pulse 900ms ease-in-out infinite;
+  box-shadow:
+    0 0 0 clamp(1px, calc(var(--cell-size) * 0.025), 3px) var(--ink),
+    0 0 0 clamp(7px, calc(var(--cell-size) * 0.12), 15px) color-mix(in srgb, var(--dot-color) 38%, transparent),
+    0 clamp(3px, calc(var(--cell-size) * 0.055), 7px) 0 rgba(0, 0, 0, 0.18);
 }
 
-.node.extendable {
-  outline: 4px solid rgba(245, 158, 11, 0.45);
-  outline-offset: 2px;
+@keyframes target-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

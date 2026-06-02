@@ -18,6 +18,7 @@ export default {
 
     return {
       pointDefinitions,
+      assetBase: import.meta.env.BASE_URL,
       activeView: "challenge",
       viewTabs: routes,
       canUseLevelEditor: false,
@@ -26,6 +27,10 @@ export default {
       levels: [initialLevel],
       currentLevelIndex: 0,
       currentLevel: cloneLevel(initialLevel),
+      isLevelPickerOpen: false,
+      levelDifficultyFilter: "all",
+      levelCompletionFilter: "all",
+      completedLevels: {},
       paths: {},
       activePair: null,
       isDrawing: false,
@@ -35,19 +40,21 @@ export default {
       timerElapsedMs: 0,
       timerIntervalId: null,
       isWon: false,
+      isPersonalBest: false,
       creatorPairCount: 5,
       creatorState: {
         gridType: "square",
+        difficulty: 1,
         width: 5,
         height: 5,
         pairIds,
         activePairId: pairIds[0],
-        mode: "edge",
+        mode: "mark",
         points: {},
         removedEdges: [],
         answers: {}
       },
-      previewHint: "点交点可放置或删除色点；移边：点击格子边切换禁用，红色边挑战时无法通行。",
+      previewHint: "点交点可放置或删除色点；标记模式：点击格子边标出答案线路。",
       isLevelOutputVisible: false,
       levelOutput: ""
     };
@@ -57,6 +64,7 @@ export default {
   async mounted() {
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
+    this.loadCompletedLevels();
     await this.detectLevelEditorAvailability();
     await this.loadLevels();
     this.loadLevel(0);

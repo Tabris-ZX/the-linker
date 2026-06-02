@@ -10,10 +10,38 @@ export const computed = {
     },
 
     timerText() {
-      const totalSeconds = Math.floor(this.timerElapsedMs / 1000);
-      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-      const seconds = String(totalSeconds % 60).padStart(2, "0");
-      return `${minutes}:${seconds}`;
+      return this.formatElapsedTime(this.timerElapsedMs);
+    },
+
+    currentLevelLabel() {
+      return this.currentLevel?.name || this.currentLevel?.id || "未选择";
+    },
+
+    levelDifficulties() {
+      return [1, 2, 3, 4, 5];
+    },
+
+    filteredLevelItems() {
+      return this.levels
+        .map((level, index) => ({ level, index }))
+        .filter(({ level }) => this.levelDifficultyFilter === "all" || this.normalizeLevelDifficulty(level.difficulty) === Number(this.levelDifficultyFilter))
+        .filter(({ level }) => {
+          if (this.levelCompletionFilter === "all") return true;
+          const isCompleted = this.isLevelCompleted(level.id);
+          return this.levelCompletionFilter === "done" ? isCompleted : !isCompleted;
+        });
+    },
+
+    groupedFilteredLevels() {
+      const groups = new Map();
+      this.filteredLevelItems.forEach((item) => {
+        const difficulty = this.normalizeLevelDifficulty(item.level.difficulty);
+        if (!groups.has(difficulty)) groups.set(difficulty, []);
+        groups.get(difficulty).push(item);
+      });
+      return [...groups.entries()]
+        .sort(([left], [right]) => left - right)
+        .map(([difficulty, levels]) => ({ difficulty, levels }));
     },
 
     boardViewBox() {
@@ -41,11 +69,12 @@ export const computed = {
     },
 
     gridLines() {
-      return buildGridLines(this.currentLevel.width, this.currentLevel.height);
-    },
-
-    renderedRemovedEdges() {
-      return (this.currentLevel.removedEdges ?? []).map((edge) => edgeRenderData(edge)).filter(Boolean);
+      const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
+      return buildGridLines(this.currentLevel.width, this.currentLevel.height).filter((line) => {
+        const from = [line.attrs.x1, line.attrs.y1];
+        const to = [line.attrs.x2, line.attrs.y2];
+        return !removedEdges.has(edgeKey(from, to));
+      });
     },
 
     renderedPathLines() {
@@ -101,7 +130,7 @@ export const computed = {
     boardNodes() {
       const nodes = [];
       const filledNodes = this.getFilledNodes();
-      const extendableEnds = this.getExtendableEnds();
+      const activeTargetKey = this.getActiveTargetKey();
 
       for (let y = 0; y <= this.currentLevel.height; y += 1) {
         for (let x = 0; x <= this.currentLevel.width; x += 1) {
@@ -119,8 +148,7 @@ export const computed = {
             },
             classes: {
               "path-node": filledNodes.has(key),
-              active: this.isActiveNode(x, y),
-              extendable: extendableEnds.has(key)
+              target: activeTargetKey === key
             }
           });
         }

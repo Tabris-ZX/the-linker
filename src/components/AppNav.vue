@@ -2,7 +2,7 @@
   <header class="app-topbar">
     <div class="topbar-left">
       <a class="brand" href="#" aria-label="the linker home">
-        <img class="brand-icon" src="/favicon.ico" alt="">
+        <img class="brand-icon" :src="`${assetBase}favicon.ico`" alt="">
         <span>the linker</span>
       </a>
       <nav class="view-tabs" aria-label="页面导航">
@@ -21,20 +21,19 @@
     </div>
 
     <div class="topbar-center">
-      <div v-if="activeView === 'challenge'" class="challenge-actions" aria-label="关卡工具栏">
+      <div v-if="activeView === 'challenge'" class="challenge-toolbar" aria-label="关卡工具栏">
         <div class="game-timer" aria-label="计时">
           {{ timerText }}
         </div>
-        <label class="level-switcher">
-          关卡
-          <select :value="currentLevelIndex" aria-label="选择关卡" @change="handleLevelChange">
-            <option v-for="(item, index) in levels" :key="item.id" :value="index">
-              {{ item.id }}
-            </option>
-          </select>
-        </label>
-        <button type="button" @click="$emit('resetPaths')">重置</button>
-        <button type="button" @click="$emit('clearPaths')">清空</button>
+        <div class="challenge-actions">
+          <button class="level-picker-button" type="button" @click="$emit('toggleLevelPicker')">
+            关卡选择
+          </button>
+          <div class="current-level-label" aria-label="当前关卡">
+            {{ currentLevelLabel }}
+          </div>
+          <button type="button" @click="$emit('resetPaths')">重置</button>
+        </div>
       </div>
     </div>
 
@@ -73,22 +72,19 @@ export default {
       type: String,
       required: true
     },
-    levels: {
-      type: Array,
+    currentLevelLabel: {
+      type: String,
       required: true
     },
-    currentLevelIndex: {
-      type: Number,
+    assetBase: {
+      type: String,
       required: true
     }
   },
-  emits: ["update:activeView", "update:selectedTheme", "selectLevel", "resetPaths", "clearPaths"],
+  emits: ["update:activeView", "update:selectedTheme", "toggleLevelPicker", "resetPaths"],
   methods: {
     handleThemeChange(event) {
       this.$emit("update:selectedTheme", event.target.value);
-    },
-    handleLevelChange(event) {
-      this.$emit("selectLevel", Number(event.target.value));
     }
   }
 };

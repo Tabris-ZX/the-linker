@@ -10,9 +10,17 @@ const levelsDir = path.resolve(projectRoot, appConfig.level?.path ?? "data/level
 const backgroundDir = path.resolve(projectRoot, appConfig.background?.path ?? "background");
 
 export default defineConfig({
+  base: "./",
   build: {
     outDir: "docs",
-    emptyOutDir: false
+    emptyOutDir: false,
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/[name].js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: "assets/[name][extname]"
+      }
+    }
   },
   plugins: [
     vue(),

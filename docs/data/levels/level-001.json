@@ -1,6 +1,7 @@
 {
-  "id": "level-003",
-  "name": "Level 003",
+  "id": "level-001",
+  "name": "Level 001",
+  "difficulty": 1,
   "gridType": "square",
   "width": 5,
   "height": 5,

@@ -48,6 +48,7 @@ export function hydrateLevel(rawLevel) {
   // Merge level files with JSON color config so level authors can omit repeated labels/colors.
   return {
     ...rawLevel,
+    difficulty: normalizeLevelDifficulty(rawLevel.difficulty),
     pairs: rawLevel.pairs.map((pair, index) => ({
       ...pair,
       label: pair.label ?? pointDefinitions[pair.id]?.label ?? String(index + 1),
@@ -59,3 +60,9 @@ export function hydrateLevel(rawLevel) {
 }
 
 export { cloneLevel };
+
+function normalizeLevelDifficulty(value) {
+  const difficulty = Number(value);
+  if (!Number.isFinite(difficulty)) return 1;
+  return Math.min(5, Math.max(1, Math.round(difficulty)));
+}

@@ -5,16 +5,59 @@
         :view-tabs="visibleViewTabs"
         :theme-options="themeOptions"
         :timer-text="timerText"
-        :levels="levels"
-        :current-level-index="currentLevelIndex"
-        @select-level="loadLevel"
+        :current-level-label="currentLevelLabel"
+        :asset-base="assetBase"
+        @toggle-level-picker="toggleLevelPicker"
         @reset-paths="resetPaths"
-        @clear-paths="clearPaths"
       />
 
       <main class="app-shell">
         <section class="view view-challenge" :class="{ 'is-active': activeView === 'challenge' }" :hidden="activeView !== 'challenge'" aria-labelledby="game-title">
           <section class="game-panel">
+            <section v-if="isLevelPickerOpen" class="level-picker-panel app-card" aria-label="关卡选择">
+              <div class="level-picker-header">
+                <strong>关卡选择</strong>
+                <button type="button" aria-label="关闭关卡选择" @click="closeLevelPicker">关闭</button>
+              </div>
+              <div class="level-picker-filters">
+                <label>
+                  难度
+                  <select v-model="levelDifficultyFilter">
+                    <option value="all">全部</option>
+                    <option v-for="difficulty in levelDifficulties" :key="difficulty" :value="String(difficulty)">
+                      {{ difficulty }}
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  状态
+                  <select v-model="levelCompletionFilter">
+                    <option value="all">全部</option>
+                    <option value="new">未完成</option>
+                    <option value="done">已完成</option>
+                  </select>
+                </label>
+              </div>
+              <div class="level-group-list">
+                <section v-for="group in groupedFilteredLevels" :key="group.difficulty" class="level-group">
+                  <h2>难度 {{ group.difficulty }}</h2>
+                  <div class="level-card-grid">
+                    <button
+                      v-for="item in group.levels"
+                      :key="item.level.id"
+                      type="button"
+                      class="level-card"
+                      :class="{ 'is-active': item.index === currentLevelIndex, 'is-completed': isLevelCompleted(item.level.id) }"
+                      @click="selectLevelFromPicker(item.index)"
+                    >
+                      <strong>{{ item.level.name || item.level.id }}</strong>
+                      <span>{{ item.level.id }} · 难度 {{ normalizeLevelDifficulty(item.level.difficulty) }}</span>
+                      <small>{{ getLevelBestTimeText(item.level.id) }}</small>
+                    </button>
+                  </div>
+                </section>
+              </div>
+            </section>
             <div class="board-wrap">
               <div
                 ref="boardRef"
@@ -29,9 +72,6 @@
               >
                 <svg class="edge-grid" :viewBox="boardViewBox" preserveAspectRatio="none">
                   <line v-for="line in gridLines" :key="line.key" v-bind="line.attrs"></line>
-                </svg>
-                <svg class="blocked-lines" :viewBox="boardViewBox" preserveAspectRatio="none">
-                  <line v-for="edge in renderedRemovedEdges" :key="edge.key" v-bind="edge.attrs"></line>
                 </svg>
                 <svg class="edge-lines" :viewBox="boardViewBox" preserveAspectRatio="none">
                   <line
@@ -67,6 +107,7 @@
                 <path d="M18 8h28v9h9v7c0 10-6 17-15 18-2 3-4 5-7 6v6h11v6H20v-6h11v-6c-3-1-5-3-7-6-9-1-15-8-15-18v-7h9V8Zm0 15h-5v1c0 6 3 10 8 12-2-4-3-8-3-13Zm28 0c0 5-1 9-3 13 5-2 8-6 8-12v-1h-5Z"></path>
               </svg>
               <span>胜利！</span>
+              <strong v-if="isPersonalBest">PB</strong>
             </div>
           </section>
         </section>
@@ -95,10 +136,14 @@
                 <input v-model.number="creatorPairCount" type="number" min="1" max="12" @input="syncCreatorPairCount">
               </label>
               <label>
+                难度
+                <input v-model.number="creatorState.difficulty" type="number" min="1" max="5" @input="syncCreatorDifficulty">
+              </label>
+              <label>
                 编辑模式
                 <select v-model="creatorState.mode" @change="setCreatorModeHint">
-                  <option value="edge">移边</option>
-                  <option value="mark">加边</option>
+                  <option value="mark">标记模式</option>
+                  <option value="edge">移除模式</option>
                 </select>
               </label>
               <button type="submit">生成 JSON</button>

@@ -21,8 +21,8 @@
 
 .creator-form {
   display: grid;
-  grid-template-columns: repeat(5, minmax(110px, 1fr)) auto auto;
-  gap: 10px;
+  grid-template-columns: 150px repeat(4, 112px) 168px 134px 134px;
+  gap: 8px;
   align-items: end;
   margin-bottom: 8px;
 }
@@ -35,9 +35,11 @@
 }
 
 .creator-form button {
+  width: 100%;
   min-height: 42px;
   align-self: end;
   justify-self: stretch;
+  padding: 8px 12px;
 }
 
 input,
@@ -46,7 +48,7 @@ textarea {
   width: 100%;
   border: 2px solid var(--line);
   border-radius: 6px;
-  padding: 9px 10px;
+  padding: 8px 10px;
   color: var(--ink);
   background: #fff;
 }

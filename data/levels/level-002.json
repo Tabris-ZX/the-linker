@@ -1,0 +1,87 @@
+{
+  "id": "level-002",
+  "name": "Level 002",
+  "difficulty": 1,
+  "gridType": "square",
+  "width": 5,
+  "height": 5,
+  "pairs": [
+    {
+      "id": "red",
+      "label": "1",
+      "color": "#ef4444",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          5,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "blue",
+      "label": "2",
+      "color": "#2563eb",
+      "points": [
+        [
+          1,
+          0
+        ],
+        [
+          5,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "green",
+      "label": "3",
+      "color": "#22c55e",
+      "points": [
+        [
+          2,
+          0
+        ],
+        [
+          5,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "amber",
+      "label": "4",
+      "color": "#f59e0b",
+      "points": [
+        [
+          3,
+          0
+        ],
+        [
+          5,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "pink",
+      "label": "5",
+      "color": "#ec4899",
+      "points": [
+        [
+          5,
+          0
+        ],
+        [
+          4,
+          0
+        ]
+      ]
+    }
+  ],
+  "removedEdges": [],
+  "answers": []
+}

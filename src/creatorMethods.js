@@ -37,6 +37,11 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    syncCreatorDifficulty() {
+      this.creatorState.difficulty = clampNumber(this.creatorState.difficulty, 1, 5);
+      this.writeLevelTemplate(false);
+    },
+
     selectCreatorPair(pairId) {
       this.creatorState.activePairId = pairId;
       this.setCreatorModeHint();
@@ -73,7 +78,7 @@ export const creatorMethods = {
     },
 
     toggleCreatorEdge(edge) {
-      // In edge mode the click disables travel; in mark mode it records the puzzle answer.
+      // Edge mode removes travel; mark mode records the puzzle answer.
       if (!this.isCreatorEdgeInBounds(edge)) return;
 
       if (this.creatorState.mode === "edge") {
@@ -124,8 +129,8 @@ export const creatorMethods = {
     setCreatorModeHint() {
       const label = this.pointDefinitions[this.creatorState.activePairId]?.label ?? "";
       const hints = {
-        edge: "移边：点击格子边切换禁用，红色边挑战时无法通行。",
-        mark: `加边：当前颜色为 ${label} 号，点击格子边标出答案线路。`
+        edge: "移除模式：点击格子边切换禁用，挑战地图中会显示为空白。",
+        mark: `标记模式：当前颜色为 ${label} 号，点击格子边标出答案线路。`
       };
       this.previewHint = `点交点可放置或删除色点；${hints[this.creatorState.mode] ?? hints.edge}`;
     },
@@ -140,6 +145,7 @@ export const creatorMethods = {
       return {
         id,
         name: id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level",
+        difficulty: clampNumber(this.creatorState.difficulty, 1, 5),
         gridType: this.creatorState.gridType,
         width: this.creatorState.width,
         height: this.creatorState.height,

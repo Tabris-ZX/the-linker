@@ -3,15 +3,11 @@ import { cloneLevel, hydrateLevel, loadLevelFiles } from "./services/levels.js";
 import { edgeKey, getAllGridEdges, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "./utils/geometry.js";
 
 const SNAP_POINT_RADIUS = 0.25;
+const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 
 export const methods = {
     async detectLevelEditorAvailability() {
-      try {
-        const response = await fetch("/api/levels", { cache: "no-cache" });
-        this.canUseLevelEditor = response.ok;
-      } catch {
-        this.canUseLevelEditor = false;
-      }
+      this.canUseLevelEditor = import.meta.env.DEV;
 
       if (!this.canUseLevelEditor && this.activeView === "creator") {
         this.activeView = "challenge";
@@ -36,7 +32,77 @@ export const methods = {
       if (!Number.isInteger(index) || !this.levels[index]) return;
       this.currentLevelIndex = index;
       this.currentLevel = cloneLevel(hydrateLevel(this.levels[index]));
+      this.isLevelPickerOpen = false;
+      this.isPersonalBest = false;
       this.resetPaths();
+    },
+
+    toggleLevelPicker() {
+      this.isLevelPickerOpen = !this.isLevelPickerOpen;
+    },
+
+    closeLevelPicker() {
+      this.isLevelPickerOpen = false;
+    },
+
+    selectLevelFromPicker(index) {
+      this.loadLevel(index);
+    },
+
+    loadCompletedLevels() {
+      try {
+        this.completedLevels = JSON.parse(window.localStorage.getItem(COMPLETED_LEVELS_STORAGE_KEY) || "{}");
+      } catch {
+        this.completedLevels = {};
+      }
+    },
+
+    saveCompletedLevels() {
+      window.localStorage.setItem(COMPLETED_LEVELS_STORAGE_KEY, JSON.stringify(this.completedLevels));
+    },
+
+    isLevelCompleted(levelId) {
+      return Boolean(this.completedLevels[levelId]);
+    },
+
+    normalizeLevelDifficulty(value) {
+      const difficulty = Number(value);
+      if (!Number.isFinite(difficulty)) return 1;
+      return Math.min(5, Math.max(1, Math.round(difficulty)));
+    },
+
+    formatElapsedTime(milliseconds) {
+      const totalSeconds = Math.floor(milliseconds / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${minutes}:${seconds}`;
+    },
+
+    getLevelBestTimeText(levelId) {
+      const record = this.completedLevels[levelId];
+      if (!record) return "未完成";
+      if (!record.bestMs) return "已完成";
+      return `最佳 ${this.formatElapsedTime(record.bestMs)}`;
+    },
+
+    markCurrentLevelCompleted() {
+      if (!this.currentLevel?.id) return;
+      const levelId = this.currentLevel.id;
+      const previousRecord = this.completedLevels[levelId] ?? {};
+      const elapsedMs = this.timerElapsedMs;
+      const isPersonalBest = !previousRecord.bestMs || elapsedMs < previousRecord.bestMs || (this.isPersonalBest && elapsedMs === previousRecord.bestMs);
+      this.isPersonalBest = isPersonalBest;
+      this.completedLevels = {
+        ...this.completedLevels,
+        [levelId]: {
+          ...previousRecord,
+          completedAt: previousRecord.completedAt ?? new Date().toISOString(),
+          lastCompletedAt: new Date().toISOString(),
+          lastMs: elapsedMs,
+          bestMs: isPersonalBest ? elapsedMs : previousRecord.bestMs
+        }
+      };
+      this.saveCompletedLevels();
     },
 
     applyTheme(themeId) {
@@ -61,7 +127,8 @@ export const methods = {
 
     applyBackgroundConfig() {
       const background = appConfig.background;
-      const image = background.image ? `url("/${background.image}")` : "none";
+      const imagePath = `${this.assetBase}${background.image}`;
+      const image = background.image ? `url("${imagePath}")` : "none";
       document.documentElement.style.setProperty("--background-image", image);
       document.documentElement.style.setProperty("--background-opacity", String(background.opacity));
       document.documentElement.style.setProperty("--background-blur", background.blur);
@@ -71,7 +138,7 @@ export const methods = {
         tester.onerror = () => {
           console.warn(`Background image not found: ${background.image}. Put it under the background/ directory.`);
         };
-        tester.src = `/${background.image}`;
+        tester.src = imagePath;
       }
     },
 
@@ -88,6 +155,7 @@ export const methods = {
       this.pointerPreview = null;
       this.resetGameTimer();
       this.isWon = false;
+      this.isPersonalBest = false;
     },
 
     clearPaths() {
@@ -101,6 +169,7 @@ export const methods = {
       this.pointerMoved = false;
       this.pointerPreview = null;
       this.isWon = false;
+      this.isPersonalBest = false;
     },
 
     handleBoardPointerDown(event) {
@@ -165,6 +234,7 @@ export const methods = {
       this.isDrawing = true;
       this.pointerPreview = null;
       this.isWon = false;
+      this.isPersonalBest = false;
 
       const currentPath = this.paths[pairId] ?? [];
       if (mode === "path-end") {
@@ -292,6 +362,7 @@ export const methods = {
       this.isWon = allConnected && allFilled;
       if (this.isWon) {
         this.stopGameTimer();
+        this.markCurrentLevelCompleted();
       }
     },
 
@@ -590,6 +661,17 @@ export const methods = {
       const path = this.paths[this.activePair] ?? [];
       const last = path[path.length - 1];
       return Boolean(last && last[0] === x && last[1] === y);
+    },
+
+    getActiveTargetKey() {
+      if (!this.activePair) return "";
+      const pair = this.getPair(this.activePair);
+      const path = this.paths[this.activePair] ?? [];
+      const start = path[0];
+      if (!pair || !start) return "";
+
+      const target = pair.points.find((point) => !samePoint(point, start));
+      return target ? keyOf(target[0], target[1]) : "";
     },
 
 };

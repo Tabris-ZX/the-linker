@@ -1,6 +1,6 @@
 {
-  "id": "paper",
-  "label": "纸面",
+  "id": "default",
+  "label": "默认",
   "tokens": {
     "paper": "#f7f3ea",
     "ink": "#202124",
