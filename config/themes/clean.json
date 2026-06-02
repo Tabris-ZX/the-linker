@@ -1,0 +1,15 @@
+{
+  "id": "clean",
+  "label": "清爽",
+  "tokens": {
+    "paper": "#eef7f4",
+    "ink": "#1f2933",
+    "muted": "#667085",
+    "line": "#c8d5d0",
+    "gridLine": "#17201d",
+    "accent": "#2563eb",
+    "accentStrong": "#1d4ed8",
+    "danger": "#dc2626",
+    "success": "#16a34a"
+  }
+}

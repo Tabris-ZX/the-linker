@@ -1,0 +1,319 @@
+/* Custom level creator layout and preview-board controls. */
+.view-creator {
+  grid-template-columns: minmax(0, 1280px);
+  justify-content: center;
+  height: calc(var(--page-height) - var(--topbar-height));
+  overflow: hidden;
+}
+
+.editor-panel {
+  height: 100%;
+  padding: 16px 22px;
+  overflow: hidden;
+}
+
+.creator-workspace {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.creator-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr)) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.creator-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.creator-form button {
+  min-height: 42px;
+  align-self: end;
+  justify-self: stretch;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: #fff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgba(15, 118, 110, 0.18);
+}
+
+.preview-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1140px) auto;
+  gap: 16px;
+  align-items: start;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.level-output-panel {
+  max-height: 168px;
+  margin-bottom: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  overflow: hidden;
+}
+
+.level-output-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--ink);
+  color: var(--muted);
+  font: 700 0.78rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.level-output-header strong {
+  color: var(--ink);
+}
+
+.level-output-panel pre {
+  max-height: 124px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  font: 700 0.78rem/1.35 Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+}
+
+.pair-picker {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: center;
+  padding-top: 24px;
+}
+
+.pair-chip {
+  min-width: 42px;
+  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  color: #fff;
+  background: var(--pair-color);
+  box-shadow: 3px 3px 0 rgba(32, 33, 36, 0.16);
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.pair-chip.is-active {
+  outline: 4px solid color-mix(in srgb, var(--accent) 36%, transparent);
+  outline-offset: 2px;
+}
+
+.preview-board-wrap {
+  --preview-width-limit: min(1140px, calc(100vw - 128px));
+  --preview-height-limit: min(570px, calc(var(--page-height) - var(--topbar-height) - 238px));
+  display: grid;
+  place-items: center;
+  width: var(--preview-width-limit);
+  height: var(--preview-height-limit);
+  max-width: 1140px;
+  max-height: 570px;
+  overflow: visible;
+  padding: 24px;
+}
+
+.preview-board {
+  --preview-cell-size: min(
+    calc((var(--preview-width-limit) - 48px) / var(--preview-cols)),
+    calc((var(--preview-height-limit) - 48px) / var(--preview-rows))
+  );
+  position: relative;
+  width: calc(var(--preview-cols) * var(--preview-cell-size));
+  height: calc(var(--preview-rows) * var(--preview-cell-size));
+  border: 0;
+  background: #fff;
+  touch-action: none;
+  overflow: visible;
+}
+
+.preview-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.preview-grid line {
+  stroke: var(--grid-line);
+  stroke-linecap: square;
+  stroke-width: 7px;
+  vector-effect: non-scaling-stroke;
+}
+
+.preview-blocked-layer,
+.preview-answer-layer,
+.preview-hit-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.preview-blocked-layer {
+  z-index: 1;
+}
+
+.preview-answer-layer {
+  z-index: 2;
+}
+
+.preview-hit-layer {
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.preview-blocked-layer line {
+  stroke: var(--danger);
+  stroke-linecap: round;
+  stroke-width: 12px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.82;
+}
+
+.preview-answer-layer line {
+  stroke: var(--answer-color);
+  stroke-linecap: round;
+  stroke-width: 34px;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.82;
+}
+
+.preview-hit-layer line {
+  stroke: transparent;
+  stroke-linecap: round;
+  stroke-width: 44px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.preview-hit-layer line:hover {
+  stroke: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.preview-node {
+  position: absolute;
+  z-index: 4;
+  left: calc((100% / var(--preview-cols)) * var(--node-x));
+  top: calc((100% / var(--preview-rows)) * var(--node-y));
+  width: clamp(24px, calc(var(--preview-cell-size) * 0.48), 60px);
+  height: clamp(24px, calc(var(--preview-cell-size) * 0.48), 60px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+  transform: translate3d(-50%, -50%, 0);
+  transition:
+    background 140ms ease,
+    transform 140ms ease,
+    outline-color 140ms ease;
+}
+
+.preview-node:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  transform: translate3d(-50%, -50%, 0) scale(1.04);
+}
+
+.preview-dot {
+  width: clamp(20px, calc(var(--preview-cell-size) * 0.4), 54px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: clamp(2px, calc(var(--preview-cell-size) * 0.035), 4px) solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--dot-color);
+  box-shadow: 0 0 0 clamp(1px, calc(var(--preview-cell-size) * 0.025), 3px) var(--ink), 0 clamp(2px, calc(var(--preview-cell-size) * 0.05), 6px) 0 rgba(0, 0, 0, 0.18);
+  font: 900 clamp(0.82rem, calc(var(--preview-cell-size) * 0.22), 2.2rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  animation: pop-dot 150ms ease-out;
+}
+
+@keyframes pop-dot {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-node,
+  .preview-dot {
+    animation: none;
+    transition: none;
+  }
+}
+
+.preview-hint {
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.6;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .creator-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-form {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .pair-picker {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    justify-content: start;
+    overflow-x: auto;
+    padding-top: 0;
+  }
+
+  .editor-panel {
+    padding: 16px;
+  }
+}
