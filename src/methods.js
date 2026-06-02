@@ -2,7 +2,7 @@
 import { cloneLevel, hydrateLevel, loadLevelFiles } from "./services/levels.js";
 import { edgeKey, getAllGridEdges, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "./utils/geometry.js";
 
-const SNAP_POINT_RADIUS = 0.25;
+const SNAP_POINT_RADIUS = 0.3;
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 
 export const methods = {
