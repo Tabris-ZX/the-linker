@@ -100,16 +100,23 @@ function levelAssetsPlugin() {
     name: "the-linker-level-assets",
     async generateBundle() {
       const files = await listFiles(levelsDir).catch(() => []);
+      const emittedLevelFiles = [];
       await Promise.all(files.map(async (filePath) => {
         if (path.extname(filePath).toLowerCase() !== ".json") return;
         const source = await fs.readFile(filePath);
         const relativePath = normalizePath(path.relative(levelsDir, filePath));
+        emittedLevelFiles.push(relativePath);
         this.emitFile({
           type: "asset",
           fileName: `${normalizePath(appConfig.level?.path ?? "data/levels")}/${relativePath}`,
           source
         });
       }));
+      this.emitFile({
+        type: "asset",
+        fileName: `${normalizePath(appConfig.level?.path ?? "data/levels")}/index.json`,
+        source: `${JSON.stringify(emittedLevelFiles.sort(), null, 2)}\n`
+      });
     }
   };
 }

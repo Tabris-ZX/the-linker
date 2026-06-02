@@ -6,7 +6,7 @@
         :theme-options="themeOptions"
         :timer-text="timerText"
         :current-level-label="currentLevelLabel"
-        :asset-base="assetBase"
+        :favicon-url="faviconUrl"
         @toggle-level-picker="toggleLevelPicker"
         @reset-paths="resetPaths"
       />

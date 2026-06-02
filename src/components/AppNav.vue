@@ -2,7 +2,7 @@
   <header class="app-topbar">
     <div class="topbar-left">
       <a class="brand" href="#" aria-label="the linker home">
-        <img class="brand-icon" :src="`${assetBase}favicon.ico`" alt="">
+        <img class="brand-icon" :src="faviconUrl" alt="">
         <span>the linker</span>
       </a>
       <nav class="view-tabs" aria-label="页面导航">
@@ -76,7 +76,7 @@ export default {
       type: String,
       required: true
     },
-    assetBase: {
+    faviconUrl: {
       type: String,
       required: true
     }

@@ -3,28 +3,37 @@ import { cloneLevel, getPalette } from "../utils/object.js";
 
 export async function loadLevelFiles() {
   // Prefer the Vite dev-server API so levels are read from the configured local level folder.
-  try {
-    const response = await fetch("/api/levels", { cache: "no-cache" });
-    if (response.ok) {
-      return (await response.json()).map(hydrateLevel);
+  if (import.meta.env.DEV) {
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}api/levels`, { cache: "no-cache" });
+      if (response.ok) {
+        return (await response.json()).map(hydrateLevel);
+      }
+    } catch {
+      // Static fallback keeps the app usable without the Vite dev server.
     }
-  } catch {
-    // Static fallback keeps the app usable without the Vite dev server.
   }
 
   const loadedLevels = [];
-  for (let number = 1; number <= 50; number += 1) {
-    const id = `level-${String(number).padStart(3, "0")}`;
-    try {
-      const response = await fetch(`${appConfig.level.path}/${id}.json`, { cache: "no-cache" });
-      if (!response.ok) continue;
-      loadedLevels.push(hydrateLevel(await response.json()));
-    } catch {
-      continue;
-    }
+  const levelFiles = await loadStaticLevelIndex();
+  for (const file of levelFiles) {
+    const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/${file}`, { cache: "no-cache" });
+    if (!response.ok) continue;
+    loadedLevels.push(hydrateLevel(await response.json()));
   }
 
   return loadedLevels;
+}
+
+async function loadStaticLevelIndex() {
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/index.json`, { cache: "no-cache" });
+    if (!response.ok) return ["level-001.json"];
+    const files = await response.json();
+    return Array.isArray(files) ? files : ["level-001.json"];
+  } catch {
+    return ["level-001.json"];
+  }
 }
 
 export async function saveLevelFile(level) {

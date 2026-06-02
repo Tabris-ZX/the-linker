@@ -5,6 +5,7 @@ import { methods } from "./methods.js";
 import { routes } from "./router.js";
 import { cloneLevel, hydrateLevel } from "./services/levels.js";
 import AppNav from "./components/AppNav.vue";
+import faviconUrl from "../favicon.ico";
 
 
 export default {
@@ -19,6 +20,7 @@ export default {
     return {
       pointDefinitions,
       assetBase: import.meta.env.BASE_URL,
+      faviconUrl,
       activeView: "challenge",
       viewTabs: routes,
       canUseLevelEditor: false,

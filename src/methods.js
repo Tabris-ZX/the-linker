@@ -127,7 +127,7 @@ export const methods = {
 
     applyBackgroundConfig() {
       const background = appConfig.background;
-      const imagePath = `${this.assetBase}${background.image}`;
+      const imagePath = new URL(background.image, window.location.href).href;
       const image = background.image ? `url("${imagePath}")` : "none";
       document.documentElement.style.setProperty("--background-image", image);
       document.documentElement.style.setProperty("--background-opacity", String(background.opacity));
