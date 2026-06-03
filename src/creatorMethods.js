@@ -195,7 +195,13 @@ export const creatorMethods = {
       }
 
       const template = this.buildCreatorLevelTemplate();
-      const savedLevel = await saveLevelFile(template);
+      let savedLevel;
+      try {
+        savedLevel = await saveLevelFile(template);
+      } catch (error) {
+        this.previewHint = error.message;
+        return;
+      }
 
       await this.loadLevels();
       const index = this.levels.findIndex((item) => item.id === savedLevel.id);
@@ -205,4 +211,3 @@ export const creatorMethods = {
       this.previewHint = `已保存到 levels/${savedLevel.id}.json，并加入关卡入口`;
     }
 };
-

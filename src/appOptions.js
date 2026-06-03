@@ -1,9 +1,8 @@
-﻿import { appConfig, fallbackLevel, pointDefinitions, themes } from "./config.js";
+﻿import { appConfig, pointDefinitions, themes } from "./config.js";
 import { computed } from "./computed.js";
 import { creatorMethods } from "./creatorMethods.js";
 import { methods } from "./methods.js";
 import { routes } from "./router.js";
-import { cloneLevel, hydrateLevel } from "./services/levels.js";
 import AppNav from "./components/AppNav.vue";
 import faviconUrl from "../favicon.ico";
 
@@ -14,7 +13,6 @@ export default {
   },
 
   data() {
-    const initialLevel = hydrateLevel(fallbackLevel);
     const pairIds = Object.keys(pointDefinitions).slice(0, 5);
 
     return {
@@ -26,9 +24,10 @@ export default {
       canUseLevelEditor: false,
       themes,
       selectedTheme: appConfig.theme.default,
-      levels: [initialLevel],
-      currentLevelIndex: 0,
-      currentLevel: cloneLevel(initialLevel),
+      isLevelsLoading: true,
+      levels: [],
+      currentLevelIndex: -1,
+      currentLevel: null,
       isLevelPickerOpen: false,
       levelDifficultyFilter: "all",
       levelCompletionFilter: "all",
@@ -43,6 +42,7 @@ export default {
       timerIntervalId: null,
       isWon: false,
       isPersonalBest: false,
+      shareStatusText: "分享",
       creatorPairCount: 5,
       creatorState: {
         gridType: "square",
@@ -69,7 +69,9 @@ export default {
     this.loadCompletedLevels();
     await this.detectLevelEditorAvailability();
     await this.loadLevels();
-    this.loadLevel(0);
+    if (this.levels.length > 0) {
+      this.loadLevel(0);
+    }
     if (this.canUseLevelEditor) {
       this.writeLevelTemplate(false);
     }

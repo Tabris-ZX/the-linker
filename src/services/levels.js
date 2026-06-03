@@ -28,11 +28,11 @@ export async function loadLevelFiles() {
 async function loadStaticLevelIndex() {
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/index.json`, { cache: "no-cache" });
-    if (!response.ok) return ["level-001.json"];
+    if (!response.ok) return [];
     const files = await response.json();
-    return Array.isArray(files) ? files : ["level-001.json"];
+    return Array.isArray(files) ? files : [];
   } catch {
-    return ["level-001.json"];
+    return [];
   }
 }
 
@@ -47,7 +47,8 @@ export async function saveLevelFile(level) {
   });
 
   if (!response.ok) {
-    throw new Error("保存失败，请确认正在通过 npm run dev 启动项目");
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message ?? "保存失败，请确认正在通过 npm run dev 启动项目");
   }
 
   return hydrateLevel(await response.json());

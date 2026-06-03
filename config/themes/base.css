@@ -82,9 +82,23 @@ button:hover {
   background: var(--accent-strong);
 }
 
+button:disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  background: var(--accent);
+}
+
 button:active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
+}
+
+button:disabled:active {
+  transform: none;
+  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
 }
 
 h1,
@@ -462,6 +476,19 @@ h2 {
   padding: 0;
 }
 
+.challenge-status {
+  display: grid;
+  place-items: center;
+  min-width: min(360px, calc(100vw - 56px));
+  min-height: 160px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 6px 6px 0 rgba(32, 33, 36, 0.14);
+  font: 900 1.1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
 .board {
   position: relative;
   width: calc(var(--cols) * var(--cell-size));
@@ -550,6 +577,14 @@ h2 {
   border-radius: 999px;
   color: var(--success);
   font: 900 0.9rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.victory-share-button {
+  padding: 5px 9px;
+  border-width: 2px;
+  color: #fff;
+  font: 900 0.85rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.16);
 }
 
 .node {

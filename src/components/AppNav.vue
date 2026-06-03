@@ -32,7 +32,7 @@
           <div class="current-level-label" aria-label="当前关卡">
             {{ currentLevelLabel }}
           </div>
-          <button type="button" @click="$emit('resetPaths')">重置</button>
+          <button type="button" :disabled="!canResetLevel" @click="$emit('resetPaths')">重置</button>
         </div>
       </div>
     </div>
@@ -75,6 +75,10 @@ export default {
     currentLevelLabel: {
       type: String,
       required: true
+    },
+    canResetLevel: {
+      type: Boolean,
+      default: true
     },
     faviconUrl: {
       type: String,

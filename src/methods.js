@@ -1,4 +1,4 @@
-﻿import { appConfig, fallbackLevel } from "./config.js";
+﻿import { appConfig } from "./config.js";
 import { cloneLevel, hydrateLevel, loadLevelFiles } from "./services/levels.js";
 import { edgeKey, getAllGridEdges, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "./utils/geometry.js";
 
@@ -16,16 +16,20 @@ export const methods = {
 
     async loadLevels() {
       // Refresh the in-memory level list from the local levels/ directory.
-      const fileLevels = await loadLevelFiles();
-      const merged = new Map();
-      const discovered = fileLevels.length > 0 ? fileLevels : [fallbackLevel];
+      this.isLevelsLoading = true;
+      try {
+        const fileLevels = await loadLevelFiles();
+        const merged = new Map();
 
-      discovered.forEach((item) => {
-        const hydrated = hydrateLevel(item);
-        merged.set(hydrated.id, hydrated);
-      });
+        fileLevels.forEach((item) => {
+          const hydrated = hydrateLevel(item);
+          merged.set(hydrated.id, hydrated);
+        });
 
-      this.levels = [...merged.values()];
+        this.levels = [...merged.values()];
+      } finally {
+        this.isLevelsLoading = false;
+      }
     },
 
     loadLevel(index) {
@@ -85,6 +89,10 @@ export const methods = {
       return `最佳 ${this.formatElapsedTime(record.bestMs)}`;
     },
 
+    getCompletedLevelCount() {
+      return Object.keys(this.completedLevels).length;
+    },
+
     markCurrentLevelCompleted() {
       if (!this.currentLevel?.id) return;
       const levelId = this.currentLevel.id;
@@ -103,6 +111,55 @@ export const methods = {
         }
       };
       this.saveCompletedLevels();
+    },
+
+    buildVictoryShareText() {
+      const levelName = this.currentLevel?.name || this.currentLevel?.id || "未选择";
+      const levelId = this.currentLevel?.id ? `（${this.currentLevel.id}）` : "";
+      const elapsedText = this.formatElapsedTime(this.timerElapsedMs);
+      const completedCount = this.getCompletedLevelCount();
+      const gameUrl = window.location.href;
+
+      return [
+        `游戏链接：${gameUrl}`,
+        `通关关卡：${levelName}${levelId}`,
+        `用时：${elapsedText}`,
+        `总通关关卡：${completedCount}`
+      ].join("\n");
+    },
+
+    async shareVictory() {
+      if (!this.isWon) return;
+      const text = this.buildVictoryShareText();
+
+      try {
+        await this.copyTextToClipboard(text);
+        this.shareStatusText = "已复制";
+      } catch {
+        this.shareStatusText = "复制失败";
+      }
+    },
+
+    async copyTextToClipboard(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      try {
+        const copied = document.execCommand("copy");
+        if (!copied) throw new Error("Copy command failed");
+      } finally {
+        document.body.removeChild(textarea);
+      }
     },
 
     applyTheme(themeId) {
@@ -125,24 +182,46 @@ export const methods = {
       });
     },
 
-    applyBackgroundConfig() {
+    async applyBackgroundConfig() {
       const background = appConfig.background;
-      const imagePath = new URL(background.image, window.location.href).href;
-      const image = background.image ? `url("${imagePath}")` : "none";
-      document.documentElement.style.setProperty("--background-image", image);
       document.documentElement.style.setProperty("--background-opacity", String(background.opacity));
       document.documentElement.style.setProperty("--background-blur", background.blur);
 
-      if (background.image) {
-        const tester = new Image();
-        tester.onerror = () => {
-          console.warn(`Background image not found: ${background.image}. Put it under the background/ directory.`);
-        };
-        tester.src = imagePath;
+      const images = background.images?.length ? background.images : [background.image].filter(Boolean);
+      if (!images.length) {
+        document.documentElement.style.setProperty("--background-image", "none");
+        return;
       }
+
+      const image = await this.findAvailableBackgroundImage(images);
+      if (!image) {
+        document.documentElement.style.setProperty("--background-image", "none");
+        console.warn(`Background image not found: ${images.join(", ")}. Put it under the background/ directory.`);
+        return;
+      }
+
+      const imagePath = new URL(image, window.location.href).href;
+      document.documentElement.style.setProperty("--background-image", `url("${imagePath}")`);
+    },
+
+    async findAvailableBackgroundImage(images) {
+      for (const image of images) {
+        if (await this.canLoadImage(image)) return image;
+      }
+      return "";
+    },
+
+    canLoadImage(image) {
+      return new Promise((resolve) => {
+        const tester = new Image();
+        tester.onload = () => resolve(true);
+        tester.onerror = () => resolve(false);
+        tester.src = new URL(image, window.location.href).href;
+      });
     },
 
     resetPaths() {
+      if (!this.currentLevel) return;
       // Reset each pair to its first endpoint, matching the normal puzzle start state.
       const paths = {};
       this.currentLevel.pairs.forEach((pair) => {
@@ -156,9 +235,11 @@ export const methods = {
       this.resetGameTimer();
       this.isWon = false;
       this.isPersonalBest = false;
+      this.shareStatusText = "分享";
     },
 
     clearPaths() {
+      if (!this.currentLevel) return;
       const paths = {};
       this.currentLevel.pairs.forEach((pair) => {
         paths[pair.id] = [];
@@ -170,9 +251,11 @@ export const methods = {
       this.pointerPreview = null;
       this.isWon = false;
       this.isPersonalBest = false;
+      this.shareStatusText = "分享";
     },
 
     handleBoardPointerDown(event) {
+      if (!this.currentLevel) return;
       this.startGameTimer();
       const position = this.positionFromEvent(event);
       if (!position) return;
@@ -221,6 +304,7 @@ export const methods = {
     },
 
     handleBoardDoubleClick(event) {
+      if (!this.currentLevel) return;
       const position = this.positionFromEvent(event);
       if (!position) return;
 
@@ -354,12 +438,16 @@ export const methods = {
       // Win only when every pair is connected and the required answer/board coverage is filled.
       if (!this.areAllPathsStructurallyValid()) {
         this.isWon = false;
+        this.shareStatusText = "分享";
         return;
       }
 
       const allConnected = this.currentLevel.pairs.every((pair) => this.isPairConnected(pair));
       const allFilled = this.isBoardFilled();
       this.isWon = allConnected && allFilled;
+      if (!this.isWon) {
+        this.shareStatusText = "分享";
+      }
       if (this.isWon) {
         this.stopGameTimer();
         this.markCurrentLevelCompleted();
@@ -443,6 +531,7 @@ export const methods = {
       this.activePair = null;
       this.isDrawing = false;
       this.isWon = false;
+      this.shareStatusText = "分享";
     },
 
     pausePath(pairId, hasMoved) {
@@ -505,7 +594,7 @@ export const methods = {
     },
 
     getPair(pairId) {
-      return this.currentLevel.pairs.find((pair) => pair.id === pairId);
+      return this.currentLevel?.pairs.find((pair) => pair.id === pairId) ?? null;
     },
 
     getEdgeOccupant(from, to) {
@@ -527,7 +616,7 @@ export const methods = {
     },
 
     isLevelEdgeRemoved(edge) {
-      return new Set(this.currentLevel.removedEdges ?? []).has(edge);
+      return new Set(this.currentLevel?.removedEdges ?? []).has(edge);
     },
 
     isEndpointAlreadyLinked(pairId, point) {

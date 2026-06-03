@@ -4,6 +4,8 @@ import { parseSimpleYaml } from "./utils/simpleYaml.js";
 const rawConfig = parseSimpleYaml(configYaml);
 const themeModules = import.meta.glob("../config/themes/*.json", { eager: true, import: "default" });
 const colorModules = import.meta.glob("../config/colors/*.json", { eager: true, import: "default" });
+const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
+const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "");
 
 export const appConfig = {
   level: {
@@ -19,7 +21,8 @@ export const appConfig = {
   },
   background: {
     path: normalizePath(rawConfig.background?.path ?? "background"),
-    image: normalizeBackgroundImage(rawConfig.background?.image ?? ""),
+    image: backgroundImages[0] ?? "",
+    images: backgroundImages,
     opacity: clampNumber(Number(rawConfig.background?.opacity ?? 0), 0, 1),
     blur: normalizeBlur(rawConfig.background?.blur ?? 0)
   }
@@ -28,22 +31,6 @@ export const appConfig = {
 export const themes = loadThemes();
 export const colorConfigs = loadColorConfigs();
 export const pointDefinitions = colorConfigs.points?.points ?? {};
-
-export const fallbackLevel = {
-  id: "level-001",
-  name: "First Link",
-  difficulty: 1,
-  gridType: "square",
-  width: 5,
-  height: 5,
-  pairs: [
-    { id: "red", points: [[0, 0], [2, 0]] },
-    { id: "blue", points: [[3, 0], [1, 1]] },
-    { id: "green", points: [[0, 1], [3, 2]] },
-    { id: "amber", points: [[4, 2], [1, 3]] },
-    { id: "pink", points: [[0, 3], [4, 4]] }
-  ]
-};
 
 function loadThemes() {
   return Object.values(filterModulesByDirectory(themeModules, appConfig.theme.path))
@@ -78,14 +65,41 @@ function normalizePath(value) {
   return String(value).replace(/^\.?\//, "").replace(/\\/g, "/");
 }
 
-function normalizeBackgroundImage(value) {
+function normalizeBackgroundImages(value) {
   const normalizedValue = String(value).trim();
-  if (!normalizedValue || normalizedValue.toLowerCase() === "no") return "";
+  if (!normalizedValue || normalizedValue.toLowerCase() === "no") return [];
 
   const image = normalizePath(normalizedValue)
     .replace(/^background\//, "")
     .replace(/^config\/background\//, "");
-  return image ? `background/${image}` : "";
+  if (!image) return [];
+
+  const extension = getPathExtension(image);
+  if (!extension) {
+    return BACKGROUND_IMAGE_EXTENSIONS.map((candidateExtension) => `background/${image}${candidateExtension}`);
+  }
+
+  if (!BACKGROUND_IMAGE_EXTENSIONS.includes(extension)) {
+    return [`background/${image}`];
+  }
+
+  const baseName = image.slice(0, -extension.length);
+  return uniqueValues([
+    `background/${image}`,
+    ...BACKGROUND_IMAGE_EXTENSIONS
+      .filter((candidateExtension) => candidateExtension !== extension)
+      .map((candidateExtension) => `background/${baseName}${candidateExtension}`)
+  ]);
+}
+
+function getPathExtension(value) {
+  const fileName = value.split("/").pop() ?? "";
+  const extensionIndex = fileName.lastIndexOf(".");
+  return extensionIndex >= 0 ? fileName.slice(extensionIndex).toLowerCase() : "";
+}
+
+function uniqueValues(values) {
+  return [...new Set(values)];
 }
 
 function clampNumber(value, min, max) {

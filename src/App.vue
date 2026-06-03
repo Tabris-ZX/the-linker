@@ -6,6 +6,7 @@
         :theme-options="themeOptions"
         :timer-text="timerText"
         :current-level-label="currentLevelLabel"
+        :can-reset-level="Boolean(currentLevel) && !isLevelsLoading"
         :favicon-url="faviconUrl"
         @toggle-level-picker="toggleLevelPicker"
         @reset-paths="resetPaths"
@@ -58,7 +59,13 @@
                 </section>
               </div>
             </section>
-            <div class="board-wrap">
+            <div v-if="isLevelsLoading" class="challenge-status" role="status" aria-live="polite">
+              加载中
+            </div>
+            <div v-else-if="!currentLevel" class="challenge-status" role="status" aria-live="polite">
+              暂无关卡
+            </div>
+            <div v-else class="board-wrap">
               <div
                 ref="boardRef"
                 class="board"
@@ -108,6 +115,9 @@
               </svg>
               <span>胜利！</span>
               <strong v-if="isPersonalBest">PB</strong>
+              <button type="button" class="victory-share-button" @click="shareVictory">
+                {{ shareStatusText }}
+              </button>
             </div>
           </section>
         </section>

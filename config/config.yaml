@@ -13,6 +13,6 @@ colors:
 
 background:
   path: config/background
-  image: "default.png"
+  image: "default"
   opacity: 0.2
   blur: 0px

@@ -14,6 +14,7 @@ export const computed = {
     },
 
     currentLevelLabel() {
+      if (this.isLevelsLoading) return "加载中";
       return this.currentLevel?.name || this.currentLevel?.id || "未选择";
     },
 
@@ -45,10 +46,19 @@ export const computed = {
     },
 
     boardViewBox() {
+      if (!this.currentLevel) return "0 0 1 1";
       return `0 0 ${this.currentLevel.width} ${this.currentLevel.height}`;
     },
 
     boardStyle() {
+      if (!this.currentLevel) {
+        return {
+          "--cols": 1,
+          "--rows": 1,
+          "--cell-size": "min(var(--board-max-width), var(--board-max-height))"
+        };
+      }
+
       // Keep the board on a fixed pixel scale: max 1200px wide and 600px tall.
       // The final square edge length is the smaller of width-based and height-based splits.
       return {
@@ -60,6 +70,7 @@ export const computed = {
 
     endpoints() {
       const endpoints = {};
+      if (!this.currentLevel) return endpoints;
       this.currentLevel.pairs.forEach((pair) => {
         pair.points.forEach(([x, y]) => {
           endpoints[keyOf(x, y)] = pair.id;
@@ -69,6 +80,7 @@ export const computed = {
     },
 
     gridLines() {
+      if (!this.currentLevel) return [];
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
       return buildGridLines(this.currentLevel.width, this.currentLevel.height).filter((line) => {
         const from = [line.attrs.x1, line.attrs.y1];
@@ -78,6 +90,7 @@ export const computed = {
     },
 
     renderedPathLines() {
+      if (!this.currentLevel) return [];
       const lines = [];
       const renderedEdges = new Set();
       Object.entries(this.paths).forEach(([pairId, path]) => {
@@ -128,6 +141,7 @@ export const computed = {
     },
 
     boardNodes() {
+      if (!this.currentLevel) return [];
       const nodes = [];
       const filledNodes = this.getFilledNodes();
       const activeTargetKey = this.getActiveTargetKey();

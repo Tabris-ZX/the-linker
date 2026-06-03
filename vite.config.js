@@ -8,6 +8,8 @@ const projectRoot = process.cwd();
 const appConfig = await readAppConfig();
 const levelsDir = path.resolve(projectRoot, appConfig.level?.path ?? "data/levels");
 const backgroundDir = path.resolve(projectRoot, appConfig.background?.path ?? "background");
+const LEVEL_SAVE_INTERVAL_MS = 30_000;
+let lastLevelSavedAt = 0;
 
 export default defineConfig({
   base: "./",
@@ -38,11 +40,30 @@ export default defineConfig({
             }
 
             if (request.method === "POST") {
-              const payload = await readRequestBody(request);
-              const level = JSON.parse(payload || "{}");
-              const savedLevel = await saveLevel(level);
-              sendJson(response, 200, savedLevel);
-              return;
+              const rateLimit = getLevelSaveRateLimit();
+              if (rateLimit.isLimited) {
+                sendJson(response, 429, {
+                  error: "Too many requests",
+                  message: `保存太频繁，请 ${rateLimit.retryAfterSeconds} 秒后再试`,
+                  retryAfterSeconds: rateLimit.retryAfterSeconds
+                });
+                return;
+              }
+
+              const saveStartedAt = Date.now();
+              lastLevelSavedAt = saveStartedAt;
+              try {
+                const payload = await readRequestBody(request);
+                const level = JSON.parse(payload || "{}");
+                const savedLevel = await saveLevel(level);
+                sendJson(response, 200, savedLevel);
+                return;
+              } catch (error) {
+                if (lastLevelSavedAt === saveStartedAt) {
+                  lastLevelSavedAt = 0;
+                }
+                throw error;
+              }
             }
 
             sendJson(response, 405, { error: "Method not allowed" });
@@ -175,6 +196,18 @@ async function saveLevel(level) {
 
   await fs.writeFile(path.join(levelsDir, `${id}.json`), `${JSON.stringify(savedLevel, null, 2)}\n`, "utf8");
   return savedLevel;
+}
+
+function getLevelSaveRateLimit() {
+  const elapsedMs = Date.now() - lastLevelSavedAt;
+  if (elapsedMs >= LEVEL_SAVE_INTERVAL_MS) {
+    return { isLimited: false, retryAfterSeconds: 0 };
+  }
+
+  return {
+    isLimited: true,
+    retryAfterSeconds: Math.ceil((LEVEL_SAVE_INTERVAL_MS - elapsedMs) / 1000)
+  };
 }
 
 async function getNextLevelId() {
