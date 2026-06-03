@@ -21,7 +21,7 @@
 
 .creator-form {
   display: grid;
-  grid-template-columns: 150px repeat(4, 112px) 168px 134px 134px;
+  grid-template-columns: 114px 130px repeat(4, 88px) 142px 112px 112px;
   gap: 8px;
   align-items: end;
   margin-bottom: 8px;
@@ -62,7 +62,7 @@ textarea:focus {
 
 .preview-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1140px) auto;
+  grid-template-columns: auto minmax(0, 1140px);
   gap: 16px;
   align-items: start;
   justify-content: center;
@@ -109,6 +109,13 @@ textarea:focus {
   align-content: start;
   justify-items: center;
   padding-top: 24px;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.preview-board-wrap {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .pair-chip {
@@ -169,7 +176,7 @@ textarea:focus {
 .preview-grid line {
   stroke: var(--grid-line);
   stroke-linecap: square;
-  stroke-width: 7px;
+  stroke-width: max(1px, calc(var(--preview-cell-size) * var(--map-grid-line-scale)));
   vector-effect: non-scaling-stroke;
 }
 
@@ -200,7 +207,7 @@ textarea:focus {
 .preview-blocked-layer line {
   stroke: var(--danger);
   stroke-linecap: round;
-  stroke-width: 12px;
+  stroke-width: clamp(8px, calc(var(--preview-cell-size) * 0.16), 16px);
   vector-effect: non-scaling-stroke;
   opacity: 0.82;
 }
@@ -208,7 +215,7 @@ textarea:focus {
 .preview-answer-layer line {
   stroke: var(--answer-color);
   stroke-linecap: round;
-  stroke-width: 34px;
+  stroke-width: max(1px, calc(var(--preview-cell-size) * var(--map-line-scale)));
   vector-effect: non-scaling-stroke;
   opacity: 0.82;
 }
@@ -216,7 +223,7 @@ textarea:focus {
 .preview-hit-layer line {
   stroke: transparent;
   stroke-linecap: round;
-  stroke-width: 44px;
+  stroke-width: clamp(26px, calc(var(--preview-cell-size) * 0.58), 58px);
   vector-effect: non-scaling-stroke;
   cursor: pointer;
   pointer-events: stroke;
@@ -231,8 +238,8 @@ textarea:focus {
   z-index: 4;
   left: calc((100% / var(--preview-cols)) * var(--node-x));
   top: calc((100% / var(--preview-rows)) * var(--node-y));
-  width: clamp(24px, calc(var(--preview-cell-size) * 0.48), 60px);
-  height: clamp(24px, calc(var(--preview-cell-size) * 0.48), 60px);
+  width: max(30px, calc(var(--preview-cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
+  height: max(30px, calc(var(--preview-cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
   display: grid;
   place-items: center;
   padding: 0;
@@ -253,17 +260,30 @@ textarea:focus {
   transform: translate3d(-50%, -50%, 0) scale(1.04);
 }
 
+.preview-node::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  width: max(6px, calc(var(--preview-cell-size) * var(--map-node-scale)));
+  height: max(6px, calc(var(--preview-cell-size) * var(--map-node-scale)));
+  border-radius: 999px;
+  background: var(--grid-line);
+  opacity: 1;
+}
+
 .preview-dot {
-  width: clamp(20px, calc(var(--preview-cell-size) * 0.4), 54px);
+  position: relative;
+  z-index: 3;
+  width: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  border: clamp(2px, calc(var(--preview-cell-size) * 0.035), 4px) solid #fff;
+  border: clamp(2px, calc(var(--preview-cell-size) * 0.04), 5px) solid #fff;
   border-radius: 999px;
   color: #fff;
   background: var(--dot-color);
-  box-shadow: 0 0 0 clamp(1px, calc(var(--preview-cell-size) * 0.025), 3px) var(--ink), 0 clamp(2px, calc(var(--preview-cell-size) * 0.05), 6px) 0 rgba(0, 0, 0, 0.18);
-  font: 900 clamp(0.82rem, calc(var(--preview-cell-size) * 0.22), 2.2rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 0 0 0 clamp(1px, calc(var(--preview-cell-size) * 0.03), 4px) var(--ink), 0 clamp(2px, calc(var(--preview-cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
+  font: 900 clamp(1rem, calc(var(--preview-cell-size) * 0.24), 2.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   animation: pop-dot 150ms ease-out;
 }
 
@@ -313,6 +333,13 @@ textarea:focus {
     justify-content: start;
     overflow-x: auto;
     padding-top: 0;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .preview-board-wrap {
+    grid-column: 1;
+    grid-row: 2;
   }
 
   .editor-panel {

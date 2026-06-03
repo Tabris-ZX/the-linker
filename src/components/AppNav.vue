@@ -1,9 +1,9 @@
 <template>
   <header class="app-topbar" :class="`is-${activeView}`">
     <div class="topbar-left">
-      <a class="brand" href="#" aria-label="the linker home">
+      <a class="brand" href="#" aria-label="The Linker home">
         <img class="brand-icon" :src="faviconUrl" alt="">
-        <span>the linker</span>
+        <span>The Linker</span>
       </a>
       <nav class="view-tabs" aria-label="页面导航">
         <button
@@ -21,7 +21,7 @@
     </div>
 
     <div class="topbar-center">
-      <div v-if="activeView === 'challenge'" class="challenge-toolbar" aria-label="关卡工具栏">
+      <div class="challenge-toolbar" :class="{ 'is-hidden': activeView !== 'challenge' }" aria-label="关卡工具栏">
         <div class="game-timer" aria-label="计时">
           {{ timerText }}
         </div>
@@ -38,12 +38,15 @@
     </div>
 
     <div class="topbar-right">
-      <label class="theme-switcher">
-        主题
-        <select :value="selectedTheme" aria-label="主题切换" @change="handleThemeChange">
-          <option v-for="theme in themeOptions" :key="theme.id" :value="theme.id">{{ theme.label }}</option>
-        </select>
-      </label>
+      <a class="github-link" href="https://github.com/Tabris-ZX/the-linker" target="_blank" rel="noreferrer" aria-label="GitHub 项目主页">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 2C6.48 2 2 6.58 2 12.24c0 4.52 2.86 8.35 6.84 9.71.5.1.68-.22.68-.49v-1.9c-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.1-1.5-1.1-1.5-.91-.63.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.66.35-1.12.63-1.37-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.74-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.04A9.3 9.3 0 0 1 12 7c.85 0 1.7.12 2.5.34 1.9-1.32 2.74-1.04 2.74-1.04.55 1.4.2 2.44.1 2.7.64.71 1.03 1.62 1.03 2.74 0 3.92-2.34 4.78-4.57 5.04.36.32.68.94.68 1.9v2.78c0 .27.18.59.69.49A10.17 10.17 0 0 0 22 12.24C22 6.58 17.52 2 12 2Z"></path>
+        </svg>
+        
+      </a>
+      <button class="personalize-button" type="button" @click="$emit('togglePersonalization')">
+        个性化
+      </button>
     </div>
   </header>
 </template>
@@ -58,14 +61,6 @@ export default {
     },
     viewTabs: {
       type: Array,
-      required: true
-    },
-    themeOptions: {
-      type: Array,
-      required: true
-    },
-    selectedTheme: {
-      type: String,
       required: true
     },
     timerText: {
@@ -85,11 +80,6 @@ export default {
       required: true
     }
   },
-  emits: ["update:activeView", "update:selectedTheme", "toggleLevelPicker", "resetPaths"],
-  methods: {
-    handleThemeChange(event) {
-      this.$emit("update:selectedTheme", event.target.value);
-    }
-  }
+  emits: ["update:activeView", "toggleLevelPicker", "resetPaths", "togglePersonalization"]
 };
 </script>

@@ -1,8 +1,7 @@
-﻿import { appConfig } from "./config.js";
-import { cloneLevel, hydrateLevel, loadLevelFiles } from "./services/levels.js";
-import { edgeKey, getAllGridEdges, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "./utils/geometry.js";
+﻿import { appConfig } from "../config/index.js";
+import { cloneLevel, hydrateLevel, loadLevelFiles } from "../services/levels.js";
+import { edgeKey, getAllGridEdges, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "../utils/geometry.js";
 
-const SNAP_POINT_RADIUS = 0.3;
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 
 export const methods = {
@@ -22,7 +21,7 @@ export const methods = {
         const merged = new Map();
 
         fileLevels.forEach((item) => {
-          const hydrated = hydrateLevel(item);
+          const hydrated = hydrateLevel(item, this.pointDefinitions);
           merged.set(hydrated.id, hydrated);
         });
 
@@ -35,7 +34,7 @@ export const methods = {
     loadLevel(index) {
       if (!Number.isInteger(index) || !this.levels[index]) return;
       this.currentLevelIndex = index;
-      this.currentLevel = cloneLevel(hydrateLevel(this.levels[index]));
+      this.currentLevel = cloneLevel(hydrateLevel(this.levels[index], this.pointDefinitions));
       this.isLevelPickerOpen = false;
       this.isPersonalBest = false;
       this.resetPaths();
@@ -47,6 +46,18 @@ export const methods = {
 
     closeLevelPicker() {
       this.isLevelPickerOpen = false;
+    },
+
+    togglePersonalization() {
+      this.isPersonalizationOpen = !this.isPersonalizationOpen;
+    },
+
+    closePersonalization() {
+      this.isPersonalizationOpen = false;
+    },
+
+    closeVictoryMark() {
+      this.isVictoryDismissed = true;
     },
 
     selectLevelFromPicker(index) {
@@ -76,17 +87,19 @@ export const methods = {
     },
 
     formatElapsedTime(milliseconds) {
-      const totalSeconds = Math.floor(milliseconds / 1000);
-      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-      const seconds = String(totalSeconds % 60).padStart(2, "0");
-      return `${minutes}:${seconds}`;
+      const totalCentiseconds = Math.floor(Math.max(0, milliseconds) / 10);
+      const minutes = String(Math.floor(totalCentiseconds / 6000)).padStart(2, "0");
+      const seconds = String(Math.floor((totalCentiseconds % 6000) / 100)).padStart(2, "0");
+      const centiseconds = String(totalCentiseconds % 100).padStart(2, "0");
+      return `${minutes}:${seconds}.${centiseconds}`;
     },
 
     getLevelBestTimeText(levelId) {
       const record = this.completedLevels[levelId];
       if (!record) return "未完成";
-      if (!record.bestMs) return "已完成";
-      return `最佳 ${this.formatElapsedTime(record.bestMs)}`;
+      const bestMs = Number(record.bestMs);
+      if (!Number.isFinite(bestMs)) return "已完成";
+      return `最佳 ${this.formatElapsedTime(bestMs)}`;
     },
 
     getCompletedLevelCount() {
@@ -97,8 +110,10 @@ export const methods = {
       if (!this.currentLevel?.id) return;
       const levelId = this.currentLevel.id;
       const previousRecord = this.completedLevels[levelId] ?? {};
-      const elapsedMs = this.timerElapsedMs;
-      const isPersonalBest = !previousRecord.bestMs || elapsedMs < previousRecord.bestMs || (this.isPersonalBest && elapsedMs === previousRecord.bestMs);
+      const elapsedMs = this.normalizeTimerElapsedMs(this.timerElapsedMs);
+      const previousBestMs = Number(previousRecord.bestMs);
+      const hasPreviousBest = Number.isFinite(previousBestMs);
+      const isPersonalBest = !hasPreviousBest || elapsedMs < previousBestMs;
       this.isPersonalBest = isPersonalBest;
       this.completedLevels = {
         ...this.completedLevels,
@@ -138,6 +153,10 @@ export const methods = {
       } catch {
         this.shareStatusText = "复制失败";
       }
+    },
+
+    async copyMapStyleJson() {
+      await this.copyTextToClipboard(this.mapStyleJson);
     },
 
     async copyTextToClipboard(text) {
@@ -180,6 +199,17 @@ export const methods = {
       Object.entries(theme.tokens).forEach(([tokenName, tokenValue]) => {
         document.documentElement.style.setProperty(tokenMap[tokenName], tokenValue);
       });
+    },
+
+    applyPointPalette(paletteId) {
+      const firstPaletteId = Object.keys(this.pointPalettes)[0];
+      const nextDefinitions = this.pointPalettes[paletteId] ?? this.pointPalettes.default ?? this.pointPalettes[firstPaletteId] ?? {};
+      this.pointDefinitions = nextDefinitions;
+      this.levels = this.levels.map((level) => hydrateLevel(level, nextDefinitions));
+      if (this.currentLevel) {
+        this.currentLevel = cloneLevel(hydrateLevel(this.currentLevel, nextDefinitions));
+      }
+      this.writeLevelTemplate(false);
     },
 
     async applyBackgroundConfig() {
@@ -235,6 +265,7 @@ export const methods = {
       this.resetGameTimer();
       this.isWon = false;
       this.isPersonalBest = false;
+      this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
     },
 
@@ -251,6 +282,7 @@ export const methods = {
       this.pointerPreview = null;
       this.isWon = false;
       this.isPersonalBest = false;
+      this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
     },
 
@@ -319,6 +351,7 @@ export const methods = {
       this.pointerPreview = null;
       this.isWon = false;
       this.isPersonalBest = false;
+      this.isVictoryDismissed = false;
 
       const currentPath = this.paths[pairId] ?? [];
       if (mode === "path-end") {
@@ -438,17 +471,20 @@ export const methods = {
       // Win only when every pair is connected and the required answer/board coverage is filled.
       if (!this.areAllPathsStructurallyValid()) {
         this.isWon = false;
+        this.isVictoryDismissed = false;
         this.shareStatusText = "分享";
         return;
       }
 
       const allConnected = this.currentLevel.pairs.every((pair) => this.isPairConnected(pair));
       const allFilled = this.isBoardFilled();
+      const wasWon = this.isWon;
       this.isWon = allConnected && allFilled;
       if (!this.isWon) {
+        this.isVictoryDismissed = false;
         this.shareStatusText = "分享";
       }
-      if (this.isWon) {
+      if (this.isWon && !wasWon) {
         this.stopGameTimer();
         this.markCurrentLevelCompleted();
       }
@@ -467,7 +503,7 @@ export const methods = {
       const y = Math.round(point.y);
       if (x < 0 || y < 0 || x > this.currentLevel.width || y > this.currentLevel.height) return null;
       const distance = Math.hypot(point.x - x, point.y - y);
-      if (distance > SNAP_POINT_RADIUS) return null;
+      if (distance > this.mapStyle.snapPointRadius) return null;
       return { x, y };
     },
 
@@ -531,6 +567,7 @@ export const methods = {
       this.activePair = null;
       this.isDrawing = false;
       this.isWon = false;
+      this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
     },
 
@@ -562,7 +599,7 @@ export const methods = {
       this.timerElapsedMs = 0;
       this.timerIntervalId = window.setInterval(() => {
         this.updateGameTimer();
-      }, 250);
+      }, 10);
     },
 
     updateGameTimer() {
@@ -585,6 +622,10 @@ export const methods = {
       this.timerStartedAt = null;
       this.timerElapsedMs = 0;
       this.timerIntervalId = null;
+    },
+
+    normalizeTimerElapsedMs(milliseconds) {
+      return Math.floor(Math.max(0, milliseconds) / 10) * 10;
     },
 
     releasePointer(event) {

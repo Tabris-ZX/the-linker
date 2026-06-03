@@ -1,0 +1,541 @@
+/* base */
+
+:root {
+  /* Global shell, typography, nav, and shared component tokens. */
+  --paper: #f7f3ea;
+  --ink: #202124;
+  --muted: #6f6a60;
+  --line: #d7cfc1;
+  --grid-line: #161616;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --danger: #b91c1c;
+  --success: #047857;
+  --topbar-height: 58px;
+  --page-height: 810px;
+  --cell-size: 88px;
+  --board-max-width: 1200px;
+  --board-max-height: 600px;
+  --background-image: none;
+  --background-opacity: 0;
+  --background-blur: 0px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  position: relative;
+  margin: 0;
+  min-height: var(--page-height);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+  background:
+    linear-gradient(90deg, rgba(15, 118, 110, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(15, 118, 110, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 15% 20%, rgba(239, 68, 68, 0.14), transparent 28%),
+    radial-gradient(circle at 80% 16%, rgba(245, 158, 11, 0.16), transparent 26%),
+    var(--paper);
+  background-size: 34px 34px, 34px 34px, auto, auto;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--background-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: var(--background-opacity);
+  filter: blur(var(--background-blur));
+  transform: scale(1.03);
+  pointer-events: none;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: var(--page-height);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  background: var(--accent);
+}
+
+button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
+}
+
+button:disabled:active {
+  transform: none;
+  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(2rem, 6vw, 4.2rem);
+  line-height: 0.95;
+}
+
+h2 {
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(420px, 560px) minmax(220px, 1fr);
+  align-items: center;
+  gap: 10px;
+  height: var(--topbar-height);
+  padding: 6px 12px;
+  border-bottom: 2px solid var(--ink);
+  background: rgba(255, 253, 250, 0.94);
+  backdrop-filter: blur(10px);
+}
+
+.topbar-left,
+.topbar-center,
+.topbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar-left {
+  justify-content: flex-start;
+}
+
+.topbar-right {
+  justify-content: flex-end;
+}
+
+.topbar-center {
+  justify-content: center;
+  min-width: 420px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font: 900 1.16rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-decoration: none;
+}
+
+.brand-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.14);
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.github-link svg {
+  width: 21px;
+  height: 21px;
+  fill: currentColor;
+}
+
+.github-link:hover {
+  color: #fff;
+  background: var(--accent);
+}
+
+.game-timer {
+  min-width: 72px;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: #fff;
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-align: center;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.14);
+}
+
+.view-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.level-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.current-level-label {
+  max-width: 140px;
+  overflow: hidden;
+  padding: 5px 8px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  font: 900 0.95rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.view-tab {
+  border: 0;
+  box-shadow: none;
+  color: var(--ink);
+  background: transparent;
+}
+
+.app-topbar button,
+.personalize-button,
+.challenge-actions button {
+  padding: 6px 9px;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
+  white-space: nowrap;
+}
+
+.close-button {
+  min-height: 0;
+  padding: 4px 8px;
+  border-width: 2px;
+  border-radius: 5px;
+  font: 900 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.14);
+}
+
+.close-button:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(32, 33, 36, 0.14);
+}
+
+.challenge-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+  min-width: 420px;
+}
+
+.challenge-toolbar.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.challenge-actions {
+  position: relative;
+  z-index: 5;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.12);
+}
+
+.view-tab:hover,
+.view-tab.is-active {
+  color: #fff;
+  background: var(--accent);
+}
+
+.view-tab:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.app-shell {
+  width: 100%;
+  height: calc(var(--page-height) - var(--topbar-height));
+  min-height: calc(var(--page-height) - var(--topbar-height));
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+.view {
+  display: none;
+}
+
+.view.is-active {
+  display: grid;
+}
+
+.app-card {
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 92%, #fff 8%);
+  box-shadow: 8px 8px 0 rgba(32, 33, 36, 0.14);
+}
+
+.personalization-panel {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 12;
+  display: grid;
+  gap: 12px;
+  width: min(340px, calc(100vw - 28px));
+  max-height: min(680px, calc(var(--page-height) - var(--topbar-height) - 28px));
+  padding: 14px;
+  overflow: auto;
+}
+
+.personalization-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.personalization-header h2 {
+  margin: 0;
+}
+
+.personalization-panel label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 10px;
+  align-items: center;
+  color: var(--muted);
+  font: 800 0.88rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-select-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.personalization-panel label span {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.personalization-panel select,
+.personalization-panel input[type="range"] {
+  grid-column: 1 / -1;
+}
+
+.personalization-panel input[type="range"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.personalization-panel input[type="number"] {
+  grid-column: 1 / -1;
+  max-width: 110px;
+  padding: 6px 8px;
+}
+
+.personalization-copy-button {
+  justify-self: start;
+  padding: 7px 10px;
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-json {
+  min-height: 118px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: #fff;
+  font: 700 0.82rem/1.45 Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .app-topbar {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .topbar-left,
+  .topbar-center,
+  .topbar-right {
+    flex-wrap: wrap;
+  }
+
+  .view-tabs {
+    display: inline-flex;
+  }
+
+  .app-shell {
+    width: 100%;
+    padding: 0;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  :root {
+    --topbar-height: 96px;
+    --page-height: 100dvh;
+    --board-max-width: calc(100vw - 44px);
+    --board-max-height: calc(100dvh - var(--topbar-height) - 76px);
+  }
+
+  html,
+  body,
+  #app {
+    width: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  .app-topbar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "tools";
+    gap: 6px;
+    min-height: var(--topbar-height);
+    padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+  }
+
+  .app-topbar .topbar-left {
+    grid-area: brand;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .app-topbar .brand {
+    flex: 0 0 auto;
+    font-size: 1.04rem;
+  }
+
+  .app-topbar .brand-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .app-topbar .view-tabs {
+    display: none;
+  }
+
+  .app-topbar .topbar-right {
+    position: absolute;
+    top: max(8px, env(safe-area-inset-top));
+    right: 10px;
+  }
+
+  .app-topbar .topbar-center {
+    grid-area: tools;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .app-topbar .challenge-toolbar {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .app-topbar .game-timer {
+    min-width: 62px;
+    padding: 5px 6px;
+    font-size: 0.92rem;
+  }
+
+  .app-topbar .challenge-actions {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 5px;
+    min-width: 0;
+    padding: 4px;
+  }
+
+  .app-topbar button {
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: 0.86rem;
+  }
+
+  .app-topbar .current-level-label {
+    max-width: none;
+    min-width: 0;
+    padding: 5px 4px;
+    text-align: center;
+    font-size: 0.86rem;
+  }
+
+  .app-shell {
+    height: calc(100dvh - var(--topbar-height));
+    min-height: calc(100dvh - var(--topbar-height));
+    overflow: hidden;
+  }
+}

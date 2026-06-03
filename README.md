@@ -37,6 +37,5 @@ npm run build
 ## 配置
 
 - `config/config.yaml`：主要路径、主题、背景
-- `config/colors`：点对颜色
-- `config/themes`：主题样式
+- `config/styles`：地图样式、点对颜色、主题和 CSS
 - `data/levels`：可游玩的关卡

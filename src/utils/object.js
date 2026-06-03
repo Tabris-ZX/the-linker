@@ -1,9 +1,3 @@
-import { pointDefinitions } from "../config.js";
-
-export function getPalette() {
-  return Object.values(pointDefinitions).map((point) => point.color);
-}
-
 export function clampNumber(value, min, max) {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return min;

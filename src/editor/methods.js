@@ -1,12 +1,12 @@
-﻿import { saveLevelFile } from "./services/levels.js";
-import { isAdjacent, keyOf, pointFromKey, pointsFromEdgeKey } from "./utils/geometry.js";
-import { clampNumber, omitKey } from "./utils/object.js";
+﻿import { saveLevelFile } from "../services/levels.js";
+import { isAdjacent, keyOf, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
+import { clampNumber, omitKey } from "../utils/object.js";
 
 export const creatorMethods = {
     syncCreatorBounds() {
       // Keep editor data valid when the user changes board width/height.
-      this.creatorState.width = clampNumber(this.creatorState.width, 3, 12);
-      this.creatorState.height = clampNumber(this.creatorState.height, 3, 12);
+      this.creatorState.width = clampNumber(this.creatorState.width, 2, 12);
+      this.creatorState.height = clampNumber(this.creatorState.height, 2, 12);
       this.creatorState.points = Object.fromEntries(
         Object.entries(this.creatorState.points).map(([pairId, points]) => [
           pairId,
@@ -42,6 +42,11 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    syncCreatorName() {
+      this.creatorState.name = String(this.creatorState.name ?? "");
+      this.writeLevelTemplate(false);
+    },
+
     selectCreatorPair(pairId) {
       this.creatorState.activePairId = pairId;
       this.setCreatorModeHint();
@@ -65,7 +70,7 @@ export const creatorMethods = {
       if (occupied) {
         const points = this.creatorState.points[occupied.pairId] ?? [];
         this.creatorState.points[occupied.pairId] = points.filter((point) => point[0] !== x || point[1] !== y);
-        this.previewHint = `已删除 ${this.pointDefinitions[occupied.pairId].label} 号点的一个端点`;
+        this.previewHint = `已删除 ${this.getPointLabel(occupied.pairId)} 号点的一个端点`;
         this.writeLevelTemplate(false);
         return;
       }
@@ -73,7 +78,7 @@ export const creatorMethods = {
       const points = [...(this.creatorState.points[this.creatorState.activePairId] ?? [])];
       if (points.length >= 2) points.shift();
       this.creatorState.points[this.creatorState.activePairId] = [...points, [x, y]];
-      this.previewHint = `${this.pointDefinitions[this.creatorState.activePairId].label} 号点已放置 ${Math.min(points.length + 1, 2)}/2`;
+      this.previewHint = `${this.getPointLabel(this.creatorState.activePairId)} 号点已放置 ${Math.min(points.length + 1, 2)}/2`;
       this.writeLevelTemplate(false);
     },
 
@@ -101,13 +106,13 @@ export const creatorMethods = {
 
       if (this.creatorState.answers[edge] === this.creatorState.activePairId) {
         this.creatorState.answers = omitKey(this.creatorState.answers, edge);
-        this.previewHint = `已取消 ${this.pointDefinitions[this.creatorState.activePairId].label} 号线标记`;
+        this.previewHint = `已取消 ${this.getPointLabel(this.creatorState.activePairId)} 号线标记`;
       } else {
         this.creatorState.answers = {
           ...this.creatorState.answers,
           [edge]: this.creatorState.activePairId
         };
-        this.previewHint = `已标记 ${this.pointDefinitions[this.creatorState.activePairId].label} 号答案线路`;
+        this.previewHint = `已标记 ${this.getPointLabel(this.creatorState.activePairId)} 号答案线路`;
       }
       this.writeLevelTemplate(false);
     },
@@ -142,17 +147,18 @@ export const creatorMethods = {
 
     buildCreatorLevelTemplate(id = `custom-${this.creatorState.width}x${this.creatorState.height}-${this.creatorState.pairIds.length}`) {
       // Build the exact JSON saved into levels/ and used by the challenge screen.
+      const name = this.creatorState.name.trim() || this.getDefaultCreatorLevelName(id);
       return {
         id,
-        name: id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level",
+        name,
         difficulty: clampNumber(this.creatorState.difficulty, 1, 5),
         gridType: this.creatorState.gridType,
         width: this.creatorState.width,
         height: this.creatorState.height,
         pairs: this.creatorState.pairIds.map((pairId) => ({
           id: pairId,
-          label: this.pointDefinitions[pairId].label,
-          color: this.pointDefinitions[pairId].color,
+          label: this.pointDefinitions[pairId]?.label ?? pairId,
+          color: this.pointDefinitions[pairId]?.color ?? "var(--accent)",
           points: this.getCreatorPairPoints(pairId)
         })),
         removedEdges: [...this.creatorState.removedEdges],
@@ -190,14 +196,14 @@ export const creatorMethods = {
       // Persist the generated level through the dev-server file API.
       const incompletePair = this.creatorState.pairIds.find((pairId) => this.getCreatorPairPoints(pairId).length !== 2);
       if (incompletePair) {
-        this.previewHint = `请先给 ${this.pointDefinitions[incompletePair].label} 号点放满两个端点`;
+        this.previewHint = `请先给 ${this.getPointLabel(incompletePair)} 号点放满两个端点`;
         return;
       }
 
       const template = this.buildCreatorLevelTemplate();
       let savedLevel;
       try {
-        savedLevel = await saveLevelFile(template);
+        savedLevel = await saveLevelFile(template, this.pointDefinitions);
       } catch (error) {
         this.previewHint = error.message;
         return;
@@ -209,5 +215,13 @@ export const creatorMethods = {
       this.levelOutput = JSON.stringify(savedLevel, null, 2);
       this.isLevelOutputVisible = true;
       this.previewHint = `已保存到 levels/${savedLevel.id}.json，并加入关卡入口`;
+    },
+
+    getPointLabel(pairId) {
+      return this.pointDefinitions[pairId]?.label ?? pairId;
+    },
+
+    getDefaultCreatorLevelName(id) {
+      return id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level";
     }
 };

@@ -1,5 +1,5 @@
-import { appConfig, pointDefinitions } from "../config.js";
-import { cloneLevel, getPalette } from "../utils/object.js";
+import { appConfig, pointDefinitions } from "../config/index.js";
+import { cloneLevel } from "../utils/object.js";
 
 export async function loadLevelFiles() {
   // Prefer the Vite dev-server API so levels are read from the configured local level folder.
@@ -7,7 +7,7 @@ export async function loadLevelFiles() {
     try {
       const response = await fetch(`${import.meta.env.BASE_URL}api/levels`, { cache: "no-cache" });
       if (response.ok) {
-        return (await response.json()).map(hydrateLevel);
+        return (await response.json()).map((level) => hydrateLevel(level));
       }
     } catch {
       // Static fallback keeps the app usable without the Vite dev server.
@@ -36,7 +36,7 @@ async function loadStaticLevelIndex() {
   }
 }
 
-export async function saveLevelFile(level) {
+export async function saveLevelFile(level, definitions = pointDefinitions) {
   // Browser code cannot write files directly, so saves go through the Vite local API.
   const response = await fetch("/api/levels", {
     method: "POST",
@@ -51,18 +51,19 @@ export async function saveLevelFile(level) {
     throw new Error(error.message ?? "保存失败，请确认正在通过 npm run dev 启动项目");
   }
 
-  return hydrateLevel(await response.json());
+  return hydrateLevel(await response.json(), definitions);
 }
 
-export function hydrateLevel(rawLevel) {
+export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
+  const palette = Object.values(definitions).map((point) => point.color);
   // Merge level files with JSON color config so level authors can omit repeated labels/colors.
   return {
     ...rawLevel,
     difficulty: normalizeLevelDifficulty(rawLevel.difficulty),
     pairs: rawLevel.pairs.map((pair, index) => ({
       ...pair,
-      label: pair.label ?? pointDefinitions[pair.id]?.label ?? String(index + 1),
-      color: pair.color ?? pointDefinitions[pair.id]?.color ?? getPalette()[index % getPalette().length]
+      label: definitions[pair.id]?.label ?? pair.label ?? String(index + 1),
+      color: definitions[pair.id]?.color ?? pair.color ?? palette[index % palette.length]
     })),
     removedEdges: rawLevel.removedEdges ?? [],
     answers: rawLevel.answers ?? []

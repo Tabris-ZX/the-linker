@@ -1,0 +1,486 @@
+/* Challenge page and reusable square-board rendering styles. */
+.view-challenge {
+  height: calc(var(--page-height) - var(--topbar-height));
+  min-height: calc(var(--page-height) - var(--topbar-height));
+  place-items: center;
+  padding: 18px 28px 0;
+}
+
+.game-panel {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr;
+  place-items: center;
+  align-content: start;
+  gap: 0;
+  width: 100%;
+  height: calc(var(--page-height) - var(--topbar-height) - 18px);
+  min-height: 0;
+  padding: 0 0 18px;
+  transform: translateY(-20px);
+}
+
+.level-picker-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 8;
+  display: grid;
+  gap: 10px;
+  width: min(460px, calc(100vw - 56px));
+  max-height: min(620px, calc(var(--page-height) - var(--topbar-height) - 44px));
+  padding: 14px;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
+}
+
+.level-picker-header,
+.level-picker-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.level-picker-header strong {
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.level-picker-filters label {
+  display: inline-grid;
+  grid-template-columns: auto minmax(92px, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font: 700 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.level-picker-filters select {
+  min-width: 92px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.level-group-list {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.level-group h2 {
+  margin: 0 0 6px;
+  color: var(--accent-strong);
+  font-size: 0.95rem;
+}
+
+.level-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+}
+
+.level-card {
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  padding: 10px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+}
+
+.level-card strong,
+.level-card span,
+.level-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.level-card span,
+.level-card small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.level-card.is-active,
+.level-card:hover {
+  color: #fff;
+  background: var(--accent);
+}
+
+.level-card.is-active span,
+.level-card.is-active small,
+.level-card:hover span,
+.level-card:hover small {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.level-card.is-completed {
+  border-color: var(--success);
+}
+
+.board-wrap {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: var(--board-max-width);
+  max-height: var(--board-max-height);
+  overflow: visible;
+  padding: 0;
+}
+
+.challenge-status {
+  display: grid;
+  place-items: center;
+  min-width: min(360px, calc(100vw - 56px));
+  min-height: 160px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 6px 6px 0 rgba(32, 33, 36, 0.14);
+  font: 900 1.1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.board {
+  position: relative;
+  width: calc(var(--cols) * var(--cell-size));
+  height: calc(var(--rows) * var(--cell-size));
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  touch-action: none;
+  user-select: none;
+  overflow: visible;
+}
+
+.edge-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.edge-grid line {
+  stroke: var(--grid-line);
+  stroke-linecap: square;
+  stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
+  vector-effect: non-scaling-stroke;
+}
+
+.edge-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.edge-lines line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  vector-effect: non-scaling-stroke;
+  opacity: 0.96;
+  transition:
+    x1 80ms linear,
+    y1 80ms linear,
+    x2 80ms linear,
+    y2 80ms linear,
+    opacity 80ms ease;
+}
+
+.edge-lines .preview-line {
+  stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  opacity: 0.72;
+  transition: none;
+}
+
+.victory-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 12px;
+  min-width: min(360px, calc(100vw - 40px));
+  padding: 18px 20px;
+  border: 4px solid var(--ink);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 10px 10px 0 rgba(32, 33, 36, 0.2);
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  transform: translate(-50%, -50%);
+}
+
+.victory-main {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.victory-mark svg {
+  width: 46px;
+  height: 46px;
+  fill: var(--success);
+}
+
+.victory-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.victory-copy span {
+  font-size: 1.28rem;
+}
+
+.victory-copy strong {
+  color: var(--accent-strong);
+  font-size: 1rem;
+}
+
+.victory-pb {
+  padding: 3px 8px;
+  border: 2px solid var(--success);
+  border-radius: 999px;
+  color: var(--success);
+  font: 900 0.9rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.victory-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.victory-share-button {
+  padding: 5px 9px;
+  border-width: 2px;
+  color: #fff;
+  font: 900 0.85rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.16);
+}
+
+.node {
+  position: absolute;
+  z-index: 1;
+  left: calc((100% / var(--cols)) * var(--node-x));
+  top: calc((100% / var(--rows)) * var(--node-y));
+  width: max(18px, calc(var(--cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
+  height: max(18px, calc(var(--cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  transform: translate3d(-50%, -50%, 0);
+  transition:
+    background 140ms ease,
+    outline-color 140ms ease,
+    transform 140ms ease;
+}
+
+.node.endpoint-node {
+  z-index: 4;
+}
+
+.node:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.node:active {
+  transform: translate3d(calc(-50% + 1px), calc(-50% + 1px), 0) scale(0.98);
+  box-shadow: none;
+}
+
+.node::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  width: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
+  height: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
+  border-radius: 999px;
+  background: var(--grid-line);
+  opacity: 1;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.node.path-node::before {
+  width: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
+  height: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
+  opacity: 1;
+  transform: none;
+}
+
+.dot {
+  position: relative;
+  z-index: 3;
+  width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: clamp(2px, calc(var(--cell-size) * 0.04), 5px) solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--dot-color);
+  box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink), 0 clamp(3px, calc(var(--cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
+  font: 900 clamp(0.78rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.44), 3rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    outline-color 160ms ease;
+}
+
+.node.target .dot {
+  animation: target-pulse 900ms ease-in-out infinite;
+  box-shadow:
+    0 0 0 clamp(1px, calc(var(--cell-size) * 0.025), 3px) var(--ink),
+    0 0 0 clamp(7px, calc(var(--cell-size) * 0.12), 15px) color-mix(in srgb, var(--dot-color) 38%, transparent),
+    0 clamp(3px, calc(var(--cell-size) * 0.055), 7px) 0 rgba(0, 0, 0, 0.18);
+}
+
+@keyframes target-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-lines line,
+  .edge-grid line,
+  .node,
+  .dot {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .game-panel {
+    padding: 14px;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .view-challenge {
+    height: calc(100dvh - var(--topbar-height));
+    min-height: calc(100dvh - var(--topbar-height));
+    align-items: center;
+    justify-items: center;
+    padding: 0 14px max(12px, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+
+  .game-panel {
+    width: 100%;
+    height: 100%;
+    padding: 18px 0 22px;
+    transform: none;
+  }
+
+  .board-wrap {
+    width: calc(100vw - 28px);
+    max-width: var(--board-max-width);
+    max-height: var(--board-max-height);
+    padding: 0;
+  }
+
+  .board {
+    margin: auto;
+  }
+
+  .edge-grid line {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
+  }
+
+  .edge-lines line {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  }
+
+  .edge-lines .preview-line {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  }
+
+  .level-picker-panel {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    width: min(460px, calc(100vw - 20px));
+    max-height: min(72dvh, 560px);
+    padding: 12px;
+    transform: translate(-50%, -50%);
+  }
+
+  .level-picker-header,
+  .level-picker-filters {
+    align-items: stretch;
+  }
+
+  .level-picker-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .level-picker-filters label {
+    grid-template-columns: 1fr;
+  }
+
+  .level-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .level-card {
+    min-height: 74px;
+    padding: 9px;
+  }
+
+  .victory-mark {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    max-width: calc(100vw - 28px);
+    min-width: min(340px, calc(100vw - 28px));
+    padding: 14px;
+    white-space: normal;
+    transform: translate(-50%, -50%);
+  }
+
+  .victory-mark svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .victory-mark span,
+  .victory-mark strong,
+  .victory-share-button {
+    font-size: 0.82rem;
+  }
+
+  .victory-main {
+    gap: 9px;
+  }
+}

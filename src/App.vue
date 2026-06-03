@@ -1,24 +1,78 @@
 ﻿<template>
       <AppNav
         v-model:active-view="activeView"
-        v-model:selected-theme="selectedTheme"
         :view-tabs="visibleViewTabs"
-        :theme-options="themeOptions"
         :timer-text="timerText"
         :current-level-label="currentLevelLabel"
         :can-reset-level="Boolean(currentLevel) && !isLevelsLoading"
         :favicon-url="faviconUrl"
         @toggle-level-picker="toggleLevelPicker"
         @reset-paths="resetPaths"
+        @toggle-personalization="togglePersonalization"
       />
 
       <main class="app-shell">
+        <section v-if="isPersonalizationOpen" class="personalization-panel app-card" aria-labelledby="personalization-title">
+          <div class="personalization-header">
+            <h2 id="personalization-title">个性化</h2>
+            <button type="button" class="close-button" aria-label="关闭个性化" @click="closePersonalization">关闭</button>
+          </div>
+          <div class="personalization-select-row">
+            <label>
+              主题
+              <select :value="selectedTheme" aria-label="主题切换" @change="selectedTheme = $event.target.value">
+                <option v-for="theme in themeOptions" :key="theme.id" :value="theme.id">{{ theme.label }}</option>
+              </select>
+            </label>
+            <label>
+              点对配色
+              <select :value="selectedPalette" aria-label="点对配色" @change="selectedPalette = $event.target.value">
+                <option v-for="palette in pointPaletteOptions" :key="palette.id" :value="palette.id">{{ palette.label }}</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            点对大小
+            <span>{{ mapStyle.dotScale.toFixed(2) }}</span>
+            <input v-model.number="mapStyle.dotScale" type="range" min="0.2" max="0.5" step="0.01">
+            <input v-model.number="mapStyle.dotScale" type="number" min="0.2" max="0.5" step="0.01">
+          </label>
+          <label>
+            节点大小
+            <span>{{ mapStyle.nodeScale.toFixed(2) }}</span>
+            <input v-model.number="mapStyle.nodeScale" type="range" min="0.04" max="0.5" step="0.01">
+            <input v-model.number="mapStyle.nodeScale" type="number" min="0.04" max="0.5" step="0.01">
+          </label>
+          <label>
+            连线宽度
+            <span>{{ mapStyle.lineScale.toFixed(2) }}</span>
+            <input v-model.number="mapStyle.lineScale" type="range" min="0.1" max="0.5" step="0.01">
+            <input v-model.number="mapStyle.lineScale" type="number" min="0.1" max="0.5" step="0.01">
+          </label>
+          <label>
+            格边宽度
+            <span>{{ mapStyle.gridLineScale.toFixed(2) }}</span>
+            <input v-model.number="mapStyle.gridLineScale" type="range" min="0.02" max="0.2" step="0.01">
+            <input v-model.number="mapStyle.gridLineScale" type="number" min="0.02" max="0.2" step="0.01">
+          </label>
+          <label>
+            吸附强度
+            <span>{{ mapStyle.snapPointRadius.toFixed(2) }}</span>
+            <input v-model.number="mapStyle.snapPointRadius" type="range" min="0.1" max="0.5" step="0.01">
+            <input v-model.number="mapStyle.snapPointRadius" type="number" min="0.1" max="0.5" step="0.01">
+          </label>
+          <button type="button" class="personalization-copy-button" @click="copyMapStyleJson">
+            复制 JSON
+          </button>
+          <pre class="personalization-json">{{ mapStyleJson }}</pre>
+        </section>
+
         <section class="view view-challenge" :class="{ 'is-active': activeView === 'challenge' }" :hidden="activeView !== 'challenge'" aria-labelledby="game-title">
           <section class="game-panel">
             <section v-if="isLevelPickerOpen" class="level-picker-panel app-card" aria-label="关卡选择">
               <div class="level-picker-header">
                 <strong>关卡选择</strong>
-                <button type="button" aria-label="关闭关卡选择" @click="closeLevelPicker">关闭</button>
+                <button type="button" class="close-button" aria-label="关闭关卡选择" @click="closeLevelPicker">关闭</button>
               </div>
               <div class="level-picker-filters">
                 <label>
@@ -109,23 +163,35 @@
               </div>
             </div>
 
-            <div v-if="isWon" class="victory-mark" role="status" aria-live="polite" aria-label="胜利">
-              <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-                <path d="M18 8h28v9h9v7c0 10-6 17-15 18-2 3-4 5-7 6v6h11v6H20v-6h11v-6c-3-1-5-3-7-6-9-1-15-8-15-18v-7h9V8Zm0 15h-5v1c0 6 3 10 8 12-2-4-3-8-3-13Zm28 0c0 5-1 9-3 13 5-2 8-6 8-12v-1h-5Z"></path>
-              </svg>
-              <span>胜利！</span>
-              <strong v-if="isPersonalBest">PB</strong>
-              <button type="button" class="victory-share-button" @click="shareVictory">
-                {{ shareStatusText }}
-              </button>
+            <div v-if="isWon && !isVictoryDismissed" class="victory-mark" role="status" aria-live="polite" aria-label="胜利">
+              <div class="victory-main">
+                <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                  <path d="M18 8h28v9h9v7c0 10-6 17-15 18-2 3-4 5-7 6v6h11v6H20v-6h11v-6c-3-1-5-3-7-6-9-1-15-8-15-18v-7h9V8Zm0 15h-5v1c0 6 3 10 8 12-2-4-3-8-3-13Zm28 0c0 5-1 9-3 13 5-2 8-6 8-12v-1h-5Z"></path>
+                </svg>
+                <div class="victory-copy">
+                  <span>通关成功</span>
+                  <strong>用时 {{ victoryTimeText }}</strong>
+                </div>
+                <strong v-if="isPersonalBest" class="victory-pb">PB</strong>
+              </div>
+              <div class="victory-actions">
+                <button type="button" class="victory-share-button" @click="shareVictory">
+                  {{ shareStatusText }}
+                </button>
+                <button type="button" class="close-button" aria-label="关闭通关提示" @click="closeVictoryMark">关闭</button>
+              </div>
             </div>
           </section>
         </section>
 
         <section class="view view-creator" :class="{ 'is-active': activeView === 'creator' }" :hidden="activeView !== 'creator'" aria-labelledby="editor-title">
           <section class="editor-panel app-card">
-            <h2 id="editor-title">关卡制作器</h2>
+            <h2 id="editor-title">关卡编辑器</h2>
             <form class="creator-form" @submit.prevent="writeLevelTemplate">
+              <label class="creator-name-field">
+                名称
+                <input v-model.trim="creatorState.name" type="text" placeholder="默认名字" @input="syncCreatorName">
+              </label>
               <label>
                 格子类型
                 <select v-model="creatorState.gridType">
@@ -135,11 +201,11 @@
               </label>
               <label>
                 宽度
-                <input v-model.number="creatorState.width" type="number" min="3" max="12" @input="syncCreatorBounds">
+                <input v-model.number="creatorState.width" type="number" min="2" max="12" @input="syncCreatorBounds">
               </label>
               <label>
                 高度
-                <input v-model.number="creatorState.height" type="number" min="3" max="12" @input="syncCreatorBounds">
+                <input v-model.number="creatorState.height" type="number" min="2" max="12" @input="syncCreatorBounds">
               </label>
               <label>
                 点对数量
@@ -218,10 +284,10 @@
                     type="button"
                     class="pair-chip"
                     :class="{ 'is-active': pairId === creatorState.activePairId }"
-                    :style="{ '--pair-color': pointDefinitions[pairId].color }"
+                    :style="{ '--pair-color': pointDefinitions[pairId]?.color ?? 'var(--accent)' }"
                     @click="selectCreatorPair(pairId)"
                   >
-                    {{ pointDefinitions[pairId].label }}
+                    {{ pointDefinitions[pairId]?.label ?? pairId }}
                   </button>
                 </div>
               </section>
@@ -232,9 +298,10 @@
 </template>
 
 <script>
-import appOptions from './appOptions.js';
-import '../config/themes/base.css';
-import '../config/themes/creator.css';
+import appOptions from './app/options.js';
+import '../config/styles/base.css';
+import '../config/styles/challenge.css';
+import '../config/styles/creator.css';
 
 export default appOptions;
 </script>

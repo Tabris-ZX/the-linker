@@ -1,15 +1,8 @@
 level:
   path: data/levels
 
-theme:
-  default: default
-  path: config/themes
-  styles:
-    base: config/themes/base.css
-    creator: config/themes/creator.css
-
-colors:
-  path: config/colors
+styles:
+  path: config/styles
 
 background:
   path: config/background

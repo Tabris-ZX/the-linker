@@ -1,9 +1,10 @@
-import configYaml from "../config/config.yaml?raw";
-import { parseSimpleYaml } from "./utils/simpleYaml.js";
+import configYaml from "../../config/config.yaml?raw";
+import stylesMapRaw from "../../config/styles/map.json?raw";
+import stylesPoints from "../../config/styles/points.json";
+import stylesThemes from "../../config/styles/themes.json";
+import { parseSimpleYaml } from "../utils/simpleYaml.js";
 
 const rawConfig = parseSimpleYaml(configYaml);
-const themeModules = import.meta.glob("../config/themes/*.json", { eager: true, import: "default" });
-const colorModules = import.meta.glob("../config/colors/*.json", { eager: true, import: "default" });
 const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
 const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "");
 
@@ -13,12 +14,12 @@ export const appConfig = {
   },
   theme: {
     default: rawConfig.theme?.default ?? "default",
-    path: normalizePath(rawConfig.theme?.path ?? "config/themes"),
     styles: rawConfig.theme?.styles ?? {}
   },
   colors: {
-    directory: normalizePath(rawConfig.colors?.directory ?? rawConfig.colors?.path ?? "config/colors")
+    palette: rawConfig.colors?.palette ?? rawConfig.colors?.default ?? "default"
   },
+  mapStyle: normalizeMapStyle(parseJsonConfig(stylesMapRaw)),
   background: {
     path: normalizePath(rawConfig.background?.path ?? "background"),
     image: backgroundImages[0] ?? "",
@@ -29,11 +30,12 @@ export const appConfig = {
 };
 
 export const themes = loadThemes();
-export const colorConfigs = loadColorConfigs();
-export const pointDefinitions = colorConfigs.points?.points ?? {};
+export const pointPalettes = loadPointPalettes();
+export const defaultPointPaletteId = getDefaultPointPaletteId(pointPalettes);
+export const pointDefinitions = pointPalettes[appConfig.colors.palette] ?? pointPalettes[defaultPointPaletteId] ?? {};
 
 function loadThemes() {
-  return Object.values(filterModulesByDirectory(themeModules, appConfig.theme.path))
+  return (Array.isArray(stylesThemes) ? stylesThemes : [])
     .filter((theme) => theme?.id)
     .reduce((loadedThemes, theme) => {
       loadedThemes[theme.id] = theme;
@@ -41,24 +43,39 @@ function loadThemes() {
     }, {});
 }
 
-function loadColorConfigs() {
-  return Object.entries(filterModulesByDirectory(colorModules, appConfig.colors.directory))
-    .reduce((configs, [modulePath, config]) => {
-      configs[getFileStem(modulePath)] = config;
-      return configs;
+function loadPointPalettes() {
+  return Object.entries(stylesPoints ?? {})
+    .filter(([, palette]) => palette && typeof palette === "object")
+    .reduce((palettes, [id, palette]) => {
+      palettes[id] = palette;
+      return palettes;
     }, {});
 }
 
-function filterModulesByDirectory(modules, directory) {
-  const normalizedDirectory = normalizePath(directory);
-  return Object.fromEntries(
-    Object.entries(modules).filter(([modulePath]) => normalizePath(modulePath).includes(`/${normalizedDirectory}/`))
-  );
+function getDefaultPointPaletteId(palettes) {
+  const paletteIds = Object.keys(palettes);
+  return paletteIds.includes("default") ? "default" : paletteIds[0] ?? "";
 }
 
-function getFileStem(modulePath) {
-  const fileName = normalizePath(modulePath).split("/").pop() ?? "";
-  return fileName.replace(/\.json$/, "");
+function parseJsonConfig(rawValue) {
+  const normalizedValue = String(rawValue ?? "").trim();
+  if (!normalizedValue) return {};
+  try {
+    return JSON.parse(normalizedValue);
+  } catch {
+    return {};
+  }
+}
+
+function normalizeMapStyle(config) {
+  const rawStyle = config?.mapStyle ?? config ?? {};
+  return {
+    dotScale: clampNumber(Number(rawStyle.dotScale), 0.2, 0.5),
+    nodeScale: clampNumber(Number(rawStyle.nodeScale), 0.04, 0.5),
+    lineScale: clampNumber(Number(rawStyle.lineScale), 0.1, 0.5),
+    gridLineScale: clampNumber(Number(rawStyle.gridLineScale), 0.02, 0.2),
+    snapPointRadius: clampNumber(Number(rawStyle.snapPointRadius), 0.1, 0.5)
+  };
 }
 
 function normalizePath(value) {

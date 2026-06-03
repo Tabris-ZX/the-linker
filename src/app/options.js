@@ -1,10 +1,10 @@
-﻿import { appConfig, pointDefinitions, themes } from "./config.js";
+﻿import { appConfig, defaultPointPaletteId, pointDefinitions, pointPalettes, themes } from "../config/index.js";
 import { computed } from "./computed.js";
-import { creatorMethods } from "./creatorMethods.js";
+import { creatorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
 import { routes } from "./router.js";
-import AppNav from "./components/AppNav.vue";
-import faviconUrl from "../favicon.ico";
+import AppNav from "../components/AppNav.vue";
+import faviconUrl from "../../favicon.ico";
 
 
 export default {
@@ -17,13 +17,14 @@ export default {
 
     return {
       pointDefinitions,
-      assetBase: import.meta.env.BASE_URL,
+      pointPalettes,
       faviconUrl,
       activeView: "challenge",
       viewTabs: routes,
       canUseLevelEditor: false,
       themes,
       selectedTheme: appConfig.theme.default,
+      selectedPalette: pointPalettes[appConfig.colors.palette] ? appConfig.colors.palette : defaultPointPaletteId,
       isLevelsLoading: true,
       levels: [],
       currentLevelIndex: -1,
@@ -42,9 +43,13 @@ export default {
       timerIntervalId: null,
       isWon: false,
       isPersonalBest: false,
+      isVictoryDismissed: false,
       shareStatusText: "分享",
+      isPersonalizationOpen: false,
+      mapStyle: { ...appConfig.mapStyle },
       creatorPairCount: 5,
       creatorState: {
+        name: "",
         gridType: "square",
         difficulty: 1,
         width: 5,
@@ -89,6 +94,9 @@ export default {
     },
     selectedTheme(themeId) {
       this.applyTheme(themeId);
+    },
+    selectedPalette(paletteId) {
+      this.applyPointPalette(paletteId);
     }
   },
 

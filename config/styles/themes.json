@@ -1,0 +1,47 @@
+[
+    {
+        "id": "default",
+        "label": "默认",
+        "tokens": {
+            "paper": "#f7f3ea",
+            "ink": "#202124",
+            "muted": "#6f6a60",
+            "line": "#d7cfc1",
+            "gridLine": "#161616",
+            "accent": "#0f766e",
+            "accentStrong": "#115e59",
+            "danger": "#b91c1c",
+            "success": "#047857"
+        }
+    },
+    {
+        "id": "night",
+        "label": "夜间",
+        "tokens": {
+            "paper": "#171717",
+            "ink": "#f7f3ea",
+            "muted": "#b9b1a4",
+            "line": "#4a463f",
+            "gridLine": "#f7f3ea",
+            "accent": "#14b8a6",
+            "accentStrong": "#0d9488",
+            "danger": "#f87171",
+            "success": "#34d399"
+        }
+    },
+    {
+        "id": "clean",
+        "label": "清爽",
+        "tokens": {
+            "paper": "#eef7f4",
+            "ink": "#1f2933",
+            "muted": "#667085",
+            "line": "#c8d5d0",
+            "gridLine": "#17201d",
+            "accent": "#2563eb",
+            "accentStrong": "#1d4ed8",
+            "danger": "#dc2626",
+            "success": "#16a34a"
+        }
+    }
+]

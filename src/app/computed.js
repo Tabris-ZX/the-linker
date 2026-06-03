@@ -1,8 +1,15 @@
-import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, keyOf, lineAttrs } from "./utils/geometry.js";
+import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, keyOf, lineAttrs } from "../utils/geometry.js";
 
 export const computed = {
     themeOptions() {
       return Object.values(this.themes);
+    },
+
+    pointPaletteOptions() {
+      return Object.keys(this.pointPalettes).map((id) => ({
+        id,
+        label: id
+      }));
     },
 
     visibleViewTabs() {
@@ -10,6 +17,10 @@ export const computed = {
     },
 
     timerText() {
+      return this.formatElapsedTime(this.timerElapsedMs);
+    },
+
+    victoryTimeText() {
       return this.formatElapsedTime(this.timerElapsedMs);
     },
 
@@ -51,8 +62,16 @@ export const computed = {
     },
 
     boardStyle() {
+      const mapStyleVariables = {
+        "--map-dot-scale": this.mapStyle.dotScale,
+        "--map-node-scale": this.mapStyle.nodeScale,
+        "--map-line-scale": this.mapStyle.lineScale,
+        "--map-grid-line-scale": this.mapStyle.gridLineScale
+      };
+
       if (!this.currentLevel) {
         return {
+          ...mapStyleVariables,
           "--cols": 1,
           "--rows": 1,
           "--cell-size": "min(var(--board-max-width), var(--board-max-height))"
@@ -62,10 +81,23 @@ export const computed = {
       // Keep the board on a fixed pixel scale: max 1200px wide and 600px tall.
       // The final square edge length is the smaller of width-based and height-based splits.
       return {
+        ...mapStyleVariables,
         "--cols": this.currentLevel.width,
         "--rows": this.currentLevel.height,
         "--cell-size": `min(calc(var(--board-max-width) / ${this.currentLevel.width}), calc(var(--board-max-height) / ${this.currentLevel.height}))`
       };
+    },
+
+    mapStyleJson() {
+      return JSON.stringify({
+        mapStyle: {
+          dotScale: this.mapStyle.dotScale,
+          nodeScale: this.mapStyle.nodeScale,
+          lineScale: this.mapStyle.lineScale,
+          gridLineScale: this.mapStyle.gridLineScale,
+          snapPointRadius: this.mapStyle.snapPointRadius
+        }
+      }, null, 2);
     },
 
     endpoints() {
@@ -161,6 +193,7 @@ export const computed = {
               "--node-y": y
             },
             classes: {
+              "endpoint-node": Boolean(endpoint),
               "path-node": filledNodes.has(key),
               target: activeTargetKey === key
             }
@@ -178,7 +211,11 @@ export const computed = {
     creatorPreviewStyle() {
       return {
         "--preview-cols": this.creatorState.width,
-        "--preview-rows": this.creatorState.height
+        "--preview-rows": this.creatorState.height,
+        "--map-dot-scale": this.mapStyle.dotScale,
+        "--map-node-scale": this.mapStyle.nodeScale,
+        "--map-line-scale": this.mapStyle.lineScale,
+        "--map-grid-line-scale": this.mapStyle.gridLineScale
       };
     },
 
