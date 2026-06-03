@@ -194,9 +194,9 @@ export const creatorMethods = {
 
     async saveCreatorLevel() {
       // Persist the generated level through the dev-server file API.
-      const incompletePair = this.creatorState.pairIds.find((pairId) => this.getCreatorPairPoints(pairId).length !== 2);
-      if (incompletePair) {
-        this.previewHint = `请先给 ${this.getPointLabel(incompletePair)} 号点放满两个端点`;
+      const validationMessage = this.validateCreatorLevel();
+      if (validationMessage) {
+        this.previewHint = validationMessage;
         return;
       }
 
@@ -223,5 +223,81 @@ export const creatorMethods = {
 
     getDefaultCreatorLevelName(id) {
       return id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level";
+    },
+
+    validateCreatorLevel() {
+      const endpointEntries = this.creatorState.pairIds.map((pairId) => [pairId, this.getCreatorPairPoints(pairId)]);
+      const incompletePair = endpointEntries.find(([, points]) => points.length !== 2);
+      if (incompletePair) {
+        return `请先给 ${this.getPointLabel(incompletePair[0])} 号点放满两个端点`;
+      }
+
+      const removedEdges = new Set(this.creatorState.removedEdges);
+      const graph = new Map();
+      const degree = new Map();
+      const usedEdges = Object.keys(this.creatorState.answers);
+
+      if (usedEdges.length === 0) {
+        return "请先标记答案线路";
+      }
+
+      for (const edge of usedEdges) {
+        if (!this.isCreatorEdgeInBounds(edge)) return `答案线路 ${edge} 不在当前地图范围内`;
+        if (removedEdges.has(edge)) return `答案线路 ${edge} 已被移除，不能保存`;
+
+        const points = pointsFromEdgeKey(edge);
+        if (!points) return `答案线路 ${edge} 格式无效`;
+
+        const [from, to] = points.map(([x, y]) => keyOf(x, y));
+        if (!graph.has(from)) graph.set(from, new Set());
+        if (!graph.has(to)) graph.set(to, new Set());
+        graph.get(from).add(to);
+        graph.get(to).add(from);
+        degree.set(from, (degree.get(from) ?? 0) + 1);
+        degree.set(to, (degree.get(to) ?? 0) + 1);
+      }
+
+      for (let y = 0; y <= this.creatorState.height; y += 1) {
+        for (let x = 0; x <= this.creatorState.width; x += 1) {
+          const nodeKey = keyOf(x, y);
+          if (!graph.has(nodeKey)) return `节点 ${x},${y} 未被答案线路占用`;
+          if ((degree.get(nodeKey) ?? 0) > 2) return `节点 ${x},${y} 连接超过两条边`;
+        }
+      }
+
+      const endpointKeys = new Set();
+      for (const [pairId, points] of endpointEntries) {
+        const [start, end] = points.map(([x, y]) => keyOf(x, y));
+        if (!graph.has(start) || !graph.has(end)) return `${this.getPointLabel(pairId)} 号点没有接入答案线路`;
+        if (!this.areCreatorNodesConnected(start, end, graph)) {
+          return `${this.getPointLabel(pairId)} 号点的两个端点没有连通`;
+        }
+        endpointKeys.add(start);
+        endpointKeys.add(end);
+      }
+
+      for (const endpointKey of endpointKeys) {
+        if ((degree.get(endpointKey) ?? 0) !== 1) {
+          const [x, y] = pointFromKey(endpointKey);
+          return `端点 ${x},${y} 只能连接一条边`;
+        }
+      }
+
+      return "";
+    },
+
+    areCreatorNodesConnected(start, end, graph) {
+      const queue = [start];
+      const visited = new Set(queue);
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (current === end) return true;
+        for (const next of graph.get(current) ?? []) {
+          if (visited.has(next)) continue;
+          visited.add(next);
+          queue.push(next);
+        }
+      }
+      return false;
     }
 };

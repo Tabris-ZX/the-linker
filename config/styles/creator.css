@@ -313,36 +313,3 @@ textarea:focus {
   line-height: 1.6;
   text-align: left;
 }
-
-@media (max-width: 640px) {
-  .creator-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .creator-form {
-    grid-template-columns: 1fr;
-  }
-
-  .preview-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .pair-picker {
-    grid-auto-flow: column;
-    grid-auto-columns: max-content;
-    justify-content: start;
-    overflow-x: auto;
-    padding-top: 0;
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .preview-board-wrap {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .editor-panel {
-    padding: 16px;
-  }
-}

@@ -302,6 +302,7 @@ import appOptions from './app/options.js';
 import '../config/styles/base.css';
 import '../config/styles/challenge.css';
 import '../config/styles/creator.css';
+import '../config/styles/mobile.css';
 
 export default appOptions;
 </script>

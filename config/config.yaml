@@ -1,3 +1,6 @@
+server:
+  port: 5174
+
 level:
   path: data/levels
 

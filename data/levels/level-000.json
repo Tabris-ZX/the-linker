@@ -1,0 +1,57 @@
+{
+  "id": "level-000",
+  "name": "Level 000",
+  "difficulty": 1,
+  "gridType": "square",
+  "width": 2,
+  "height": 2,
+  "pairs": [
+    {
+      "id": "red",
+      "label": "1",
+      "color": "#ef4444",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "blue",
+      "label": "2",
+      "color": "#2563eb",
+      "points": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          1
+        ]
+      ]
+    },
+    {
+      "id": "green",
+      "label": "3",
+      "color": "#22c55e",
+      "points": [
+        [
+          0,
+          2
+        ],
+        [
+          2,
+          2
+        ]
+      ]
+    }
+  ],
+  "removedEdges": [],
+  "answers": []
+}
