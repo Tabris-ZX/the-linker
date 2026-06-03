@@ -409,6 +409,7 @@ h2 {
 .level-group-list {
   display: grid;
   gap: 12px;
+  min-height: 0;
   overflow: auto;
   padding-right: 4px;
 }
@@ -688,4 +689,194 @@ h2 {
     transform: none;
   }
 
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  :root {
+    --topbar-height: 96px;
+    --page-height: 100dvh;
+    --board-max-width: calc(100vw - 44px);
+    --board-max-height: calc(100dvh - var(--topbar-height) - 76px);
+  }
+
+  html,
+  body,
+  #app {
+    width: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  .app-topbar.is-challenge {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "tools";
+    gap: 6px;
+    min-height: var(--topbar-height);
+    padding: max(8px, env(safe-area-inset-top)) 10px 8px;
+  }
+
+  .app-topbar.is-challenge .topbar-left {
+    grid-area: brand;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .app-topbar.is-challenge .brand {
+    flex: 0 0 auto;
+    font-size: 1rem;
+  }
+
+  .app-topbar.is-challenge .brand-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .app-topbar.is-challenge .view-tabs,
+  .app-topbar.is-challenge .topbar-right {
+    display: none;
+  }
+
+  .app-topbar.is-challenge .topbar-center {
+    grid-area: tools;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .app-topbar.is-challenge .challenge-toolbar {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .app-topbar.is-challenge .game-timer {
+    min-width: 62px;
+    padding: 5px 6px;
+    font-size: 0.92rem;
+  }
+
+  .app-topbar.is-challenge .challenge-actions {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 5px;
+    min-width: 0;
+    padding: 4px;
+  }
+
+  .app-topbar.is-challenge button {
+    min-height: 34px;
+    padding: 5px 8px;
+    font-size: 0.86rem;
+  }
+
+  .app-topbar.is-challenge .current-level-label {
+    max-width: none;
+    min-width: 0;
+    padding: 5px 4px;
+    text-align: center;
+    font-size: 0.86rem;
+  }
+
+  .app-shell,
+  .view-challenge {
+    height: calc(100dvh - var(--topbar-height));
+    min-height: calc(100dvh - var(--topbar-height));
+    overflow: hidden;
+  }
+
+  .view-challenge {
+    align-items: center;
+    justify-items: center;
+    padding: 0 14px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .game-panel {
+    width: 100%;
+    height: 100%;
+    padding: 18px 0 22px;
+    transform: none;
+  }
+
+  .board-wrap {
+    width: calc(100vw - 28px);
+    max-width: var(--board-max-width);
+    max-height: var(--board-max-height);
+    padding: 0;
+  }
+
+  .board {
+    margin: auto;
+  }
+
+  .edge-grid line {
+    stroke-width: clamp(4px, calc(var(--cell-size) * 0.08), 7px);
+  }
+
+  .edge-lines line {
+    stroke-width: clamp(18px, calc(var(--cell-size) * 0.38), 34px);
+  }
+
+  .edge-lines .preview-line {
+    stroke-width: clamp(16px, calc(var(--cell-size) * 0.34), 32px);
+  }
+
+  .level-picker-panel {
+    position: fixed;
+    inset: auto 10px max(10px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(72dvh, 560px);
+    padding: 12px;
+  }
+
+  .level-picker-header,
+  .level-picker-filters {
+    align-items: stretch;
+  }
+
+  .level-picker-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .level-picker-filters label {
+    grid-template-columns: 1fr;
+  }
+
+  .level-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .level-card {
+    min-height: 74px;
+    padding: 9px;
+  }
+
+  .victory-mark {
+    top: 14px;
+    right: 50%;
+    transform: translateX(50%);
+    max-width: calc(100vw - 28px);
+    padding: 7px 9px;
+    white-space: nowrap;
+  }
+
+  .victory-mark svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .victory-mark span,
+  .victory-mark strong,
+  .victory-share-button {
+    font-size: 0.82rem;
+  }
 }

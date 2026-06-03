@@ -1,5 +1,5 @@
 <template>
-  <header class="app-topbar">
+  <header class="app-topbar" :class="`is-${activeView}`">
     <div class="topbar-left">
       <a class="brand" href="#" aria-label="the linker home">
         <img class="brand-icon" :src="faviconUrl" alt="">
