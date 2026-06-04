@@ -21,12 +21,22 @@ export default {
     PersonalizationView
   },
 
+  /**
+   * 向子组件注入根应用实例，便于视图层复用状态和方法。
+   *
+   * @returns {{ app: object }} provide 数据。
+   */
   provide() {
     return {
       app: this
     };
   },
 
+  /**
+   * 初始化应用、挑战和编辑器状态。
+   *
+   * @returns {object} Vue 组件响应式数据。
+   */
   data() {
     const pairIds = Object.keys(pointDefinitions).slice(0, 5);
 
@@ -85,6 +95,11 @@ export default {
   },
 
   computed,
+  /**
+   * 应用挂载后加载配置、完成记录和关卡数据。
+   *
+   * @returns {Promise<void>}
+   */
   async mounted() {
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
@@ -99,19 +114,42 @@ export default {
     }
   },
 
+  /**
+   * 组件卸载前清理计时器。
+   *
+   * @returns {void}
+   */
   beforeUnmount() {
     this.stopGameTimer();
   },
 
   watch: {
+    /**
+     * 视图切换时阻止非开发环境进入编辑器。
+     *
+     * @param {string} view 当前视图 id。
+     * @returns {void}
+     */
     activeView(view) {
       if (view === "creator" && !this.canUseLevelEditor) {
         this.activeView = "challenge";
       }
     },
+    /**
+     * 主题选择变化时立即应用主题。
+     *
+     * @param {string} themeId 主题 id。
+     * @returns {void}
+     */
     selectedTheme(themeId) {
       this.applyTheme(themeId);
     },
+    /**
+     * 点位调色板变化时立即应用调色板。
+     *
+     * @param {string} paletteId 调色板 id。
+     * @returns {void}
+     */
     selectedPalette(paletteId) {
       this.applyPointPalette(paletteId);
     }

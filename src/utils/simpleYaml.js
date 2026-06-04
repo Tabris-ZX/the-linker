@@ -1,3 +1,11 @@
+/**
+ * 解析项目配置使用的简化 YAML 文本。
+ *
+ * 仅支持缩进对象、基础标量和注释，满足 config.yaml 的轻量读取需求。
+ *
+ * @param {string} source YAML 源文本。
+ * @returns {object} 解析后的对象。
+ */
 export function parseSimpleYaml(source) {
   const root = {};
   const stack = [{ indent: -1, value: root }];
@@ -31,6 +39,12 @@ export function parseSimpleYaml(source) {
   return root;
 }
 
+/**
+ * 解析简化 YAML 标量值。
+ *
+ * @param {string} value 标量文本。
+ * @returns {string|number|boolean} 转换后的值。
+ */
 function parseYamlScalar(value) {
   if (value === "true") return true;
   if (value === "false") return false;

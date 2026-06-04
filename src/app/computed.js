@@ -1,10 +1,20 @@
 import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, getGridBounds, getGridNodes, keyOf, lineAttrs, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
 
 export const computed = {
+    /**
+     * 获取可选主题列表。
+     *
+     * @returns {Array<object>} 主题配置列表。
+     */
     themeOptions() {
       return Object.values(this.themes);
     },
 
+    /**
+     * 获取点位调色板选择项。
+     *
+     * @returns {Array<{ id: string, label: string }>} 调色板选项。
+     */
     pointPaletteOptions() {
       return Object.keys(this.pointPalettes).map((id) => ({
         id,
@@ -12,27 +22,57 @@ export const computed = {
       }));
     },
 
+    /**
+     * 根据编辑器权限过滤可见视图标签。
+     *
+     * @returns {Array<object>} 当前可显示的标签页。
+     */
     visibleViewTabs() {
       return this.viewTabs.filter((tab) => tab.id !== "creator" || this.canUseLevelEditor);
     },
 
+    /**
+     * 格式化当前计时文本。
+     *
+     * @returns {string} 计时显示文本。
+     */
     timerText() {
       return this.formatElapsedTime(this.timerElapsedMs);
     },
 
+    /**
+     * 格式化胜利面板中的用时文本。
+     *
+     * @returns {string} 通关用时文本。
+     */
     victoryTimeText() {
       return this.formatElapsedTime(this.timerElapsedMs);
     },
 
+    /**
+     * 获取当前关卡标题。
+     *
+     * @returns {string} 当前关卡名称、id 或加载状态。
+     */
     currentLevelLabel() {
       if (this.isLevelsLoading) return "加载中";
       return this.currentLevel?.name || this.currentLevel?.id || "未选择";
     },
 
+    /**
+     * 获取可筛选的难度级别。
+     *
+     * @returns {number[]} 难度列表。
+     */
     levelDifficulties() {
       return [1, 2, 3, 4, 5];
     },
 
+    /**
+     * 根据难度和完成状态过滤关卡。
+     *
+     * @returns {Array<{ level: object, index: number }>} 过滤后的关卡项。
+     */
     filteredLevelItems() {
       return this.levels
         .map((level, index) => ({ level, index }))
@@ -44,6 +84,11 @@ export const computed = {
         });
     },
 
+    /**
+     * 将过滤后的关卡按难度分组。
+     *
+     * @returns {Array<{ difficulty: number, levels: Array<object> }>} 分组关卡列表。
+     */
     groupedFilteredLevels() {
       const groups = new Map();
       this.filteredLevelItems.forEach((item) => {
@@ -56,12 +101,22 @@ export const computed = {
         .map(([difficulty, levels]) => ({ difficulty, levels }));
     },
 
+    /**
+     * 获取挑战棋盘 SVG viewBox。
+     *
+     * @returns {string} SVG viewBox 字符串。
+     */
     boardViewBox() {
       if (!this.currentLevel) return "0 0 1 1";
       const bounds = getGridBounds(this.currentLevel);
       return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
     },
 
+    /**
+     * 生成挑战棋盘尺寸和样式变量。
+     *
+     * @returns {Record<string, string|number>} CSS 变量映射。
+     */
     boardStyle() {
       const mapStyleVariables = {
         "--map-dot-scale": this.mapStyle.dotScale,
@@ -88,6 +143,11 @@ export const computed = {
       };
     },
 
+    /**
+     * 生成当前地图样式 JSON 文本。
+     *
+     * @returns {string} 格式化后的地图样式 JSON。
+     */
     mapStyleJson() {
       return JSON.stringify({
         mapStyle: {
@@ -100,6 +160,11 @@ export const computed = {
       }, null, 2);
     },
 
+    /**
+     * 获取所有端点到点对 id 的映射。
+     *
+     * @returns {Record<string, string>} 节点 key 到点对 id 的映射。
+     */
     endpoints() {
       const endpoints = {};
       if (!this.currentLevel) return endpoints;
@@ -111,6 +176,11 @@ export const computed = {
       return endpoints;
     },
 
+    /**
+     * 获取挑战棋盘中可见的网格线。
+     *
+     * @returns {Array<object>} 网格线渲染数据。
+     */
     gridLines() {
       if (!this.currentLevel) return [];
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
@@ -120,6 +190,11 @@ export const computed = {
         .filter(Boolean);
     },
 
+    /**
+     * 获取已绘制路径和指针预览线。
+     *
+     * @returns {Array<object>} 路径线渲染数据。
+     */
     renderedPathLines() {
       if (!this.currentLevel) return [];
       const lines = [];
@@ -170,6 +245,11 @@ export const computed = {
       return lines;
     },
 
+    /**
+     * 获取挑战棋盘需要渲染的节点。
+     *
+     * @returns {Array<object>} 节点渲染数据。
+     */
     boardNodes() {
       if (!this.currentLevel) return [];
       const nodes = [];
@@ -204,11 +284,21 @@ export const computed = {
       return nodes;
     },
 
+    /**
+     * 获取关卡编辑器预览的 SVG viewBox。
+     *
+     * @returns {string} SVG viewBox 字符串。
+     */
     creatorViewBox() {
       const bounds = getGridBounds(this.creatorState);
       return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
     },
 
+    /**
+     * 生成关卡编辑器预览区域样式变量。
+     *
+     * @returns {Record<string, string|number>} CSS 变量映射。
+     */
     creatorPreviewStyle() {
       const bounds = getGridBounds(this.creatorState);
       return {
@@ -221,10 +311,20 @@ export const computed = {
       };
     },
 
+    /**
+     * 获取编辑器中的基础网格线。
+     *
+     * @returns {Array<object>} 网格线渲染数据。
+     */
     creatorGridLines() {
       return buildGridLines(this.creatorState);
     },
 
+    /**
+     * 获取编辑器中已移除边的渲染数据。
+     *
+     * @returns {Array<object>} 已移除边线数据。
+     */
     creatorRemovedEdges() {
       return this.creatorState.removedEdges.map((edge) => {
         const points = pointsFromEdgeKey(edge);
@@ -236,6 +336,11 @@ export const computed = {
       }).filter(Boolean);
     },
 
+    /**
+     * 获取编辑器中答案线路的渲染数据。
+     *
+     * @returns {Array<object>} 答案边线数据。
+     */
     creatorAnswerEdges() {
       return Object.entries(this.creatorState.answers).map(([edge, pairId]) => {
         const points = pointsFromEdgeKey(edge);
@@ -248,6 +353,11 @@ export const computed = {
       }).filter(Boolean);
     },
 
+    /**
+     * 获取编辑器中可点击的边。
+     *
+     * @returns {Array<object>} 命中边渲染数据。
+     */
     creatorHitEdges() {
       return getAllGridEdges(this.creatorState)
         .map((edge) => {
@@ -261,6 +371,11 @@ export const computed = {
         .filter(Boolean);
     },
 
+    /**
+     * 获取编辑器中需要显示的节点。
+     *
+     * @returns {Array<object>} 节点渲染数据。
+     */
     creatorNodes() {
       const nodes = [];
       const connectedNodes = new Set();

@@ -3,6 +3,11 @@ import { getAllGridEdges, getGridNodes, getGridRadius, isAdjacent, keyOf, normal
 import { clampNumber, omitKey } from "../utils/object.js";
 
 export const creatorMethods = {
+    /**
+     * 同步编辑器网格边界，并清理越界点、边和答案。
+     *
+     * @returns {void}
+     */
     syncCreatorBounds() {
       this.creatorState.gridType = normalizeGridType(this.creatorState.gridType);
       this.creatorState.width = clampNumber(this.creatorState.width, 2, 12);
@@ -22,6 +27,11 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 同步编辑器点对数量和可用点对 id。
+     *
+     * @returns {void}
+     */
     syncCreatorPairCount() {
       this.creatorPairCount = clampNumber(this.creatorPairCount, 1, 12);
       const pairIds = Object.keys(this.pointDefinitions).slice(0, this.creatorPairCount);
@@ -39,17 +49,33 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 同步并限制编辑器关卡难度。
+     *
+     * @returns {void}
+     */
     syncCreatorDifficulty() {
       this.creatorState.difficulty = clampNumber(this.creatorState.difficulty, 1, 5);
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 同步新建关卡名称，编辑已有关卡时保持原名称。
+     *
+     * @returns {void}
+     */
     syncCreatorName() {
       if (this.creatorEditingLevelId) return;
       this.creatorState.name = String(this.creatorState.name ?? "");
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 处理编辑器中的关卡选择。
+     *
+     * @param {string} levelId 要编辑的关卡 id。
+     * @returns {void}
+     */
     handleCreatorLevelSelection(levelId) {
       if (!levelId) {
         this.resetCreatorEditor();
@@ -65,6 +91,11 @@ export const creatorMethods = {
       this.loadCreatorLevel(level);
     },
 
+    /**
+     * 重置编辑器为新建关卡状态。
+     *
+     * @returns {void}
+     */
     resetCreatorEditor() {
       const pairIds = Object.keys(this.pointDefinitions).slice(0, clampNumber(this.creatorPairCount, 1, 12));
       this.creatorEditingLevelId = "";
@@ -87,6 +118,12 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 将已有关卡载入编辑器。
+     *
+     * @param {object} level 关卡数据。
+     * @returns {void}
+     */
     loadCreatorLevel(level) {
       const pairIds = level.pairs.map((pair) => pair.id);
       this.creatorEditingLevelId = level.id;
@@ -113,6 +150,13 @@ export const creatorMethods = {
       this.previewHint = `正在修改 ${level.id}，名称和 id 将保持不变`;
     },
 
+    /**
+     * 根据答案边附近端点推断所属点对。
+     *
+     * @param {string} edge 答案边 key。
+     * @param {object} level 关卡数据。
+     * @returns {string} 推断出的点对 id。
+     */
     inferCreatorAnswerPairId(edge, level) {
       const points = pointsFromEdgeKey(edge);
       if (!points) return "";
@@ -128,11 +172,23 @@ export const creatorMethods = {
       return "";
     },
 
+    /**
+     * 选择当前编辑的点对。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {void}
+     */
     selectCreatorPair(pairId) {
       this.creatorState.activePairId = pairId;
       this.setCreatorModeHint();
     },
 
+    /**
+     * 处理编辑器预览区域点击，切换节点或边状态。
+     *
+     * @param {MouseEvent} event 鼠标事件。
+     * @returns {void}
+     */
     handleCreatorPreviewClick(event) {
       const node = event.target.closest("[data-preview-node]");
       if (node) {
@@ -146,6 +202,13 @@ export const creatorMethods = {
       this.toggleCreatorEdge(edge.dataset.previewEdge);
     },
 
+    /**
+     * 放置或删除编辑器中的端点。
+     *
+     * @param {number} x 节点横坐标。
+     * @param {number} y 节点纵坐标。
+     * @returns {void}
+     */
     toggleCreatorPoint(x, y) {
       const occupied = this.getCreatorPointAt(x, y);
       if (occupied) {
@@ -163,6 +226,12 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 切换编辑器中的边移除状态或答案标记。
+     *
+     * @param {string} edge 边 key。
+     * @returns {void}
+     */
     toggleCreatorEdge(edge) {
       // Edge mode removes travel; mark mode records the puzzle answer.
       if (!this.isCreatorEdgeInBounds(edge)) return;
@@ -198,6 +267,13 @@ export const creatorMethods = {
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 查找指定节点上已放置的端点。
+     *
+     * @param {number} x 节点横坐标。
+     * @param {number} y 节点纵坐标。
+     * @returns {{ pairId: string, index: number }|null} 端点信息。
+     */
     getCreatorPointAt(x, y) {
       for (const [pairId, points] of Object.entries(this.creatorState.points)) {
         const index = points.findIndex((point) => point[0] === x && point[1] === y);
@@ -206,6 +282,12 @@ export const creatorMethods = {
       return null;
     },
 
+    /**
+     * 判断边是否位于当前编辑器网格范围内。
+     *
+     * @param {string} edge 边 key。
+     * @returns {boolean} 是否是有效边。
+     */
     isCreatorEdgeInBounds(edge) {
       const points = pointsFromEdgeKey(edge);
       if (!points) return false;
@@ -214,6 +296,11 @@ export const creatorMethods = {
         && isAdjacent(points[0], points[1], this.creatorState.gridType);
     },
 
+    /**
+     * 根据当前编辑模式刷新操作提示。
+     *
+     * @returns {void}
+     */
     setCreatorModeHint() {
       const label = this.pointDefinitions[this.creatorState.activePairId]?.label ?? "";
       const hints = {
@@ -223,11 +310,23 @@ export const creatorMethods = {
       this.previewHint = `点交点可放置或删除色点；${hints[this.creatorState.mode] ?? hints.edge}`;
     },
 
+    /**
+     * 将当前编辑器状态写入 JSON 输出。
+     *
+     * @param {boolean} [showOutput=true] 是否展开输出面板。
+     * @returns {void}
+     */
     writeLevelTemplate(showOutput = true) {
       this.levelOutput = JSON.stringify(this.buildCreatorLevelTemplate(), null, 2);
       this.isLevelOutputVisible = showOutput;
     },
 
+    /**
+     * 构建可保存到 levels 目录的关卡 JSON。
+     *
+     * @param {string} [id] 关卡 id，默认使用编辑 id 或自动生成 id。
+     * @returns {object} 关卡模板。
+     */
     buildCreatorLevelTemplate(id = this.creatorEditingLevelId || this.getCreatorDefaultId()) {
       // Build the exact JSON saved into levels/ and used by the challenge screen.
       const editingLevel = this.creatorEditingLevelId ? this.levels.find((level) => level.id === this.creatorEditingLevelId) : null;
@@ -255,12 +354,23 @@ export const creatorMethods = {
       return level;
     },
 
+    /**
+     * 根据当前网格类型和尺寸生成默认关卡 id。
+     *
+     * @returns {string} 默认关卡 id。
+     */
     getCreatorDefaultId() {
       return this.creatorState.gridType === "equilateral-triangle"
         ? `custom-r${this.creatorState.radius}-${this.creatorState.pairIds.length}`
         : `custom-${this.creatorState.width}x${this.creatorState.height}-${this.creatorState.pairIds.length}`;
     },
 
+    /**
+     * 获取点对端点，必要时从答案线路推导。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {Array<[number, number]>} 点对端点。
+     */
     getCreatorPairPoints(pairId) {
       const placedPoints = this.creatorState.points[pairId] ?? [];
       if (placedPoints.length === 2) return placedPoints;
@@ -269,6 +379,12 @@ export const creatorMethods = {
       return answerPoints.length === 2 ? answerPoints : placedPoints;
     },
 
+    /**
+     * 根据答案线路中度数为 1 的节点推断端点。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {Array<[number, number]>} 推断端点。
+     */
     getAnswerEndpoints(pairId) {
       const degree = new Map();
       Object.entries(this.creatorState.answers).forEach(([edge, answerPairId]) => {
@@ -287,6 +403,11 @@ export const creatorMethods = {
         .slice(0, 2);
     },
 
+    /**
+     * 校验并保存当前编辑器关卡。
+     *
+     * @returns {Promise<void>}
+     */
     async saveCreatorLevel() {
       // Persist the generated level through the dev-server file API.
       const validationMessage = this.validateCreatorLevel();
@@ -316,14 +437,31 @@ export const creatorMethods = {
         : `已保存到 levels/${savedLevel.id}.json，并加入关卡入口`;
     },
 
+    /**
+     * 获取点对的显示标签。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {string} 显示标签。
+     */
     getPointLabel(pairId) {
       return this.pointDefinitions[pairId]?.label ?? pairId;
     },
 
+    /**
+     * 根据关卡 id 生成默认关卡名称。
+     *
+     * @param {string} id 关卡 id。
+     * @returns {string} 默认名称。
+     */
     getDefaultCreatorLevelName(id) {
       return id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level";
     },
 
+    /**
+     * 校验当前编辑器关卡是否满足保存规则。
+     *
+     * @returns {string} 校验失败提示；通过时为空字符串。
+     */
     validateCreatorLevel() {
       const endpointEntries = this.creatorState.pairIds.map((pairId) => [pairId, this.getCreatorPairPoints(pairId)]);
       const incompletePair = endpointEntries.find(([, points]) => points.length !== 2);
@@ -397,6 +535,14 @@ export const creatorMethods = {
       return "";
     },
 
+    /**
+     * 判断答案图中两个节点是否连通。
+     *
+     * @param {string} start 起始节点 key。
+     * @param {string} end 目标节点 key。
+     * @param {Map<string, Set<string>>} graph 邻接表。
+     * @returns {boolean} 是否连通。
+     */
     areCreatorNodesConnected(start, end, graph) {
       const queue = [start];
       const visited = new Set(queue);

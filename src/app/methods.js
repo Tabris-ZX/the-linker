@@ -5,6 +5,11 @@ import { edgeKey, fromRenderPoint, getAllGridEdges, getGridBounds, getGridNodes,
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 
 export const methods = {
+    /**
+     * 检测当前环境是否允许使用关卡编辑器。
+     *
+     * @returns {Promise<void>}
+     */
     async detectLevelEditorAvailability() {
       this.canUseLevelEditor = import.meta.env.DEV;
 
@@ -13,6 +18,11 @@ export const methods = {
       }
     },
 
+    /**
+     * 从关卡目录刷新内存中的关卡列表。
+     *
+     * @returns {Promise<void>}
+     */
     async loadLevels() {
       // Refresh the in-memory level list from the local levels/ directory.
       this.isLevelsLoading = true;
@@ -31,6 +41,12 @@ export const methods = {
       }
     },
 
+    /**
+     * 按列表索引加载当前关卡并重置路径状态。
+     *
+     * @param {number} index 关卡索引。
+     * @returns {void}
+     */
     loadLevel(index) {
       if (!Number.isInteger(index) || !this.levels[index]) return;
       this.currentLevelIndex = index;
@@ -40,30 +56,66 @@ export const methods = {
       this.resetPaths();
     },
 
+    /**
+     * 切换关卡选择面板。
+     *
+     * @returns {void}
+     */
     toggleLevelPicker() {
       this.isLevelPickerOpen = !this.isLevelPickerOpen;
     },
 
+    /**
+     * 关闭关卡选择面板。
+     *
+     * @returns {void}
+     */
     closeLevelPicker() {
       this.isLevelPickerOpen = false;
     },
 
+    /**
+     * 切换个性化设置面板。
+     *
+     * @returns {void}
+     */
     togglePersonalization() {
       this.isPersonalizationOpen = !this.isPersonalizationOpen;
     },
 
+    /**
+     * 关闭个性化设置面板。
+     *
+     * @returns {void}
+     */
     closePersonalization() {
       this.isPersonalizationOpen = false;
     },
 
+    /**
+     * 标记胜利提示已被用户关闭。
+     *
+     * @returns {void}
+     */
     closeVictoryMark() {
       this.isVictoryDismissed = true;
     },
 
+    /**
+     * 从选择面板加载指定关卡。
+     *
+     * @param {number} index 关卡索引。
+     * @returns {void}
+     */
     selectLevelFromPicker(index) {
       this.loadLevel(index);
     },
 
+    /**
+     * 从本地存储读取已完成关卡记录。
+     *
+     * @returns {void}
+     */
     loadCompletedLevels() {
       try {
         this.completedLevels = JSON.parse(window.localStorage.getItem(COMPLETED_LEVELS_STORAGE_KEY) || "{}");
@@ -72,28 +124,57 @@ export const methods = {
       }
     },
 
+    /**
+     * 将已完成关卡记录写入本地存储。
+     *
+     * @returns {void}
+     */
     saveCompletedLevels() {
       window.localStorage.setItem(COMPLETED_LEVELS_STORAGE_KEY, JSON.stringify(this.completedLevels));
     },
 
+    /**
+     * 判断关卡是否已完成。
+     *
+     * @param {string} levelId 关卡 id。
+     * @returns {boolean} 是否已完成。
+     */
     isLevelCompleted(levelId) {
       return Boolean(this.completedLevels[levelId]);
     },
 
+    /**
+     * 将关卡难度限制在 1 到 5 的整数范围。
+     *
+     * @param {unknown} value 原始难度。
+     * @returns {number} 标准难度。
+     */
     normalizeLevelDifficulty(value) {
       const difficulty = Number(value);
       if (!Number.isFinite(difficulty)) return 1;
       return Math.min(5, Math.max(1, Math.round(difficulty)));
     },
 
+    /**
+     * 将毫秒数格式化为 mm:ss.cc。
+     *
+     * @param {number} milliseconds 毫秒数。
+     * @returns {string} 计时文本。
+     */
     formatElapsedTime(milliseconds) {
       const totalCentiseconds = Math.floor(Math.max(0, milliseconds) / 10);
       const minutes = String(Math.floor(totalCentiseconds / 6000)).padStart(2, "0");
       const seconds = String(Math.floor((totalCentiseconds % 6000) / 100)).padStart(2, "0");
       const centiseconds = String(totalCentiseconds % 100).padStart(2, "0");
-      return `${minutes}:${seconds}.${centiseconds}`;
+      return `${minutes}:${seconds}:${centiseconds}`;
     },
 
+    /**
+     * 获取关卡最佳成绩显示文本。
+     *
+     * @param {string} levelId 关卡 id。
+     * @returns {string} 最佳成绩或完成状态文本。
+     */
     getLevelBestTimeText(levelId) {
       const record = this.completedLevels[levelId];
       if (!record) return "未完成";
@@ -102,10 +183,20 @@ export const methods = {
       return `最佳 ${this.formatElapsedTime(bestMs)}`;
     },
 
+    /**
+     * 获取已完成关卡数量。
+     *
+     * @returns {number} 已完成数量。
+     */
     getCompletedLevelCount() {
       return Object.keys(this.completedLevels).length;
     },
 
+    /**
+     * 记录当前关卡完成状态，并更新个人最佳成绩。
+     *
+     * @returns {void}
+     */
     markCurrentLevelCompleted() {
       if (!this.currentLevel?.id) return;
       const levelId = this.currentLevel.id;
@@ -128,6 +219,11 @@ export const methods = {
       this.saveCompletedLevels();
     },
 
+    /**
+     * 生成通关分享文本。
+     *
+     * @returns {string} 分享内容。
+     */
     buildVictoryShareText() {
       const levelName = this.currentLevel?.name || this.currentLevel?.id || "未选择";
       const levelId = this.currentLevel?.id ? `（${this.currentLevel.id}）` : "";
@@ -139,10 +235,15 @@ export const methods = {
         `游戏链接：${gameUrl}`,
         `通关关卡：${levelName}${levelId}`,
         `用时：${elapsedText}`,
-        `总通关关卡：${completedCount}`
+        `总通关数：${completedCount}`
       ].join("\n");
     },
 
+    /**
+     * 复制通关分享文本到剪贴板。
+     *
+     * @returns {Promise<void>}
+     */
     async shareVictory() {
       if (!this.isWon) return;
       const text = this.buildVictoryShareText();
@@ -155,10 +256,21 @@ export const methods = {
       }
     },
 
+    /**
+     * 复制当前地图样式 JSON 到剪贴板。
+     *
+     * @returns {Promise<void>}
+     */
     async copyMapStyleJson() {
       await this.copyTextToClipboard(this.mapStyleJson);
     },
 
+    /**
+     * 复制文本到剪贴板，必要时使用旧版 execCommand 回退。
+     *
+     * @param {string} text 要复制的文本。
+     * @returns {Promise<void>}
+     */
     async copyTextToClipboard(text) {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
@@ -181,6 +293,12 @@ export const methods = {
       }
     },
 
+    /**
+     * 应用指定主题并写入根元素 CSS 变量。
+     *
+     * @param {string} themeId 主题 id。
+     * @returns {void}
+     */
     applyTheme(themeId) {
       const theme = this.themes[themeId] ?? this.themes[appConfig.theme.default];
       const tokenMap = {
@@ -201,6 +319,12 @@ export const methods = {
       });
     },
 
+    /**
+     * 应用点位调色板并重新水合关卡数据。
+     *
+     * @param {string} paletteId 调色板 id。
+     * @returns {void}
+     */
     applyPointPalette(paletteId) {
       const firstPaletteId = Object.keys(this.pointPalettes)[0];
       const nextDefinitions = this.pointPalettes[paletteId] ?? this.pointPalettes.default ?? this.pointPalettes[firstPaletteId] ?? {};
@@ -212,6 +336,11 @@ export const methods = {
       this.writeLevelTemplate(false);
     },
 
+    /**
+     * 应用背景配置，自动选择可加载的背景图片。
+     *
+     * @returns {Promise<void>}
+     */
     async applyBackgroundConfig() {
       const background = appConfig.background;
       document.documentElement.style.setProperty("--background-opacity", String(background.opacity));
@@ -234,6 +363,12 @@ export const methods = {
       document.documentElement.style.setProperty("--background-image", `url("${imagePath}")`);
     },
 
+    /**
+     * 从候选背景图片中找到第一个可加载项。
+     *
+     * @param {string[]} images 候选图片路径。
+     * @returns {Promise<string>} 可用图片路径；没有时返回空字符串。
+     */
     async findAvailableBackgroundImage(images) {
       for (const image of images) {
         if (await this.canLoadImage(image)) return image;
@@ -241,6 +376,12 @@ export const methods = {
       return "";
     },
 
+    /**
+     * 检查图片路径是否可以加载。
+     *
+     * @param {string} image 图片路径。
+     * @returns {Promise<boolean>} 是否加载成功。
+     */
     canLoadImage(image) {
       return new Promise((resolve) => {
         const tester = new Image();
@@ -250,6 +391,11 @@ export const methods = {
       });
     },
 
+    /**
+     * 将所有路径重置为每个点对的起点状态。
+     *
+     * @returns {void}
+     */
     resetPaths() {
       if (!this.currentLevel) return;
       // Reset each pair to its first endpoint, matching the normal puzzle start state.
@@ -269,6 +415,11 @@ export const methods = {
       this.shareStatusText = "分享";
     },
 
+    /**
+     * 清空当前关卡的所有路径。
+     *
+     * @returns {void}
+     */
     clearPaths() {
       if (!this.currentLevel) return;
       const paths = {};
@@ -286,6 +437,12 @@ export const methods = {
       this.shareStatusText = "分享";
     },
 
+    /**
+     * 处理棋盘按下事件，确定是否开始绘制路径。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
     handleBoardPointerDown(event) {
       if (!this.currentLevel) return;
       this.startGameTimer();
@@ -308,6 +465,12 @@ export const methods = {
       event.preventDefault();
     },
 
+    /**
+     * 处理棋盘移动事件，更新预览点并尝试追加路径。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
     handleBoardPointerMove(event) {
       if (!this.isDrawing || !this.activePair) return;
       this.pointerPreview = this.pointerPositionFromEvent(event);
@@ -318,6 +481,12 @@ export const methods = {
       this.addStep(position);
     },
 
+    /**
+     * 处理棋盘抬起事件，结束当前绘制过程。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
     handleBoardPointerUp(event) {
       const pairToPause = this.activePair;
       const finalPosition = this.nearestPositionFromEvent(event);
@@ -335,6 +504,12 @@ export const methods = {
       this.releasePointer(event);
     },
 
+    /**
+     * 处理棋盘双击事件，清空被双击端点所属路径。
+     *
+     * @param {MouseEvent} event 鼠标事件。
+     * @returns {void}
+     */
     handleBoardDoubleClick(event) {
       if (!this.currentLevel) return;
       const position = this.positionFromEvent(event);
@@ -345,6 +520,14 @@ export const methods = {
       this.clearPairPath(pairId);
     },
 
+    /**
+     * 开始绘制指定点对路径。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {{ x: number, y: number }} position 起始位置。
+     * @param {"endpoint"|"path-end"} [mode="endpoint"] 起点模式。
+     * @returns {void}
+     */
     startPath(pairId, position, mode = "endpoint") {
       this.activePair = pairId;
       this.isDrawing = true;
@@ -369,6 +552,12 @@ export const methods = {
       }
     },
 
+    /**
+     * 向当前路径追加一个节点，并校验碰撞、连通和终点规则。
+     *
+     * @param {{ x: number, y: number }} position 目标节点位置。
+     * @returns {boolean} 是否成功追加或保持有效。
+     */
     addStep(position) {
       // Commit one snapped grid point into the active path after validating collisions.
       const path = this.paths[this.activePair] ?? [];
@@ -443,6 +632,12 @@ export const methods = {
       return true;
     },
 
+    /**
+     * 沿水平或垂直方向向目标节点批量补步。
+     *
+     * @param {[number, number]} target 目标节点坐标。
+     * @returns {boolean} 是否至少移动了一步。
+     */
     addStepsToward(target) {
       const path = this.paths[this.activePair] ?? [];
       let current = path[path.length - 1];
@@ -471,6 +666,11 @@ export const methods = {
       return moved;
     },
 
+    /**
+     * 重新评估棋盘是否满足通关条件。
+     *
+     * @returns {void}
+     */
     evaluateBoard() {
       // Win only when every pair is connected and the required answer/board coverage is filled.
       if (!this.areAllPathsStructurallyValid()) {
@@ -494,12 +694,24 @@ export const methods = {
       }
     },
 
+    /**
+     * 从事件中获取吸附后的棋盘节点位置。
+     *
+     * @param {PointerEvent|MouseEvent} event 指针或鼠标事件。
+     * @returns {{ x: number, y: number }|null} 节点位置。
+     */
     positionFromEvent(event) {
       const point = this.nearestPositionFromEvent(event);
       if (!point) return null;
       return point;
     },
 
+    /**
+     * 从事件位置寻找最近的可吸附网格节点。
+     *
+     * @param {PointerEvent|MouseEvent} event 指针或鼠标事件。
+     * @returns {{ x: number, y: number }|null} 最近节点；超出吸附半径时返回 null。
+     */
     nearestPositionFromEvent(event) {
       const point = this.pointerPositionFromEvent(event);
       if (!point) return null;
@@ -516,6 +728,12 @@ export const methods = {
       return nearest;
     },
 
+    /**
+     * 将屏幕指针坐标转换为逻辑网格坐标。
+     *
+     * @param {PointerEvent|MouseEvent} event 指针或鼠标事件。
+     * @returns {{ x: number, y: number }|null} 逻辑坐标。
+     */
     pointerPositionFromEvent(event) {
       const boardElement = event.currentTarget ?? this.$refs.boardRef;
       if (!boardElement) return null;
@@ -528,6 +746,12 @@ export const methods = {
       return { x, y };
     },
 
+    /**
+     * 判断某个节点是否可以作为路径起点。
+     *
+     * @param {{ x: number, y: number }} position 节点位置。
+     * @returns {{ pairId: string, mode: string }|null} 起点信息。
+     */
     getPathStartInfo(position) {
       const endpointPairId = this.endpoints[keyOf(position.x, position.y)];
       if (endpointPairId && this.canStartFromEndpoint(endpointPairId, position)) {
@@ -545,6 +769,13 @@ export const methods = {
       return null;
     },
 
+    /**
+     * 将路径调整为可从末端继续绘制的方向。
+     *
+     * @param {Array<[number, number]>} path 当前路径。
+     * @param {{ x: number, y: number }} position 起始位置。
+     * @returns {Array<[number, number]>} 调整后的路径。
+     */
     orientPathForEnd(path, position) {
       const point = positionToArray(position);
       if (path.length === 0) return [point];
@@ -552,6 +783,13 @@ export const methods = {
       return [point];
     },
 
+    /**
+     * 从端点重新开始绘制时裁剪已有路径。
+     *
+     * @param {Array<[number, number]>} path 当前路径。
+     * @param {{ x: number, y: number }} position 端点位置。
+     * @returns {Array<[number, number]>} 裁剪后的路径。
+     */
     trimPathForEndpointStart(path, position) {
       const point = positionToArray(position);
       const index = path.findIndex((item) => samePoint(item, point));
@@ -560,6 +798,13 @@ export const methods = {
       return path.slice(0, index + 1);
     },
 
+    /**
+     * 判断指定端点是否允许作为路径起点。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {{ x: number, y: number }} position 端点位置。
+     * @returns {boolean} 是否可开始绘制。
+     */
     canStartFromEndpoint(pairId, position) {
       const path = this.paths[pairId] ?? [];
       if (path.length === 0) return true;
@@ -570,6 +815,12 @@ export const methods = {
       return samePoint(path[path.length - 1], point) && this.getPathDegree(path, point) <= 1;
     },
 
+    /**
+     * 清空指定点对路径。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {void}
+     */
     clearPairPath(pairId) {
       const path = this.paths[pairId] ?? [];
       if (path.length === 0) {
@@ -584,6 +835,13 @@ export const methods = {
       this.shareStatusText = "分享";
     },
 
+    /**
+     * 暂停当前路径绘制，并在必要时重新判定棋盘。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {boolean} hasMoved 本次指针是否移动过。
+     * @returns {void}
+     */
     pausePath(pairId, hasMoved) {
       const path = this.paths[pairId] ?? [];
       this.isDrawing = false;
@@ -599,6 +857,11 @@ export const methods = {
       }
     },
 
+    /**
+     * 停止当前绘制状态。
+     *
+     * @returns {void}
+     */
     stopDrawing() {
       this.isDrawing = false;
       this.activePair = null;
@@ -606,6 +869,11 @@ export const methods = {
       this.pointerPreview = null;
     },
 
+    /**
+     * 启动游戏计时器。
+     *
+     * @returns {void}
+     */
     startGameTimer() {
       if (this.timerStartedAt !== null) return;
       this.timerStartedAt = Date.now();
@@ -615,11 +883,21 @@ export const methods = {
       }, 10);
     },
 
+    /**
+     * 根据开始时间刷新当前用时。
+     *
+     * @returns {void}
+     */
     updateGameTimer() {
       if (this.timerStartedAt === null) return;
       this.timerElapsedMs = Date.now() - this.timerStartedAt;
     },
 
+    /**
+     * 停止游戏计时器并同步最终用时。
+     *
+     * @returns {void}
+     */
     stopGameTimer() {
       if (this.timerIntervalId !== null) {
         window.clearInterval(this.timerIntervalId);
@@ -628,6 +906,11 @@ export const methods = {
       this.updateGameTimer();
     },
 
+    /**
+     * 重置游戏计时器状态。
+     *
+     * @returns {void}
+     */
     resetGameTimer() {
       if (this.timerIntervalId !== null) {
         window.clearInterval(this.timerIntervalId);
@@ -637,20 +920,45 @@ export const methods = {
       this.timerIntervalId = null;
     },
 
+    /**
+     * 将用时规整到 10 毫秒精度。
+     *
+     * @param {number} milliseconds 原始毫秒数。
+     * @returns {number} 规整后的毫秒数。
+     */
     normalizeTimerElapsedMs(milliseconds) {
       return Math.floor(Math.max(0, milliseconds) / 10) * 10;
     },
 
+    /**
+     * 安全释放指针捕获。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
     releasePointer(event) {
       if (event.currentTarget?.hasPointerCapture?.(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
     },
 
+    /**
+     * 获取当前关卡中的点对配置。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {object|null} 点对配置。
+     */
     getPair(pairId) {
       return this.currentLevel?.pairs.find((pair) => pair.id === pairId) ?? null;
     },
 
+    /**
+     * 查找指定边当前被哪个点对占用。
+     *
+     * @param {[number, number]} from 边起点。
+     * @param {[number, number]} to 边终点。
+     * @returns {string|null} 占用点对 id。
+     */
     getEdgeOccupant(from, to) {
       const edge = edgeKey(from, to);
       for (const [pairId, path] of Object.entries(this.paths)) {
@@ -661,6 +969,12 @@ export const methods = {
       return null;
     },
 
+    /**
+     * 查找指定节点当前被哪个点对占用。
+     *
+     * @param {[number, number]} point 节点坐标。
+     * @returns {string|null} 占用点对 id。
+     */
     getNodeOccupant(point) {
       const nodeKey = keyOf(point[0], point[1]);
       for (const [pairId, path] of Object.entries(this.paths)) {
@@ -669,26 +983,59 @@ export const methods = {
       return null;
     },
 
+    /**
+     * 判断当前关卡中某条边是否已被移除。
+     *
+     * @param {string} edge 边 key。
+     * @returns {boolean} 是否移除。
+     */
     isLevelEdgeRemoved(edge) {
       return new Set(this.currentLevel?.removedEdges ?? []).has(edge);
     },
 
+    /**
+     * 判断当前路径中的端点是否已经接入过线路。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {[number, number]} point 端点坐标。
+     * @returns {boolean} 是否已连接。
+     */
     isEndpointAlreadyLinked(pairId, point) {
       const path = this.paths[pairId] ?? [];
       return this.getPathDegree(path, point) > 0;
     },
 
+    /**
+     * 获取节点在路径中的连接度。
+     *
+     * @param {Array<[number, number]>} path 路径坐标。
+     * @param {[number, number]} point 节点坐标。
+     * @returns {number} 相邻路径节点数量。
+     */
     getPathDegree(path, point) {
       const index = path.findIndex((item) => samePoint(item, point));
       if (index < 0) return 0;
       return [path[index - 1], path[index + 1]].filter(Boolean).length;
     },
 
+    /**
+     * 判断路径是否已经经过点对的两个端点。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {Array<[number, number]>} path 路径坐标。
+     * @returns {boolean} 是否到达两个端点。
+     */
     hasPairReachedBothEndpoints(pairId, path) {
       const pair = this.getPair(pairId);
       return pair.points.every((endpoint) => path.some((point) => samePoint(point, endpoint)));
     },
 
+    /**
+     * 判断点对路径是否从一个端点连到另一个端点。
+     *
+     * @param {object} pair 点对配置。
+     * @returns {boolean} 是否完成连接。
+     */
     isPairConnected(pair) {
       const path = this.paths[pair.id] ?? [];
       if (path.length < 2) return false;
@@ -700,11 +1047,21 @@ export const methods = {
       );
     },
 
+    /**
+     * 校验所有路径是否满足结构规则。
+     *
+     * @returns {boolean} 是否全部有效。
+     */
     areAllPathsStructurallyValid() {
       return this.areAllNodesExclusive()
         && Object.entries(this.paths).every(([pairId, path]) => this.isPathStructurallyValid(pairId, path));
     },
 
+    /**
+     * 校验所有节点是否只被一个点对占用。
+     *
+     * @returns {boolean} 是否无跨点对重叠。
+     */
     areAllNodesExclusive() {
       const occupiedNodes = new Map();
       for (const [pairId, path] of Object.entries(this.paths)) {
@@ -718,6 +1075,13 @@ export const methods = {
       return true;
     },
 
+    /**
+     * 校验单条路径的节点重复、相邻边和端点度数规则。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {Array<[number, number]>} path 路径坐标。
+     * @returns {boolean} 路径结构是否有效。
+     */
     isPathStructurallyValid(pairId, path) {
       const seen = new Set();
       const availableEdges = new Set(getAllGridEdges(this.currentLevel));
@@ -738,6 +1102,11 @@ export const methods = {
       return true;
     },
 
+    /**
+     * 判断棋盘是否填满必需答案边或可通行节点。
+     *
+     * @returns {boolean} 是否满足填充条件。
+     */
     isBoardFilled() {
       const answerEdges = this.getAnswerEdges();
       if (answerEdges.size > 0) {
@@ -749,6 +1118,11 @@ export const methods = {
       return this.getRequiredNodes().every((node) => filledNodes.has(node));
     },
 
+    /**
+     * 获取当前关卡要求覆盖的答案边。
+     *
+     * @returns {Set<string>} 答案边集合。
+     */
     getAnswerEdges() {
       const edges = new Set();
       (this.currentLevel.answers ?? []).forEach((answer) => {
@@ -761,6 +1135,11 @@ export const methods = {
       return edges;
     },
 
+    /**
+     * 获取玩家当前已绘制的全部边。
+     *
+     * @returns {Set<string>} 已绘制边集合。
+     */
     getFilledEdges() {
       const edges = new Set();
       Object.values(this.paths).forEach((path) => {
@@ -771,6 +1150,11 @@ export const methods = {
       return edges;
     },
 
+    /**
+     * 获取玩家当前已占用的全部节点。
+     *
+     * @returns {Set<string>} 已占用节点集合。
+     */
     getFilledNodes() {
       const nodes = new Set();
       Object.values(this.paths).forEach((path) => {
@@ -779,6 +1163,11 @@ export const methods = {
       return nodes;
     },
 
+    /**
+     * 获取没有被完全移除的必需节点。
+     *
+     * @returns {string[]} 必需节点 key 列表。
+     */
     getRequiredNodes() {
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
       const nodesWithOpenEdge = new Set();
@@ -791,6 +1180,11 @@ export const methods = {
       return [...nodesWithOpenEdge];
     },
 
+    /**
+     * 获取当前还可以继续延伸的路径末端。
+     *
+     * @returns {Set<string>} 末端节点 key 集合。
+     */
     getExtendableEnds() {
       const ends = new Set();
       Object.entries(this.paths).forEach(([pairId, path]) => {
@@ -801,6 +1195,13 @@ export const methods = {
       return ends;
     },
 
+    /**
+     * 判断节点是否是当前活跃路径的末端。
+     *
+     * @param {number} x 节点横坐标。
+     * @param {number} y 节点纵坐标。
+     * @returns {boolean} 是否为活跃节点。
+     */
     isActiveNode(x, y) {
       if (!this.activePair) return false;
       const path = this.paths[this.activePair] ?? [];
@@ -808,6 +1209,11 @@ export const methods = {
       return Boolean(last && last[0] === x && last[1] === y);
     },
 
+    /**
+     * 获取当前活跃路径应连接的目标端点 key。
+     *
+     * @returns {string} 目标端点 key；没有活跃路径时为空字符串。
+     */
     getActiveTargetKey() {
       if (!this.activePair) return "";
       const pair = this.getPair(this.activePair);

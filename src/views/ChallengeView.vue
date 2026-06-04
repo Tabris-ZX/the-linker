@@ -48,7 +48,7 @@
         </div>
       </section>
       <div v-if="app.isLevelsLoading" class="challenge-status" role="status" aria-live="polite">
-        加载中
+        加载中...
       </div>
       <div v-else-if="!app.currentLevel" class="challenge-status" role="status" aria-live="polite">
         暂无关卡
@@ -102,7 +102,7 @@
             <path d="M18 8h28v9h9v7c0 10-6 17-15 18-2 3-4 5-7 6v6h11v6H20v-6h11v-6c-3-1-5-3-7-6-9-1-15-8-15-18v-7h9V8Zm0 15h-5v1c0 6 3 10 8 12-2-4-3-8-3-13Zm28 0c0 5-1 9-3 13 5-2 8-6 8-12v-1h-5Z"></path>
           </svg>
           <div class="victory-copy">
-            <span>通关成功</span>
+            <span>通关成功!</span>
             <strong>用时 {{ app.victoryTimeText }}</strong>
           </div>
           <strong v-if="app.isPersonalBest" class="victory-pb">PB</strong>

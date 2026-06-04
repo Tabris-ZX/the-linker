@@ -3,14 +3,34 @@ import { fetchLevelFiles, saveLevelRequest } from "../router/levels.js";
 import { cloneLevel } from "../utils/object.js";
 import { normalizeGridType } from "../utils/geometry.js";
 
+/**
+ * 加载并水合所有关卡文件。
+ *
+ * @returns {Promise<Array<object>>} 带默认样式和默认字段的关卡列表。
+ */
 export async function loadLevelFiles() {
   return (await fetchLevelFiles()).map((level) => hydrateLevel(level));
 }
 
+/**
+ * 保存关卡文件，并按当前点位定义补全返回数据。
+ *
+ * @param {object} level 要保存的关卡数据。
+ * @param {object} [definitions=pointDefinitions] 点位样式定义。
+ * @param {object} [options={}] 保存选项。
+ * @returns {Promise<object>} 服务端保存后水合过的关卡数据。
+ */
 export async function saveLevelFile(level, definitions = pointDefinitions, options = {}) {
   return hydrateLevel(await saveLevelRequest(level, options), definitions);
 }
 
+/**
+ * 补全关卡默认字段和点位展示信息。
+ *
+ * @param {object} rawLevel 原始关卡数据。
+ * @param {object} [definitions=pointDefinitions] 点位样式定义。
+ * @returns {object} 可直接用于游戏和编辑器的关卡数据。
+ */
 export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
   const palette = Object.values(definitions).map((point) => point.color);
   // Merge level files with JSON color config so level authors can omit repeated labels/colors.
@@ -30,6 +50,12 @@ export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
 
 export { cloneLevel };
 
+/**
+ * 将关卡难度限制在 1 到 5 的整数范围内。
+ *
+ * @param {unknown} value 原始难度值。
+ * @returns {number} 标准难度。
+ */
 function normalizeLevelDifficulty(value) {
   const difficulty = Number(value);
   if (!Number.isFinite(difficulty)) return 1;

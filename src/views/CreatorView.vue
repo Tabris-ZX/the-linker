@@ -22,7 +22,6 @@
             <option value="square">方形</option>
             <option value="right-triangle">直角三角形</option>
             <option value="equilateral-triangle">正三角形</option>
-            <option value="hex" disabled>六边形（后续）</option>
           </select>
         </label>
         <label v-if="app.creatorState.gridType !== 'equilateral-triangle'">
@@ -59,7 +58,6 @@
       <section v-if="app.isLevelOutputVisible" class="level-output-panel" aria-label="生成的关卡 JSON">
         <div class="level-output-header">
           <strong>生成的 JSON</strong>
-          <span>保存后会写入 data/levels</span>
         </div>
         <pre>{{ app.levelOutput }}</pre>
       </section>
