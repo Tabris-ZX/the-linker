@@ -2,14 +2,29 @@
 import { computed } from "./computed.js";
 import { creatorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
-import { routes } from "./router.js";
 import AppNav from "../components/AppNav.vue";
+import ChallengeView from "../views/ChallengeView.vue";
+import CreatorView from "../views/CreatorView.vue";
+import PersonalizationView from "../views/PersonalizationView.vue";
 import faviconUrl from "../../favicon.ico";
 
+const viewTabs = [
+  { id: "challenge", label: "关卡挑战" },
+  { id: "creator", label: "关卡编辑器" }
+];
 
 export default {
   components: {
-    AppNav
+    AppNav,
+    ChallengeView,
+    CreatorView,
+    PersonalizationView
+  },
+
+  provide() {
+    return {
+      app: this
+    };
   },
 
   data() {
@@ -20,7 +35,7 @@ export default {
       pointPalettes,
       faviconUrl,
       activeView: "challenge",
-      viewTabs: routes,
+      viewTabs,
       canUseLevelEditor: false,
       themes,
       selectedTheme: appConfig.theme.default,
@@ -54,6 +69,7 @@ export default {
         difficulty: 1,
         width: 5,
         height: 5,
+        radius: 3,
         pairIds,
         activePairId: pairIds[0],
         mode: "mark",
@@ -61,6 +77,7 @@ export default {
         removedEdges: [],
         answers: {}
       },
+      creatorEditingLevelId: "",
       previewHint: "点交点可放置或删除色点；标记模式：点击格子边标出答案线路。",
       isLevelOutputVisible: false,
       levelOutput: ""

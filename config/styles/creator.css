@@ -27,7 +27,7 @@
 
 .creator-form {
   display: grid;
-  grid-template-columns: 114px 130px repeat(4, 88px) 142px 112px 112px;
+  grid-template-columns: 180px 114px 130px repeat(4, 88px) 142px 112px 112px;
   gap: 8px;
   align-items: end;
   margin-bottom: 8px;

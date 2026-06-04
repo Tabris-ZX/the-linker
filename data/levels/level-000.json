@@ -53,5 +53,30 @@
     }
   ],
   "removedEdges": [],
-  "answers": []
+  "answers": [
+    {
+      "edge": "0,0|1,0",
+      "pairId": "red"
+    },
+    {
+      "edge": "1,0|2,0",
+      "pairId": "red"
+    },
+    {
+      "edge": "0,1|1,1",
+      "pairId": "blue"
+    },
+    {
+      "edge": "1,1|2,1",
+      "pairId": "blue"
+    },
+    {
+      "edge": "0,2|1,2",
+      "pairId": "green"
+    },
+    {
+      "edge": "1,2|2,2",
+      "pairId": "green"
+    }
+  ]
 }

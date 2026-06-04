@@ -13,6 +13,10 @@ let lastLevelSavedAt = 0;
 
 export default defineConfig({
   base: "./",
+  server: {
+    port: normalizePort(appConfig.server?.port, 5173),
+    strictPort: false
+  },
   build: {
     outDir: "docs",
     emptyOutDir: false,
@@ -187,14 +191,37 @@ async function readLevels() {
 
 async function saveLevel(level) {
   await fs.mkdir(levelsDir, { recursive: true });
+  if (level.saveMode === "update") {
+    return updateExistingLevel(level);
+  }
+
   const id = await getNextLevelId();
   const savedLevel = {
     ...level,
+    saveMode: undefined,
     id,
     name: level.name && level.name !== "Custom Level" ? level.name : `Level ${id.slice(6)}`
   };
 
   await fs.writeFile(path.join(levelsDir, `${id}.json`), `${JSON.stringify(savedLevel, null, 2)}\n`, "utf8");
+  return savedLevel;
+}
+
+async function updateExistingLevel(level) {
+  if (!/^level-\d+$/.test(level.id ?? "")) {
+    throw new Error("只能修改已有的 level-xxx 关卡");
+  }
+
+  const filePath = path.join(levelsDir, `${level.id}.json`);
+  const currentLevel = JSON.parse(await fs.readFile(filePath, "utf8"));
+  const savedLevel = {
+    ...level,
+    saveMode: undefined,
+    id: currentLevel.id ?? level.id,
+    name: currentLevel.name ?? `Level ${level.id.slice(6)}`
+  };
+
+  await fs.writeFile(filePath, `${JSON.stringify(savedLevel, null, 2)}\n`, "utf8");
   return savedLevel;
 }
 
@@ -269,10 +296,23 @@ function parseSimpleYaml(source) {
       return;
     }
 
-    parent[key] = rawValue.replace(/^["']|["']$/g, "");
+    parent[key] = parseYamlScalar(rawValue);
   });
 
   return root;
+}
+
+function parseYamlScalar(value) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+  return value.replace(/^["']|["']$/g, "");
+}
+
+function normalizePort(value, fallback) {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) return fallback;
+  return port;
 }
 
 function normalizePath(value) {

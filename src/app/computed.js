@@ -1,4 +1,4 @@
-import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, keyOf, lineAttrs, pointsFromEdgeKey } from "../utils/geometry.js";
+import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, getGridBounds, getGridNodes, keyOf, lineAttrs, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
 
 export const computed = {
     themeOptions() {
@@ -58,7 +58,8 @@ export const computed = {
 
     boardViewBox() {
       if (!this.currentLevel) return "0 0 1 1";
-      return `0 0 ${this.currentLevel.width} ${this.currentLevel.height}`;
+      const bounds = getGridBounds(this.currentLevel);
+      return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
     },
 
     boardStyle() {
@@ -78,13 +79,12 @@ export const computed = {
         };
       }
 
-      // Keep the board on a fixed pixel scale: max 1200px wide and 600px tall.
-      // The final square edge length is the smaller of width-based and height-based splits.
+      const bounds = getGridBounds(this.currentLevel);
       return {
         ...mapStyleVariables,
-        "--cols": this.currentLevel.width,
-        "--rows": this.currentLevel.height,
-        "--cell-size": `min(calc(var(--board-max-width) / ${this.currentLevel.width}), calc(var(--board-max-height) / ${this.currentLevel.height}))`
+        "--cols": bounds.cols,
+        "--rows": bounds.rows,
+        "--cell-size": `min(calc(var(--board-max-width) / ${bounds.cols}), calc(var(--board-max-height) / ${bounds.rows}))`
       };
     },
 
@@ -114,9 +114,9 @@ export const computed = {
     gridLines() {
       if (!this.currentLevel) return [];
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
-      return getAllGridEdges(this.currentLevel.width, this.currentLevel.height)
+      return getAllGridEdges(this.currentLevel)
         .filter((edge) => !removedEdges.has(edge))
-        .map((edge) => edgeRenderData(edge))
+        .map((edge) => edgeRenderData(edge, this.currentLevel.gridType))
         .filter(Boolean);
     },
 
@@ -136,7 +136,7 @@ export const computed = {
           renderedEdges.add(edge);
           lines.push({
             key: `${pairId}-${edge}`,
-            attrs: lineAttrs(point, next),
+            attrs: lineAttrs(toRenderPoint(point, this.currentLevel.gridType), toRenderPoint(next, this.currentLevel.gridType)),
             color: pair.color,
             className: ""
           });
@@ -148,18 +148,17 @@ export const computed = {
         const last = path[path.length - 1];
         const pair = this.getPair(this.activePair);
         if (last && pair && this.pointerPreview) {
-          const preview = {
-            x: Math.min(this.currentLevel.width, Math.max(0, this.pointerPreview.x)),
-            y: Math.min(this.currentLevel.height, Math.max(0, this.pointerPreview.y))
-          };
+          const preview = this.pointerPreview;
           if (preview.x !== last[0] || preview.y !== last[1]) {
+            const [x1, y1] = toRenderPoint(last, this.currentLevel.gridType);
+            const [x2, y2] = toRenderPoint([preview.x, preview.y], this.currentLevel.gridType);
             lines.push({
               key: "pointer-preview",
               attrs: {
-                x1: last[0],
-                y1: last[1],
-                x2: preview.x,
-                y2: preview.y
+                x1,
+                y1,
+                x2,
+                y2
               },
               color: pair.color,
               className: "preview-line"
@@ -177,42 +176,44 @@ export const computed = {
       const filledNodes = this.getFilledNodes();
       const activeTargetKey = this.getActiveTargetKey();
       const requiredNodes = new Set(this.getRequiredNodes());
+      const bounds = getGridBounds(this.currentLevel);
 
-      for (let y = 0; y <= this.currentLevel.height; y += 1) {
-        for (let x = 0; x <= this.currentLevel.width; x += 1) {
-          const key = keyOf(x, y);
-          const pairId = this.endpoints[key];
-          const endpoint = pairId ? this.getPair(pairId) : null;
-          if (!endpoint && !requiredNodes.has(key)) continue;
-          nodes.push({
-            key,
-            x,
-            y,
-            endpoint,
-            style: {
-              "--node-x": x,
-              "--node-y": y
-            },
-            classes: {
-              "endpoint-node": Boolean(endpoint),
-              "path-node": filledNodes.has(key),
-              target: activeTargetKey === key
-            }
-          });
-        }
+      for (const [x, y] of getGridNodes(this.currentLevel)) {
+        const key = keyOf(x, y);
+        const pairId = this.endpoints[key];
+        const endpoint = pairId ? this.getPair(pairId) : null;
+        if (!endpoint && !requiredNodes.has(key)) continue;
+        const [renderX, renderY] = toRenderPoint([x, y], this.currentLevel.gridType);
+        nodes.push({
+          key,
+          x,
+          y,
+          endpoint,
+          style: {
+            "--node-x": renderX - bounds.minX,
+            "--node-y": renderY - bounds.minY
+          },
+          classes: {
+            "endpoint-node": Boolean(endpoint),
+            "path-node": filledNodes.has(key),
+            target: activeTargetKey === key
+          }
+        });
       }
 
       return nodes;
     },
 
     creatorViewBox() {
-      return `0 0 ${this.creatorState.width} ${this.creatorState.height}`;
+      const bounds = getGridBounds(this.creatorState);
+      return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
     },
 
     creatorPreviewStyle() {
+      const bounds = getGridBounds(this.creatorState);
       return {
-        "--preview-cols": this.creatorState.width,
-        "--preview-rows": this.creatorState.height,
+        "--preview-cols": bounds.cols,
+        "--preview-rows": bounds.rows,
         "--map-dot-scale": this.mapStyle.dotScale,
         "--map-node-scale": this.mapStyle.nodeScale,
         "--map-line-scale": this.mapStyle.lineScale,
@@ -221,56 +222,71 @@ export const computed = {
     },
 
     creatorGridLines() {
-      return buildGridLines(this.creatorState.width, this.creatorState.height);
+      return buildGridLines(this.creatorState);
     },
 
     creatorRemovedEdges() {
-      return this.creatorState.removedEdges.map((edge) => edgeRenderData(edge)).filter(Boolean);
+      return this.creatorState.removedEdges.map((edge) => {
+        const points = pointsFromEdgeKey(edge);
+        if (!points) return null;
+        return {
+          key: edge,
+          attrs: lineAttrs(toRenderPoint(points[0], this.creatorState.gridType), toRenderPoint(points[1], this.creatorState.gridType))
+        };
+      }).filter(Boolean);
     },
 
     creatorAnswerEdges() {
       return Object.entries(this.creatorState.answers).map(([edge, pairId]) => {
-        const data = edgeRenderData(edge);
-        if (!data) return null;
+        const points = pointsFromEdgeKey(edge);
+        if (!points) return null;
         return {
-          ...data,
+          key: edge,
+          attrs: lineAttrs(toRenderPoint(points[0], this.creatorState.gridType), toRenderPoint(points[1], this.creatorState.gridType)),
           color: this.pointDefinitions[pairId]?.color ?? "var(--accent)"
         };
       }).filter(Boolean);
     },
 
     creatorHitEdges() {
-      return getAllGridEdges(this.creatorState.width, this.creatorState.height)
-        .map((edge) => edgeRenderData(edge))
+      return getAllGridEdges(this.creatorState)
+        .map((edge) => {
+          const points = pointsFromEdgeKey(edge);
+          if (!points) return null;
+          return {
+            key: edge,
+            attrs: lineAttrs(toRenderPoint(points[0], this.creatorState.gridType), toRenderPoint(points[1], this.creatorState.gridType))
+          };
+        })
         .filter(Boolean);
     },
 
     creatorNodes() {
       const nodes = [];
       const connectedNodes = new Set();
-      getAllGridEdges(this.creatorState.width, this.creatorState.height).forEach((edge) => {
+      const bounds = getGridBounds(this.creatorState);
+      getAllGridEdges(this.creatorState).forEach((edge) => {
         if (this.creatorState.removedEdges.includes(edge)) return;
         const points = pointsFromEdgeKey(edge);
         if (!points) return;
         points.forEach(([x, y]) => connectedNodes.add(keyOf(x, y)));
       });
 
-      for (let y = 0; y <= this.creatorState.height; y += 1) {
-        for (let x = 0; x <= this.creatorState.width; x += 1) {
-          const pointAtNode = this.getCreatorPointAt(x, y);
-          const point = pointAtNode ? this.pointDefinitions[pointAtNode.pairId] : null;
-          if (!point && !connectedNodes.has(keyOf(x, y))) continue;
-          nodes.push({
-            key: keyOf(x, y),
-            x,
-            y,
-            point,
-            style: {
-              "--node-x": x,
-              "--node-y": y
-            }
-          });
-        }
+      for (const [x, y] of getGridNodes(this.creatorState)) {
+        const pointAtNode = this.getCreatorPointAt(x, y);
+        const point = pointAtNode ? this.pointDefinitions[pointAtNode.pairId] : null;
+        if (!point && !connectedNodes.has(keyOf(x, y))) continue;
+        const [renderX, renderY] = toRenderPoint([x, y], this.creatorState.gridType);
+        nodes.push({
+          key: keyOf(x, y),
+          x,
+          y,
+          point,
+          style: {
+            "--node-x": renderX - bounds.minX,
+            "--node-y": renderY - bounds.minY
+          }
+        });
       }
       return nodes;
     }

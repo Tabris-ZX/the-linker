@@ -9,6 +9,9 @@ const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
 const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "");
 
 export const appConfig = {
+  server: {
+    port: normalizePort(rawConfig.server?.port, 5173)
+  },
   level: {
     path: normalizePath(rawConfig.level?.path ?? "data/levels")
   },
@@ -80,6 +83,12 @@ function normalizeMapStyle(config) {
 
 function normalizePath(value) {
   return String(value).replace(/^\.?\//, "").replace(/\\/g, "/");
+}
+
+function normalizePort(value, fallback) {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) return fallback;
+  return port;
 }
 
 function normalizeBackgroundImages(value) {

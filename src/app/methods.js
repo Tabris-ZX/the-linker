@@ -1,6 +1,6 @@
 ﻿import { appConfig } from "../config/index.js";
 import { cloneLevel, hydrateLevel, loadLevelFiles } from "../services/levels.js";
-import { edgeKey, getAllGridEdges, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "../utils/geometry.js";
+import { edgeKey, fromRenderPoint, getAllGridEdges, getGridBounds, getGridNodes, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "../utils/geometry.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 
@@ -395,9 +395,13 @@ export const methods = {
         return false;
       }
 
-      if (!isAdjacent(last, next)) {
+      if (!isAdjacent(last, next, this.currentLevel.gridType)) {
         const routed = this.addStepsToward(next);
         if (routed) return true;
+        return false;
+      }
+
+      if (!new Set(getAllGridEdges(this.currentLevel)).has(edgeKey(last, next))) {
         return false;
       }
 
@@ -499,18 +503,27 @@ export const methods = {
     nearestPositionFromEvent(event) {
       const point = this.pointerPositionFromEvent(event);
       if (!point) return null;
-      const x = Math.round(point.x);
-      const y = Math.round(point.y);
-      if (x < 0 || y < 0 || x > this.currentLevel.width || y > this.currentLevel.height) return null;
-      const distance = Math.hypot(point.x - x, point.y - y);
-      if (distance > this.mapStyle.snapPointRadius) return null;
-      return { x, y };
+      let nearest = null;
+      let nearestDistance = Infinity;
+      getGridNodes(this.currentLevel).forEach(([x, y]) => {
+        const distance = Math.hypot(point.x - x, point.y - y);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = { x, y };
+        }
+      });
+      if (!nearest || nearestDistance > this.mapStyle.snapPointRadius) return null;
+      return nearest;
     },
 
     pointerPositionFromEvent(event) {
-      const rect = this.$refs.boardRef.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / rect.width) * this.currentLevel.width;
-      const y = ((event.clientY - rect.top) / rect.height) * this.currentLevel.height;
+      const boardElement = event.currentTarget ?? this.$refs.boardRef;
+      if (!boardElement) return null;
+      const rect = boardElement.getBoundingClientRect();
+      const bounds = getGridBounds(this.currentLevel);
+      const renderX = bounds.minX + ((event.clientX - rect.left) / rect.width) * bounds.width;
+      const renderY = bounds.minY + ((event.clientY - rect.top) / rect.height) * bounds.height;
+      const [x, y] = fromRenderPoint([renderX, renderY], this.currentLevel.gridType);
       if (Number.isNaN(x) || Number.isNaN(y)) return null;
       return { x, y };
     },
@@ -707,6 +720,7 @@ export const methods = {
 
     isPathStructurallyValid(pairId, path) {
       const seen = new Set();
+      const availableEdges = new Set(getAllGridEdges(this.currentLevel));
       for (let index = 0; index < path.length; index += 1) {
         const point = path[index];
         const key = keyOf(point[0], point[1]);
@@ -714,7 +728,8 @@ export const methods = {
         seen.add(key);
 
         const neighbors = [path[index - 1], path[index + 1]].filter(Boolean);
-        if (neighbors.some((neighbor) => !isAdjacent(point, neighbor))) return false;
+        if (neighbors.some((neighbor) => !isAdjacent(point, neighbor, this.currentLevel.gridType))) return false;
+        if (neighbors.some((neighbor) => !availableEdges.has(edgeKey(point, neighbor)))) return false;
 
         const isEndpoint = this.endpoints[key] === pairId;
         if (isEndpoint && neighbors.length > 1) return false;
@@ -767,7 +782,7 @@ export const methods = {
     getRequiredNodes() {
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
       const nodesWithOpenEdge = new Set();
-      getAllGridEdges(this.currentLevel.width, this.currentLevel.height).forEach((edge) => {
+      getAllGridEdges(this.currentLevel).forEach((edge) => {
         if (removedEdges.has(edge)) return;
         const points = pointsFromEdgeKey(edge);
         if (!points) return;

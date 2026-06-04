@@ -1,16 +1,18 @@
 ﻿import { saveLevelFile } from "../services/levels.js";
-import { getAllGridEdges, isAdjacent, keyOf, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
+import { getAllGridEdges, getGridNodes, getGridRadius, isAdjacent, keyOf, normalizeGridType, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
 export const creatorMethods = {
     syncCreatorBounds() {
-      // Keep editor data valid when the user changes board width/height.
+      this.creatorState.gridType = normalizeGridType(this.creatorState.gridType);
       this.creatorState.width = clampNumber(this.creatorState.width, 2, 12);
       this.creatorState.height = clampNumber(this.creatorState.height, 2, 12);
+      this.creatorState.radius = clampNumber(this.creatorState.radius ?? 3, 1, 8);
+      const validNodes = new Set(getGridNodes(this.creatorState).map(([x, y]) => keyOf(x, y)));
       this.creatorState.points = Object.fromEntries(
         Object.entries(this.creatorState.points).map(([pairId, points]) => [
           pairId,
-          points.filter(([x, y]) => x <= this.creatorState.width && y <= this.creatorState.height).slice(0, 2)
+          points.filter(([x, y]) => validNodes.has(keyOf(x, y))).slice(0, 2)
         ])
       );
       this.creatorState.removedEdges = this.creatorState.removedEdges.filter((edge) => this.isCreatorEdgeInBounds(edge));
@@ -43,8 +45,87 @@ export const creatorMethods = {
     },
 
     syncCreatorName() {
+      if (this.creatorEditingLevelId) return;
       this.creatorState.name = String(this.creatorState.name ?? "");
       this.writeLevelTemplate(false);
+    },
+
+    handleCreatorLevelSelection(levelId) {
+      if (!levelId) {
+        this.resetCreatorEditor();
+        return;
+      }
+
+      const level = this.levels.find((item) => item.id === levelId);
+      if (!level) {
+        this.previewHint = "未找到要修改的关卡";
+        return;
+      }
+
+      this.loadCreatorLevel(level);
+    },
+
+    resetCreatorEditor() {
+      const pairIds = Object.keys(this.pointDefinitions).slice(0, clampNumber(this.creatorPairCount, 1, 12));
+      this.creatorEditingLevelId = "";
+      this.creatorState = {
+        name: "",
+        gridType: "square",
+        difficulty: 1,
+        width: 5,
+        height: 5,
+        radius: 3,
+        pairIds,
+        activePairId: pairIds[0],
+        mode: this.creatorState.mode ?? "mark",
+        points: {},
+        removedEdges: [],
+        answers: {}
+      };
+      this.creatorPairCount = pairIds.length;
+      this.setCreatorModeHint();
+      this.writeLevelTemplate(false);
+    },
+
+    loadCreatorLevel(level) {
+      const pairIds = level.pairs.map((pair) => pair.id);
+      this.creatorEditingLevelId = level.id;
+      this.creatorPairCount = pairIds.length;
+      this.creatorState = {
+        name: level.name ?? "",
+        gridType: normalizeGridType(level.gridType ?? "square"),
+        difficulty: clampNumber(level.difficulty, 1, 5),
+        width: level.width ?? getGridRadius(level) * 2,
+        height: level.height ?? getGridRadius(level) * 2,
+        radius: getGridRadius(level),
+        pairIds,
+        activePairId: pairIds[0],
+        mode: this.creatorState.mode ?? "mark",
+        points: Object.fromEntries(level.pairs.map((pair) => [pair.id, pair.points.map(([x, y]) => [x, y]).slice(0, 2)])),
+        removedEdges: [...(level.removedEdges ?? [])],
+        answers: Object.fromEntries((level.answers ?? []).map((answer) => {
+          if (typeof answer === "string") return [answer, this.inferCreatorAnswerPairId(answer, level) ?? pairIds[0]];
+          return [answer.edge, answer.pairId];
+        }).filter(([edge, pairId]) => edge && pairIds.includes(pairId)))
+      };
+      this.setCreatorModeHint();
+      this.writeLevelTemplate(false);
+      this.previewHint = `正在修改 ${level.id}，名称和 id 将保持不变`;
+    },
+
+    inferCreatorAnswerPairId(edge, level) {
+      const points = pointsFromEdgeKey(edge);
+      if (!points) return "";
+      const endpointKeys = new Map();
+      level.pairs.forEach((pair) => {
+        pair.points.forEach(([x, y]) => endpointKeys.set(keyOf(x, y), pair.id));
+      });
+
+      for (const [x, y] of points) {
+        const pairId = endpointKeys.get(keyOf(x, y));
+        if (pairId) return pairId;
+      }
+      return "";
     },
 
     selectCreatorPair(pairId) {
@@ -128,7 +209,9 @@ export const creatorMethods = {
     isCreatorEdgeInBounds(edge) {
       const points = pointsFromEdgeKey(edge);
       if (!points) return false;
-      return points.every(([x, y]) => x >= 0 && y >= 0 && x <= this.creatorState.width && y <= this.creatorState.height) && isAdjacent(points[0], points[1]);
+      const validNodes = new Set(getGridNodes(this.creatorState).map(([x, y]) => keyOf(x, y)));
+      return points.every(([x, y]) => validNodes.has(keyOf(x, y)))
+        && isAdjacent(points[0], points[1], this.creatorState.gridType);
     },
 
     setCreatorModeHint() {
@@ -145,16 +228,15 @@ export const creatorMethods = {
       this.isLevelOutputVisible = showOutput;
     },
 
-    buildCreatorLevelTemplate(id = `custom-${this.creatorState.width}x${this.creatorState.height}-${this.creatorState.pairIds.length}`) {
+    buildCreatorLevelTemplate(id = this.creatorEditingLevelId || this.getCreatorDefaultId()) {
       // Build the exact JSON saved into levels/ and used by the challenge screen.
-      const name = this.creatorState.name.trim() || this.getDefaultCreatorLevelName(id);
-      return {
+      const editingLevel = this.creatorEditingLevelId ? this.levels.find((level) => level.id === this.creatorEditingLevelId) : null;
+      const name = editingLevel?.name ?? (this.creatorState.name.trim() || this.getDefaultCreatorLevelName(id));
+      const level = {
         id,
         name,
         difficulty: clampNumber(this.creatorState.difficulty, 1, 5),
         gridType: this.creatorState.gridType,
-        width: this.creatorState.width,
-        height: this.creatorState.height,
         pairs: this.creatorState.pairIds.map((pairId) => ({
           id: pairId,
           label: this.pointDefinitions[pairId]?.label ?? pairId,
@@ -164,6 +246,19 @@ export const creatorMethods = {
         removedEdges: [...this.creatorState.removedEdges],
         answers: Object.entries(this.creatorState.answers).map(([edge, pairId]) => ({ edge, pairId }))
       };
+      if (this.creatorState.gridType === "equilateral-triangle") {
+        level.radius = clampNumber(this.creatorState.radius, 1, 8);
+      } else {
+        level.width = this.creatorState.width;
+        level.height = this.creatorState.height;
+      }
+      return level;
+    },
+
+    getCreatorDefaultId() {
+      return this.creatorState.gridType === "equilateral-triangle"
+        ? `custom-r${this.creatorState.radius}-${this.creatorState.pairIds.length}`
+        : `custom-${this.creatorState.width}x${this.creatorState.height}-${this.creatorState.pairIds.length}`;
     },
 
     getCreatorPairPoints(pairId) {
@@ -203,7 +298,9 @@ export const creatorMethods = {
       const template = this.buildCreatorLevelTemplate();
       let savedLevel;
       try {
-        savedLevel = await saveLevelFile(template, this.pointDefinitions);
+        savedLevel = await saveLevelFile(template, this.pointDefinitions, {
+          mode: this.creatorEditingLevelId ? "update" : "create"
+        });
       } catch (error) {
         this.previewHint = error.message;
         return;
@@ -214,7 +311,9 @@ export const creatorMethods = {
       this.loadLevel(index >= 0 ? index : this.levels.length - 1);
       this.levelOutput = JSON.stringify(savedLevel, null, 2);
       this.isLevelOutputVisible = true;
-      this.previewHint = `已保存到 levels/${savedLevel.id}.json，并加入关卡入口`;
+      this.previewHint = this.creatorEditingLevelId
+        ? `已更新 levels/${savedLevel.id}.json`
+        : `已保存到 levels/${savedLevel.id}.json，并加入关卡入口`;
     },
 
     getPointLabel(pairId) {
@@ -243,7 +342,7 @@ export const creatorMethods = {
         return "请先标记答案线路";
       }
 
-      getAllGridEdges(this.creatorState.width, this.creatorState.height).forEach((edge) => {
+      getAllGridEdges(this.creatorState).forEach((edge) => {
         if (removedEdges.has(edge)) return;
         const points = pointsFromEdgeKey(edge);
         if (!points) return;
@@ -275,8 +374,7 @@ export const creatorMethods = {
         points.forEach(([x, y]) => endpointKeys.add(keyOf(x, y)));
       }
 
-      for (let y = 0; y <= this.creatorState.height; y += 1) {
-        for (let x = 0; x <= this.creatorState.width; x += 1) {
+      for (const [x, y] of getGridNodes(this.creatorState)) {
           const nodeKey = keyOf(x, y);
           const nodeDegree = degree.get(nodeKey) ?? 0;
           if (endpointKeys.has(nodeKey)) continue;
@@ -285,7 +383,6 @@ export const creatorMethods = {
             continue;
           }
           if (nodeDegree !== 2) return `节点 ${x},${y} 需要连接两条答案线路，或移除周围所有边`;
-        }
       }
 
       for (const [pairId, points] of endpointEntries) {

@@ -1,57 +1,14 @@
-import { appConfig, pointDefinitions } from "../config/index.js";
+import { pointDefinitions } from "../config/index.js";
+import { fetchLevelFiles, saveLevelRequest } from "../router/levels.js";
 import { cloneLevel } from "../utils/object.js";
+import { normalizeGridType } from "../utils/geometry.js";
 
 export async function loadLevelFiles() {
-  // Prefer the Vite dev-server API so levels are read from the configured local level folder.
-  if (import.meta.env.DEV) {
-    try {
-      const response = await fetch(`${import.meta.env.BASE_URL}api/levels`, { cache: "no-cache" });
-      if (response.ok) {
-        return (await response.json()).map((level) => hydrateLevel(level));
-      }
-    } catch {
-      // Static fallback keeps the app usable without the Vite dev server.
-    }
-  }
-
-  const loadedLevels = [];
-  const levelFiles = await loadStaticLevelIndex();
-  for (const file of levelFiles) {
-    const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/${file}`, { cache: "no-cache" });
-    if (!response.ok) continue;
-    loadedLevels.push(hydrateLevel(await response.json()));
-  }
-
-  return loadedLevels;
+  return (await fetchLevelFiles()).map((level) => hydrateLevel(level));
 }
 
-async function loadStaticLevelIndex() {
-  try {
-    const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/index.json`, { cache: "no-cache" });
-    if (!response.ok) return [];
-    const files = await response.json();
-    return Array.isArray(files) ? files : [];
-  } catch {
-    return [];
-  }
-}
-
-export async function saveLevelFile(level, definitions = pointDefinitions) {
-  // Browser code cannot write files directly, so saves go through the Vite local API.
-  const response = await fetch("/api/levels", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(level)
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message ?? "保存失败，请确认正在通过 npm run dev 启动项目");
-  }
-
-  return hydrateLevel(await response.json(), definitions);
+export async function saveLevelFile(level, definitions = pointDefinitions, options = {}) {
+  return hydrateLevel(await saveLevelRequest(level, options), definitions);
 }
 
 export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
@@ -59,6 +16,7 @@ export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
   // Merge level files with JSON color config so level authors can omit repeated labels/colors.
   return {
     ...rawLevel,
+    gridType: normalizeGridType(rawLevel.gridType ?? "square"),
     difficulty: normalizeLevelDifficulty(rawLevel.difficulty),
     pairs: rawLevel.pairs.map((pair, index) => ({
       ...pair,
