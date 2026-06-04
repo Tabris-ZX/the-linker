@@ -1,5 +1,5 @@
 ﻿import { saveLevelFile } from "../services/levels.js";
-import { isAdjacent, keyOf, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
+import { getAllGridEdges, isAdjacent, keyOf, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
 export const creatorMethods = {
@@ -233,13 +233,22 @@ export const creatorMethods = {
       }
 
       const removedEdges = new Set(this.creatorState.removedEdges);
-      const graph = new Map();
+      const pairGraphs = new Map();
       const degree = new Map();
       const usedEdges = Object.keys(this.creatorState.answers);
+      const openNodeKeys = new Set();
+      const endpointKeys = new Set();
 
       if (usedEdges.length === 0) {
         return "请先标记答案线路";
       }
+
+      getAllGridEdges(this.creatorState.width, this.creatorState.height).forEach((edge) => {
+        if (removedEdges.has(edge)) return;
+        const points = pointsFromEdgeKey(edge);
+        if (!points) return;
+        points.forEach(([x, y]) => openNodeKeys.add(keyOf(x, y)));
+      });
 
       for (const edge of usedEdges) {
         if (!this.isCreatorEdgeInBounds(edge)) return `答案线路 ${edge} 不在当前地图范围内`;
@@ -249,37 +258,42 @@ export const creatorMethods = {
         if (!points) return `答案线路 ${edge} 格式无效`;
 
         const [from, to] = points.map(([x, y]) => keyOf(x, y));
-        if (!graph.has(from)) graph.set(from, new Set());
-        if (!graph.has(to)) graph.set(to, new Set());
-        graph.get(from).add(to);
-        graph.get(to).add(from);
+        const pairId = this.creatorState.answers[edge];
+        if (!this.creatorState.pairIds.includes(pairId)) return `答案线路 ${edge} 使用了无效点对`;
+        if (!pairGraphs.has(pairId)) pairGraphs.set(pairId, new Map());
+        const pairGraph = pairGraphs.get(pairId);
+        if (!pairGraph.has(from)) pairGraph.set(from, new Set());
+        if (!pairGraph.has(to)) pairGraph.set(to, new Set());
+        pairGraph.get(from).add(to);
+        pairGraph.get(to).add(from);
+
         degree.set(from, (degree.get(from) ?? 0) + 1);
         degree.set(to, (degree.get(to) ?? 0) + 1);
+      }
+
+      for (const [, points] of endpointEntries) {
+        points.forEach(([x, y]) => endpointKeys.add(keyOf(x, y)));
       }
 
       for (let y = 0; y <= this.creatorState.height; y += 1) {
         for (let x = 0; x <= this.creatorState.width; x += 1) {
           const nodeKey = keyOf(x, y);
-          if (!graph.has(nodeKey)) return `节点 ${x},${y} 未被答案线路占用`;
-          if ((degree.get(nodeKey) ?? 0) > 2) return `节点 ${x},${y} 连接超过两条边`;
+          const nodeDegree = degree.get(nodeKey) ?? 0;
+          if (endpointKeys.has(nodeKey)) continue;
+          if (!openNodeKeys.has(nodeKey)) {
+            if (nodeDegree !== 0) return `节点 ${x},${y} 周围边已全部移除，不能接入答案线路`;
+            continue;
+          }
+          if (nodeDegree !== 2) return `节点 ${x},${y} 需要连接两条答案线路，或移除周围所有边`;
         }
       }
 
-      const endpointKeys = new Set();
       for (const [pairId, points] of endpointEntries) {
         const [start, end] = points.map(([x, y]) => keyOf(x, y));
-        if (!graph.has(start) || !graph.has(end)) return `${this.getPointLabel(pairId)} 号点没有接入答案线路`;
-        if (!this.areCreatorNodesConnected(start, end, graph)) {
+        const pairGraph = pairGraphs.get(pairId) ?? new Map();
+        if (!pairGraph.has(start) || !pairGraph.has(end)) return `${this.getPointLabel(pairId)} 号点没有接入答案线路`;
+        if (!this.areCreatorNodesConnected(start, end, pairGraph)) {
           return `${this.getPointLabel(pairId)} 号点的两个端点没有连通`;
-        }
-        endpointKeys.add(start);
-        endpointKeys.add(end);
-      }
-
-      for (const endpointKey of endpointKeys) {
-        if ((degree.get(endpointKey) ?? 0) !== 1) {
-          const [x, y] = pointFromKey(endpointKey);
-          return `端点 ${x},${y} 只能连接一条边`;
         }
       }
 

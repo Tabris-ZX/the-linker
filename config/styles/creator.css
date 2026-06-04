@@ -2,14 +2,20 @@
 .view-creator {
   grid-template-columns: minmax(0, 1280px);
   justify-content: center;
-  height: calc(var(--page-height) - var(--topbar-height));
-  overflow: hidden;
+  min-height: calc(var(--page-height) - var(--topbar-height));
+  overflow: visible;
+}
+
+.app-shell:has(.view-creator.is-active) {
+  height: auto;
+  min-height: calc(var(--page-height) - var(--topbar-height));
+  overflow: visible;
 }
 
 .editor-panel {
-  height: 100%;
+  min-height: calc(var(--page-height) - var(--topbar-height) - 20px);
   padding: 16px 22px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .creator-workspace {
@@ -72,7 +78,7 @@ textarea:focus {
 }
 
 .level-output-panel {
-  max-height: 168px;
+  max-height: clamp(72px, calc(var(--page-height) - var(--topbar-height) - 642px), 168px);
   margin-bottom: 8px;
   border: 2px solid var(--ink);
   border-radius: 8px;
@@ -95,7 +101,7 @@ textarea:focus {
 }
 
 .level-output-panel pre {
-  max-height: 124px;
+  max-height: clamp(40px, calc(var(--page-height) - var(--topbar-height) - 686px), 124px);
   margin: 0;
   overflow: auto;
   padding: 10px;
@@ -138,7 +144,7 @@ textarea:focus {
 
 .preview-board-wrap {
   --preview-width-limit: min(1140px, calc(100vw - 128px));
-  --preview-height-limit: min(570px, calc(var(--page-height) - var(--topbar-height) - 238px));
+  --preview-height-limit: min(570px, calc(var(--page-height) - var(--topbar-height) - 220px));
   display: grid;
   place-items: center;
   width: var(--preview-width-limit);
@@ -258,6 +264,11 @@ textarea:focus {
 .preview-node:hover {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   transform: translate3d(-50%, -50%, 0) scale(1.04);
+}
+
+.preview-node:active {
+  transform: translate3d(-50%, -50%, 0) scale(0.98);
+  box-shadow: none;
 }
 
 .preview-node::before {

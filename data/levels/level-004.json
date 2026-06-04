@@ -1,0 +1,211 @@
+{
+  "id": "level-004",
+  "name": "Level 004",
+  "difficulty": 1,
+  "gridType": "square",
+  "width": 5,
+  "height": 5,
+  "pairs": [
+    {
+      "id": "red",
+      "label": "1",
+      "color": "#ef4444",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          5,
+          5
+        ]
+      ]
+    },
+    {
+      "id": "blue",
+      "label": "2",
+      "color": "#2563eb",
+      "points": [
+        [
+          1,
+          0
+        ],
+        [
+          5,
+          4
+        ]
+      ]
+    },
+    {
+      "id": "green",
+      "label": "3",
+      "color": "#22c55e",
+      "points": [
+        [
+          2,
+          0
+        ],
+        [
+          5,
+          3
+        ]
+      ]
+    },
+    {
+      "id": "amber",
+      "label": "4",
+      "color": "#f59e0b",
+      "points": [
+        [
+          3,
+          0
+        ],
+        [
+          5,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "pink",
+      "label": "5",
+      "color": "#ec4899",
+      "points": [
+        [
+          4,
+          0
+        ],
+        [
+          5,
+          1
+        ]
+      ]
+    }
+  ],
+  "removedEdges": [
+    "4,0|5,0",
+    "5,0|5,1"
+  ],
+  "answers": [
+    {
+      "edge": "0,0|0,1",
+      "pairId": "red"
+    },
+    {
+      "edge": "0,1|0,2",
+      "pairId": "red"
+    },
+    {
+      "edge": "0,2|0,3",
+      "pairId": "red"
+    },
+    {
+      "edge": "0,3|0,4",
+      "pairId": "red"
+    },
+    {
+      "edge": "0,4|0,5",
+      "pairId": "red"
+    },
+    {
+      "edge": "0,5|1,5",
+      "pairId": "red"
+    },
+    {
+      "edge": "1,5|2,5",
+      "pairId": "red"
+    },
+    {
+      "edge": "2,5|3,5",
+      "pairId": "red"
+    },
+    {
+      "edge": "3,5|4,5",
+      "pairId": "red"
+    },
+    {
+      "edge": "4,5|5,5",
+      "pairId": "red"
+    },
+    {
+      "edge": "4,4|5,4",
+      "pairId": "blue"
+    },
+    {
+      "edge": "3,4|4,4",
+      "pairId": "blue"
+    },
+    {
+      "edge": "2,4|3,4",
+      "pairId": "blue"
+    },
+    {
+      "edge": "1,4|2,4",
+      "pairId": "blue"
+    },
+    {
+      "edge": "2,3|3,3",
+      "pairId": "green"
+    },
+    {
+      "edge": "3,3|4,3",
+      "pairId": "green"
+    },
+    {
+      "edge": "4,3|5,3",
+      "pairId": "green"
+    },
+    {
+      "edge": "4,2|5,2",
+      "pairId": "amber"
+    },
+    {
+      "edge": "4,0|4,1",
+      "pairId": "pink"
+    },
+    {
+      "edge": "4,1|5,1",
+      "pairId": "pink"
+    },
+    {
+      "edge": "3,0|3,1",
+      "pairId": "amber"
+    },
+    {
+      "edge": "3,1|3,2",
+      "pairId": "amber"
+    },
+    {
+      "edge": "3,2|4,2",
+      "pairId": "amber"
+    },
+    {
+      "edge": "2,0|2,1",
+      "pairId": "green"
+    },
+    {
+      "edge": "2,1|2,2",
+      "pairId": "green"
+    },
+    {
+      "edge": "2,2|2,3",
+      "pairId": "green"
+    },
+    {
+      "edge": "1,2|1,3",
+      "pairId": "blue"
+    },
+    {
+      "edge": "1,1|1,2",
+      "pairId": "blue"
+    },
+    {
+      "edge": "1,0|1,1",
+      "pairId": "blue"
+    },
+    {
+      "edge": "1,3|1,4",
+      "pairId": "blue"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, keyOf, lineAttrs } from "../utils/geometry.js";
+import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, keyOf, lineAttrs, pointsFromEdgeKey } from "../utils/geometry.js";
 
 export const computed = {
     themeOptions() {
@@ -114,11 +114,10 @@ export const computed = {
     gridLines() {
       if (!this.currentLevel) return [];
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
-      return buildGridLines(this.currentLevel.width, this.currentLevel.height).filter((line) => {
-        const from = [line.attrs.x1, line.attrs.y1];
-        const to = [line.attrs.x2, line.attrs.y2];
-        return !removedEdges.has(edgeKey(from, to));
-      });
+      return getAllGridEdges(this.currentLevel.width, this.currentLevel.height)
+        .filter((edge) => !removedEdges.has(edge))
+        .map((edge) => edgeRenderData(edge))
+        .filter(Boolean);
     },
 
     renderedPathLines() {
@@ -177,12 +176,14 @@ export const computed = {
       const nodes = [];
       const filledNodes = this.getFilledNodes();
       const activeTargetKey = this.getActiveTargetKey();
+      const requiredNodes = new Set(this.getRequiredNodes());
 
       for (let y = 0; y <= this.currentLevel.height; y += 1) {
         for (let x = 0; x <= this.currentLevel.width; x += 1) {
           const key = keyOf(x, y);
           const pairId = this.endpoints[key];
           const endpoint = pairId ? this.getPair(pairId) : null;
+          if (!endpoint && !requiredNodes.has(key)) continue;
           nodes.push({
             key,
             x,
@@ -246,10 +247,19 @@ export const computed = {
 
     creatorNodes() {
       const nodes = [];
+      const connectedNodes = new Set();
+      getAllGridEdges(this.creatorState.width, this.creatorState.height).forEach((edge) => {
+        if (this.creatorState.removedEdges.includes(edge)) return;
+        const points = pointsFromEdgeKey(edge);
+        if (!points) return;
+        points.forEach(([x, y]) => connectedNodes.add(keyOf(x, y)));
+      });
+
       for (let y = 0; y <= this.creatorState.height; y += 1) {
         for (let x = 0; x <= this.creatorState.width; x += 1) {
           const pointAtNode = this.getCreatorPointAt(x, y);
           const point = pointAtNode ? this.pointDefinitions[pointAtNode.pairId] : null;
+          if (!point && !connectedNodes.has(keyOf(x, y))) continue;
           nodes.push({
             key: keyOf(x, y),
             x,
