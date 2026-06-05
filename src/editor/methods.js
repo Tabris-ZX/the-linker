@@ -11,9 +11,9 @@ export const editorMethods = {
      */
     syncEditorBounds() {
       this.editorState.gridType = normalizeGridType(this.editorState.gridType);
-      this.editorState.width = clampNumber(this.editorState.width, 2, 12);
-      this.editorState.height = clampNumber(this.editorState.height, 2, 12);
-      this.editorState.radius = clampNumber(this.editorState.radius ?? 3, 1, 8);
+      this.editorState.width = clampNumber(this.editorState.width, 2, 10);
+      this.editorState.height = clampNumber(this.editorState.height, 2, 10);
+      this.editorState.radius = clampNumber(this.editorState.radius ?? 3, 1, 6);
       const validNodes = new Set(getGridNodes(this.editorState).map(([x, y]) => keyOf(x, y)));
       this.editorState.points = Object.fromEntries(
         Object.entries(this.editorState.points).map(([pairId, points]) => [
@@ -78,6 +78,10 @@ export const editorMethods = {
      * @returns {void}
      */
     handleEditorLevelSelection(levelId) {
+      if (!this.isDeveloperMode) {
+        this.previewHint = "游客只能新建关卡并生成 JSON 投稿";
+        return;
+      }
       if (!levelId) {
         this.resetEditorEditor();
         return;
@@ -329,6 +333,9 @@ export const editorMethods = {
     writeLevelTemplate(showOutput = true) {
       this.levelOutput = JSON.stringify(this.buildEditorLevelTemplate(), null, 2);
       this.isLevelOutputVisible = showOutput;
+      if (showOutput && !this.isDeveloperMode) {
+        this.openSubmissionNoticeDialog();
+      }
     },
 
     /**
@@ -344,6 +351,9 @@ export const editorMethods = {
       try {
         await this.copyTextToClipboard(this.levelOutput);
         this.previewHint = "已复制生成的 JSON";
+        if (!this.isDeveloperMode) {
+          this.openSubmissionNoticeDialog();
+        }
       } catch {
         this.previewHint = "复制失败，请手动选择文本复制";
       }
@@ -374,10 +384,10 @@ export const editorMethods = {
         answers: Object.entries(this.editorState.answers).map(([edge, pairId]) => ({ edge, pairId }))
       };
       if (this.editorState.gridType === "equilateral-triangle") {
-        level.radius = clampNumber(this.editorState.radius, 1, 8);
+        level.radius = clampNumber(this.editorState.radius, 1, 6);
       } else {
-        level.width = this.editorState.width;
-        level.height = this.editorState.height;
+        level.width = clampNumber(this.editorState.width, 2, 10);
+        level.height = clampNumber(this.editorState.height, 2, 10);
       }
       return level;
     },
@@ -437,6 +447,11 @@ export const editorMethods = {
      * @returns {Promise<void>}
      */
     async saveEditorLevel() {
+      if (!this.isDeveloperMode) {
+        this.writeLevelTemplate(true);
+        this.previewHint = "游客不能直接保存关卡，请复制 JSON 后通过 GitHub issue 投稿";
+        return;
+      }
       // Persist the generated level through the dev-server file API.
       const validationMessage = this.validateEditorLevel();
       if (validationMessage) {

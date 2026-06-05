@@ -1,12 +1,15 @@
 ﻿import { appConfig } from "../config/index.js";
 import { areAllNodesExclusive, areAllPathsStructurallyValid, getAnswerEdges, getFilledEdges, getFilledNodes, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
-import { reviewLevelRequest } from "../router/levels.js";
+import { reviewLevelRequest, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, loadLevelFiles } from "../services/levels.js";
 import { edgeKey, fromRenderPoint, getAllGridEdges, getGridBounds, getGridNodes, isAdjacent, keyOf, positionToArray, samePoint } from "../utils/geometry.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 const LAST_LEVEL_STORAGE_KEY = "the-linker-last-level-id";
+const DEVELOPER_TOKEN_COOLDOWN_STORAGE_KEY = "the-linker-developer-token-cooldown-until";
 const GAME_STORAGE_KEY_PREFIX = "the-linker-";
+const DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS = 3;
+const DEVELOPER_TOKEN_COOLDOWN_MS = 10 * 60 * 1000;
 
 export const methods = {
     /**
@@ -107,21 +110,164 @@ export const methods = {
      *
      * @returns {void}
      */
-    unlockDeveloperMode() {
+    async unlockDeveloperMode() {
       if (this.isDeveloperMode) {
         this.developerStatusText = "开发者模式已开启";
+        return true;
+      }
+
+      this.openDeveloperTokenDialog();
+      return false;
+    },
+
+    /**
+     * 打开开发者 token 输入弹窗。
+     *
+     * @returns {void}
+     */
+    openDeveloperTokenDialog() {
+      this.appDialog = {
+        type: "developer-token",
+        title: "开发者模式",
+        message: "请输入开发者 token",
+        inputValue: "",
+        status: this.getDeveloperTokenCooldownText()
+      };
+    },
+
+    /**
+     * 提交开发者 token 并尝试解锁开发者模式。
+     *
+     * @returns {Promise<void>}
+     */
+    async submitDeveloperToken() {
+      const cooldownText = this.getDeveloperTokenCooldownText();
+      if (cooldownText) {
+        this.appDialog.status = cooldownText;
         return;
       }
 
-      const password = window.prompt("请输入开发者密码");
-      if (password === null) return;
-      if (password !== appConfig.devPassword) {
-        this.developerStatusText = "密码错误";
+      const normalizedToken = this.appDialog.inputValue.trim();
+      if (!normalizedToken) {
+        this.appDialog.status = "请输入 token";
         return;
       }
 
+      try {
+        await verifyDeveloperToken(normalizedToken);
+      } catch (error) {
+        this.developerTokenFailedAttempts += 1;
+        if (this.developerTokenFailedAttempts >= DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS) {
+          this.developerTokenCooldownUntil = Date.now() + DEVELOPER_TOKEN_COOLDOWN_MS;
+          this.saveDeveloperTokenCooldown();
+          this.appDialog.status = this.getDeveloperTokenCooldownText();
+          this.developerStatusText = "开发者 token 错误次数过多";
+          return;
+        }
+
+        const remainingAttempts = DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS - this.developerTokenFailedAttempts;
+        this.appDialog.status = `${error.message}，还可尝试 ${remainingAttempts} 次`;
+        this.developerStatusText = error.message;
+        return;
+      }
+
+      setDeveloperToken(normalizedToken);
       this.isDeveloperMode = true;
+      this.developerTokenFailedAttempts = 0;
+      this.developerTokenCooldownUntil = 0;
+      this.saveDeveloperTokenCooldown();
+      this.closeAppDialog();
+      await this.detectLevelEditorAvailability();
+      await this.loadLevels();
+      if (this.currentLevel?.id) {
+        const currentIndex = this.levels.findIndex((level) => level.id === this.currentLevel.id);
+        if (currentIndex >= 0) this.currentLevelIndex = currentIndex;
+      }
+      if (this.canUseLevelEditor) {
+        this.writeLevelTemplate(false);
+      }
       this.developerStatusText = "开发者模式已开启";
+    },
+
+    /**
+     * 获取开发者 token 冷却提示。
+     *
+     * @returns {string} 冷却提示。
+     */
+    getDeveloperTokenCooldownText() {
+      const remainingMs = this.developerTokenCooldownUntil - Date.now();
+      if (remainingMs <= 0) {
+        if (this.developerTokenCooldownUntil > 0) {
+          this.developerTokenCooldownUntil = 0;
+          this.developerTokenFailedAttempts = 0;
+          this.saveDeveloperTokenCooldown();
+        }
+        return "";
+      }
+      const remainingSeconds = Math.ceil(remainingMs / 1000);
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = String(remainingSeconds % 60).padStart(2, "0");
+      return `错误次数过多，请 ${minutes}:${seconds} 后再试`;
+    },
+
+    /**
+     * 打开投稿提示弹窗。
+     *
+     * @returns {void}
+     */
+    openSubmissionNoticeDialog() {
+      this.appDialog = {
+        type: "submission-notice",
+        title: "投稿 JSON 已生成",
+        message: "请复制 JSON，并点击右上角 GitHub 链接提交 issue 投稿。",
+        inputValue: "",
+        status: ""
+      };
+    },
+
+    /**
+     * 关闭应用弹窗。
+     *
+     * @returns {void}
+     */
+    closeAppDialog() {
+      this.appDialog = {
+        type: "",
+        title: "",
+        message: "",
+        inputValue: "",
+        status: ""
+      };
+    },
+
+    /**
+     * 读取开发者 token 冷却结束时间。
+     *
+     * @returns {void}
+     */
+    loadDeveloperTokenCooldown() {
+      try {
+        this.developerTokenCooldownUntil = Number(window.localStorage.getItem(DEVELOPER_TOKEN_COOLDOWN_STORAGE_KEY) || 0);
+      } catch {
+        this.developerTokenCooldownUntil = 0;
+      }
+    },
+
+    /**
+     * 保存开发者 token 冷却结束时间。
+     *
+     * @returns {void}
+     */
+    saveDeveloperTokenCooldown() {
+      try {
+        if (this.developerTokenCooldownUntil > 0) {
+          window.localStorage.setItem(DEVELOPER_TOKEN_COOLDOWN_STORAGE_KEY, String(this.developerTokenCooldownUntil));
+        } else {
+          window.localStorage.removeItem(DEVELOPER_TOKEN_COOLDOWN_STORAGE_KEY);
+        }
+      } catch {
+        // Ignore unavailable storage.
+      }
     },
 
     /**
@@ -138,10 +284,10 @@ export const methods = {
      * 获取关卡分类。
      *
      * @param {object} level 关卡数据。
-     * @returns {"official"|"tests"|"delete"} 关卡分类。
+     * @returns {"official"|"tests"|"deleted"} 关卡分类。
      */
     getLevelCategory(level) {
-      return ["official", "tests", "delete"].includes(level?.sourceCategory) ? level.sourceCategory : "official";
+      return ["official", "tests", "deleted"].includes(level?.sourceCategory) ? level.sourceCategory : "official";
     },
 
     /**
@@ -154,7 +300,7 @@ export const methods = {
       const labels = {
         official: "正式版",
         tests: "开发者版",
-        delete: "待删除版"
+        deleted: "待删版"
       };
       return labels[category] ?? labels.official;
     },
@@ -167,7 +313,7 @@ export const methods = {
      * @returns {number} 排序结果。
      */
     compareLevelItems(left, right) {
-      const categoryOrder = { official: 0, tests: 1, delete: 2 };
+      const categoryOrder = { official: 0, tests: 1, deleted: 2 };
       const leftLevel = left?.level ?? {};
       const rightLevel = right?.level ?? {};
       return (categoryOrder[this.getLevelCategory(leftLevel)] ?? 9) - (categoryOrder[this.getLevelCategory(rightLevel)] ?? 9)
@@ -176,7 +322,7 @@ export const methods = {
     },
 
     /**
-     * 将测试关卡收录为正式版，或移入待删除版。
+     * 将测试关卡收录为正式版，或移入待删版。
      *
      * @param {string} levelId 关卡 id。
      * @param {"include"|"reject"} action 处理动作。
@@ -190,7 +336,7 @@ export const methods = {
         if (movedIndex >= 0) {
           this.loadLevel(movedIndex);
         }
-        this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删除版";
+        this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删版";
       } catch (error) {
         this.developerStatusText = error.message;
       }
@@ -478,10 +624,12 @@ export const methods = {
      */
     getNextUncompletedLevelIndex() {
       if (!this.levels.length) return -1;
+      const currentCategory = this.getLevelCategory(this.currentLevel ?? this.levels[this.currentLevelIndex]);
 
       for (let offset = 1; offset <= this.levels.length; offset += 1) {
         const index = (this.currentLevelIndex + offset) % this.levels.length;
-        if (!this.isLevelCompleted(this.levels[index].id)) return index;
+        const level = this.levels[index];
+        if (this.getLevelCategory(level) === currentCategory && !this.isLevelCompleted(level.id)) return index;
       }
 
       return -1;

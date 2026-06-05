@@ -68,9 +68,9 @@ function normalizeLevelDifficulty(value) {
 }
 
 function normalizeLevelSourceCategory(category, sourcePath = "") {
-  if (category === "tests" || category === "delete" || category === "official") return category;
+  if (category === "tests" || category === "deleted" || category === "official") return category;
   const [directory] = String(sourcePath).split("/");
-  if (directory === "tests" || directory === "delete" || directory === "official") return directory;
+  if (directory === "tests" || directory === "deleted" || directory === "official") return directory;
   return "official";
 }
 

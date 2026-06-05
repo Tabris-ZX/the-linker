@@ -26,7 +26,7 @@ npm run dev
 - `config/styles`：地图样式、点对颜色、主题和 CSS
 - `data/levels/official`：正式关卡
 - `data/levels/tests`：测试关卡
-- `data/levels/delete`：待删除关卡
+- `data/levels/deleted`：待删关卡
 
 ## 关卡目录
 
@@ -34,9 +34,9 @@ npm run dev
 
 - 正式关卡放在 `data/levels/official`
 - 关卡编辑器和算法生成的新关卡默认放在 `data/levels/tests`
-- 测试后不收录的关卡放在 `data/levels/delete`
+- 测试后不收录的关卡放在 `data/levels/deleted`
 
-普通用户只看到正式关卡。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `dev-password` 后，可以看到开发者版和待删除版；开发者版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删除版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入密码。
+普通用户只看到正式关卡，但可以打开关卡编辑器新建关卡并生成 JSON；生成后可复制 JSON 并通过右上角 GitHub 链接提交 issue 投稿。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `server.dev-token` 后，可以看到开发者版和待删版，并保存或审核关卡；开发者版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入 token。
 
 ## 关卡去重哈希
 

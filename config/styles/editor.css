@@ -176,8 +176,8 @@ textarea:focus {
   place-items: center;
   width: var(--preview-width-limit);
   height: var(--preview-height-limit);
-  max-width: 1140px;
-  max-height: 570px;
+  max-width: 1200px;
+  max-height: 600px;
   overflow: visible;
   padding: 24px;
 }

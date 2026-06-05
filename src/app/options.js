@@ -58,12 +58,21 @@ export default {
       currentLevelIndex: -1,
       currentLevel: null,
       isLevelPickerOpen: false,
+      appDialog: {
+        type: "",
+        title: "",
+        message: "",
+        inputValue: "",
+        status: ""
+      },
       levelCategoryFilter: "all",
       levelDifficultyFilter: "all",
       levelCompletionFilter: "all",
       levelPickerScrollTop: 0,
       isDeveloperMode: false,
       developerStatusText: "",
+      developerTokenFailedAttempts: 0,
+      developerTokenCooldownUntil: 0,
       completedLevels: {},
       paths: {},
       activePair: null,
@@ -73,6 +82,8 @@ export default {
       timerStartedAt: null,
       timerElapsedMs: 0,
       timerIntervalId: null,
+      dialogTick: 0,
+      dialogIntervalId: null,
       isWon: false,
       isPersonalBest: false,
       isVictoryDismissed: false,
@@ -116,6 +127,7 @@ export default {
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
     this.loadCompletedLevels();
+    this.loadDeveloperTokenCooldown();
     await this.detectLevelEditorAvailability();
     await this.loadLevels();
     if (this.levels.length > 0) {
@@ -124,6 +136,12 @@ export default {
     if (this.canUseLevelEditor) {
       this.writeLevelTemplate(false);
     }
+    this.dialogIntervalId = window.setInterval(() => {
+      this.dialogTick += 1;
+      if (this.appDialog.type === "developer-token" && this.developerTokenCooldownUntil > 0) {
+        this.appDialog.status = this.getDeveloperTokenCooldownText();
+      }
+    }, 1000);
   },
 
   /**
@@ -133,6 +151,9 @@ export default {
    */
   beforeUnmount() {
     this.stopGameTimer();
+    if (this.dialogIntervalId) {
+      window.clearInterval(this.dialogIntervalId);
+    }
   },
 
   watch: {
@@ -142,9 +163,10 @@ export default {
      * @param {string} view 当前视图 id。
      * @returns {void}
      */
-    activeView(view) {
+    async activeView(view) {
       if (view === "editor" && !this.canUseLevelEditor) {
         this.activeView = "challenge";
+        return;
       }
     },
     /**

@@ -11,25 +11,45 @@ const appConfig = await readAppConfig();
 const levelsDir = path.resolve(projectRoot, appConfig.level?.path ?? "data/levels");
 const officialLevelsDir = path.join(levelsDir, "official");
 const testsLevelsDir = path.join(levelsDir, "tests");
-const deleteLevelsDir = path.join(levelsDir, "delete");
+const deleteLevelsDir = path.join(levelsDir, "deleted");
 const levelsHashFile = path.resolve(projectRoot, "data/levels-hash.json");
 const visitorsDir = path.resolve(projectRoot, "data/visitors");
 const visitorRecordFile = path.join(visitorsDir, "record.json");
 const backgroundDir = path.resolve(projectRoot, appConfig.background?.path ?? "background");
 const LEVEL_SAVE_INTERVAL_MS = 30_000;
+const MAX_REQUEST_BODY_BYTES = 128 * 1024;
+const CLIENT_CONFIG_MODULE_ID = "virtual:the-linker-client-config";
+const RESOLVED_CLIENT_CONFIG_MODULE_ID = `\0${CLIENT_CONFIG_MODULE_ID}`;
 let lastLevelSavedAt = 0;
 
 export default defineConfig({
   server: {
     port: normalizePort(appConfig.server?.port, 5173),
-    strictPort: false
+    strictPort: false,
+    allowedHosts: ['linker.tabriszx.site']
   },
   plugins: [
+    clientConfigPlugin(appConfig),
+    protectConfigPlugin(),
     vue(),
     backgroundAssetsPlugin(),
     {
       name: "the-linker-levels-api",
       configureServer(server) {
+        registerMiddleware(server, "/api/developer/verify", async (request, response) => {
+          try {
+            if (request.method !== "POST") {
+              sendJson(response, 405, { error: "Method not allowed" });
+              return;
+            }
+
+            if (!authorizeDeveloperRequest(request, response)) return;
+            sendJson(response, 200, { ok: true });
+          } catch (error) {
+            sendJson(response, error.statusCode ?? 500, { error: error.message, message: error.message });
+          }
+        });
+
         registerMiddleware(server, "/api/levels/review", async (request, response) => {
           try {
             if (request.method !== "POST") {
@@ -37,12 +57,13 @@ export default defineConfig({
               return;
             }
 
+            if (!authorizeDeveloperRequest(request, response)) return;
             const payload = await readRequestBody(request);
             const review = JSON.parse(payload || "{}");
             const level = await reviewTestLevel(review);
             sendJson(response, 200, level);
           } catch (error) {
-            sendJson(response, 500, { error: error.message, message: error.message });
+            sendJson(response, error.statusCode ?? 500, { error: error.message, message: error.message });
           }
         });
 
@@ -50,11 +71,15 @@ export default defineConfig({
           try {
             if (request.method === "GET") {
               const levels = await readLevels();
-              sendJson(response, 200, levels);
+              const visibleLevels = isDeveloperRequestAuthorized(request)
+                ? levels
+                : levels.filter((level) => level.sourceCategory === "official");
+              sendJson(response, 200, visibleLevels);
               return;
             }
 
             if (request.method === "POST") {
+              if (!authorizeDeveloperRequest(request, response)) return;
               const rateLimit = getLevelSaveRateLimit();
               if (rateLimit.isLimited) {
                 sendJson(response, 429, {
@@ -83,7 +108,7 @@ export default defineConfig({
 
             sendJson(response, 405, { error: "Method not allowed" });
           } catch (error) {
-            sendJson(response, 500, { error: error.message });
+            sendJson(response, error.statusCode ?? 500, { error: error.message, message: error.message });
           }
         });
       }
@@ -108,6 +133,30 @@ export default defineConfig({
     }
   ]
 });
+
+function clientConfigPlugin(config) {
+  return {
+    name: "the-linker-client-config",
+    resolveId(id) {
+      return id === CLIENT_CONFIG_MODULE_ID ? RESOLVED_CLIENT_CONFIG_MODULE_ID : null;
+    },
+    load(id) {
+      if (id !== RESOLVED_CLIENT_CONFIG_MODULE_ID) return null;
+      return `export default ${JSON.stringify(getClientAppConfig(config))};`;
+    }
+  };
+}
+
+function protectConfigPlugin() {
+  return {
+    name: "the-linker-protect-config",
+    configureServer(server) {
+      registerMiddleware(server, "/config/config.yaml", async (request, response) => {
+        sendJson(response, 403, { error: "Forbidden" });
+      });
+    }
+  };
+}
 
 function backgroundAssetsPlugin() {
   return {
@@ -160,6 +209,20 @@ function getMimeType(filePath) {
     ".webp": "image/webp"
   };
   return mimeTypes[extension] ?? "application/octet-stream";
+}
+
+function getClientAppConfig(config) {
+  return omitDeepKeys(config, new Set(["dev-token", "devToken"]));
+}
+
+function omitDeepKeys(value, omittedKeys) {
+  if (Array.isArray(value)) return value.map((item) => omitDeepKeys(item, omittedKeys));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !omittedKeys.has(key))
+      .map(([key, item]) => [key, omitDeepKeys(item, omittedKeys)])
+  );
 }
 
 async function readLevels() {
@@ -359,6 +422,38 @@ async function findLevelFilePath(levelId) {
   return files.find((filePath) => path.basename(filePath) === `${levelId}.json`) ?? "";
 }
 
+function authorizeDeveloperRequest(request, response) {
+  if (isDeveloperRequestAuthorized(request)) return true;
+  sendJson(response, 401, {
+    error: "Unauthorized",
+    message: getDeveloperToken() ? "开发者 token 无效" : "未配置 server.dev-token"
+  });
+  return false;
+}
+
+function isDeveloperRequestAuthorized(request) {
+  const expectedToken = getDeveloperToken();
+  const providedToken = getBearerToken(request);
+  return Boolean(expectedToken && providedToken && safeEqual(expectedToken, providedToken));
+}
+
+function getDeveloperToken() {
+  return String(appConfig.server?.devToken ?? appConfig.server?.["dev-token"] ?? "").trim();
+}
+
+function getBearerToken(request) {
+  const header = request.headers.authorization;
+  const authorization = Array.isArray(header) ? header[0] : header;
+  const matched = /^Bearer\s+(.+)$/i.exec(String(authorization ?? "").trim());
+  return matched?.[1]?.trim() ?? "";
+}
+
+function safeEqual(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
 async function recordVisitor(ip) {
   await fs.mkdir(visitorsDir, { recursive: true });
   const record = await readVisitorRecord();
@@ -415,7 +510,16 @@ function normalizeVisitorIp(ip) {
 function readRequestBody(request) {
   return new Promise((resolve, reject) => {
     let body = "";
+    let size = 0;
     request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_REQUEST_BODY_BYTES) {
+        const error = new Error("请求体过大");
+        error.statusCode = 413;
+        reject(error);
+        request.destroy();
+        return;
+      }
       body += chunk;
     });
     request.on("end", () => resolve(body));
@@ -515,14 +619,14 @@ function isLevelJsonFile(filePath) {
 function getLevelSourceCategory(filePath) {
   const relativePath = normalizePath(path.relative(levelsDir, filePath));
   const [directory] = relativePath.split("/");
-  if (directory === "tests" || directory === "delete" || directory === "official") return directory;
+  if (directory === "tests" || directory === "deleted" || directory === "official") return directory;
   return "official";
 }
 
 function compareLevelFilePaths(left, right) {
   const leftCategory = getLevelSourceCategory(left);
   const rightCategory = getLevelSourceCategory(right);
-  const categoryOrder = { official: 0, tests: 1, delete: 2 };
+  const categoryOrder = { official: 0, tests: 1, deleted: 2 };
   return (categoryOrder[leftCategory] ?? 9) - (categoryOrder[rightCategory] ?? 9)
     || path.basename(left).localeCompare(path.basename(right));
 }

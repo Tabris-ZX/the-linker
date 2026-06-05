@@ -1,9 +1,9 @@
 <template>
-  <section class="view view-editor" :class="{ 'is-active': app.activeView === 'editor' }" :hidden="app.activeView !== 'editor'" aria-labelledby="editor-title">
+  <section class="view view-editor" :class="{ 'is-active': app.activeView === 'editor' && app.canUseLevelEditor }" :hidden="app.activeView !== 'editor' || !app.canUseLevelEditor" aria-labelledby="editor-title">
     <section class="editor-panel app-card">
       <h2 id="editor-title">关卡编辑器</h2>
       <form class="editor-form" @submit.prevent="app.writeLevelTemplate()">
-        <label>
+        <label v-if="app.isDeveloperMode">
           修改关卡
           <select :value="app.editorEditingLevelId" @change="app.handleEditorLevelSelection($event.target.value)">
             <option value="">新建关卡</option>
@@ -26,15 +26,15 @@
         </label>
         <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
           宽度
-          <input v-model.number="app.editorState.width" type="number" min="2" max="12" @input="app.syncEditorBounds">
+          <input v-model.number="app.editorState.width" type="number" min="2" max="10" @input="app.syncEditorBounds">
         </label>
         <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
           高度
-          <input v-model.number="app.editorState.height" type="number" min="2" max="12" @input="app.syncEditorBounds">
+          <input v-model.number="app.editorState.height" type="number" min="2" max="10" @input="app.syncEditorBounds">
         </label>
         <label v-if="app.editorState.gridType === 'equilateral-triangle'">
           半径
-          <input v-model.number="app.editorState.radius" type="number" min="1" max="8" @input="app.syncEditorBounds">
+          <input v-model.number="app.editorState.radius" type="number" min="1" max="6" @input="app.syncEditorBounds">
         </label>
         <label>
           点对数量
@@ -54,7 +54,7 @@
         <div class="editor-form-actions" aria-label="关卡操作">
           <button type="submit">生成 JSON</button>
           <button type="button" @click="app.clearEditorLayout">清空内容</button>
-          <button type="button" @click="app.saveEditorLevel">保存关卡</button>
+          <button v-if="app.isDeveloperMode" type="button" @click="app.saveEditorLevel">保存关卡</button>
         </div>
       </form>
       <p class="preview-hint">{{ app.previewHint }}</p>

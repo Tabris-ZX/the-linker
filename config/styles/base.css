@@ -254,7 +254,22 @@ h2 {
   white-space: nowrap;
 }
 
+.developer-button {
+  color: var(--ink);
+  background: #d1d5db;
+}
+
+.developer-button:hover {
+  color: var(--ink);
+  background: #c4cbd4;
+}
+
 .developer-button.is-unlocked {
+  color: #fff;
+  background: var(--success);
+}
+
+.developer-button.is-unlocked:hover {
   color: #fff;
   background: var(--success);
 }

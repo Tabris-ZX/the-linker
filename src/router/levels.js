@@ -1,3 +1,5 @@
+let developerToken = "";
+
 /**
  * 获取完整关卡列表。
  *
@@ -8,7 +10,10 @@
 export async function fetchLevelFiles() {
   for (const apiUrl of getLevelApiUrls()) {
     try {
-      const response = await fetch(apiUrl, { cache: "no-cache" });
+      const response = await fetch(apiUrl, {
+        cache: "no-cache",
+        headers: getDeveloperAuthHeaders()
+      });
       if (response.ok) return response.json();
     } catch {
       // Ignore unavailable local API; the page remains usable with an empty list.
@@ -33,7 +38,8 @@ export async function saveLevelRequest(level, options = {}) {
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        ...getDeveloperAuthHeaders()
       },
       body: JSON.stringify({
         ...level,
@@ -52,7 +58,7 @@ export async function saveLevelRequest(level, options = {}) {
 }
 
 /**
- * 将测试关卡移动到正式版或待删除版目录。
+ * 将测试关卡移动到正式版或待删版目录。
  *
  * @param {string} levelId 关卡 id。
  * @param {"include"|"reject"} action 处理动作。
@@ -65,7 +71,8 @@ export async function reviewLevelRequest(levelId, action) {
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        ...getDeveloperAuthHeaders()
       },
       body: JSON.stringify({ levelId, action })
     });
@@ -86,4 +93,29 @@ function getLevelApiUrls() {
 
 function getLevelReviewApiUrls() {
   return ["/api/levels/review"];
+}
+
+export async function verifyDeveloperToken(token) {
+  const response = await fetch("/api/developer/verify", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (response.ok) return true;
+  const payload = await response.json().catch(() => ({}));
+  throw new Error(payload.message ?? "开发者 token 无效");
+}
+
+export function getDeveloperToken() {
+  return developerToken;
+}
+
+export function setDeveloperToken(token) {
+  developerToken = token;
+}
+
+function getDeveloperAuthHeaders() {
+  const token = getDeveloperToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

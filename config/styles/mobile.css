@@ -61,8 +61,7 @@
   }
 
   .developer-button {
-    grid-area: developer;
-    min-width: 44px;
+    display: none;
   }
 
   .github-link {
@@ -281,10 +280,10 @@
 
   .level-picker-panel {
     position: fixed;
-    inset: calc(var(--topbar-height) + 10px) auto auto 50%;
+    inset: calc(var(--topbar-height) + 20px) auto auto 50%;
     width: min(460px, calc(100vw - 20px));
     height: auto;
-    max-height: min(calc(100dvh - var(--topbar-height) - 20px), 560px);
+    max-height: min(calc(100dvh - var(--topbar-height) - 30px), 560px);
     padding: 12px;
     transform: translateX(-50%);
   }

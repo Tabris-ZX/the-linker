@@ -14,7 +14,8 @@
             <select v-model="app.levelCategoryFilter">
               <option value="all">全部</option>
               <option value="official">正式版</option>
-              <option value="tests">开发者版</option>
+              <option value="tests">测试版</option>
+              <option value="deleted">待删版</option>
             </select>
           </label>
           <label>

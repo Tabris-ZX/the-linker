@@ -1,10 +1,9 @@
-import configYaml from "../../config/config.yaml?raw";
+import clientConfig from "virtual:the-linker-client-config";
 import stylesMapRaw from "../../config/styles/map.json?raw";
 import stylesPoints from "../../config/styles/points.json";
 import stylesThemes from "../../config/styles/themes.json";
-import { parseSimpleYaml } from "../utils/simpleYaml.js";
 
-const rawConfig = parseSimpleYaml(configYaml);
+const rawConfig = clientConfig;
 const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
 const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "");
 
@@ -12,7 +11,6 @@ export const appConfig = {
   server: {
     port: normalizePort(rawConfig.server?.port, 5173)
   },
-  devPassword: String(rawConfig.devPassword ?? rawConfig["dev-password"] ?? rawConfig.server?.devPassword ?? rawConfig.server?.["dev-password"] ?? ""),
   level: {
     path: normalizePath(rawConfig.level?.path ?? "data/levels")
   },

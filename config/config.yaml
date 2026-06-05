@@ -1,7 +1,6 @@
 server:
   port: 5174
-
-dev-password: "123"
+  dev-token: "njuit"
 
 level:
   path: data/levels

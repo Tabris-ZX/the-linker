@@ -73,7 +73,12 @@
   overflow: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+}
+
+.level-group-list::-webkit-scrollbar {
+  display: none;
 }
 
 .level-group h2 {
@@ -289,6 +294,34 @@
   box-shadow: 10px 10px 0 rgba(32, 33, 36, 0.2);
   font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   transform: translate(-50%, -50%);
+}
+
+.app-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(32, 33, 36, 0.24);
+}
+
+.app-dialog {
+  position: fixed;
+  z-index: 21;
+}
+
+.app-dialog-form {
+  display: grid;
+  gap: 10px;
+}
+
+.app-dialog-form input {
+  width: 100%;
+  min-height: 38px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: var(--ink);
+  background: var(--paper);
+  font: 800 0.92rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
 .victory-main {

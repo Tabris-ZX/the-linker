@@ -32,6 +32,16 @@ export const computed = {
     },
 
     /**
+     * 获取开发者 token 弹窗的冷却提示。
+     *
+     * @returns {string} 冷却提示。
+     */
+    developerTokenCooldownText() {
+      this.dialogTick;
+      return this.getDeveloperTokenCooldownText();
+    },
+
+    /**
      * 格式化当前计时文本。
      *
      * @returns {string} 计时显示文本。
