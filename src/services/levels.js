@@ -9,7 +9,9 @@ import { normalizeGridType } from "../utils/geometry.js";
  * @returns {Promise<Array<object>>} 带默认样式和默认字段的关卡列表。
  */
 export async function loadLevelFiles() {
-  return (await fetchLevelFiles()).map((level) => hydrateLevel(level));
+  return (await fetchLevelFiles())
+    .filter(isValidRawLevel)
+    .map((level) => hydrateLevel(level));
 }
 
 /**
@@ -33,12 +35,15 @@ export async function saveLevelFile(level, definitions = pointDefinitions, optio
  */
 export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
   const palette = Object.values(definitions).map((point) => point.color);
+  const pairs = Array.isArray(rawLevel?.pairs) ? rawLevel.pairs : [];
   // Merge level files with JSON color config so level authors can omit repeated labels/colors.
   return {
     ...rawLevel,
     gridType: normalizeGridType(rawLevel.gridType ?? "square"),
     difficulty: normalizeLevelDifficulty(rawLevel.difficulty),
-    pairs: rawLevel.pairs.map((pair, index) => ({
+    sourcePath: rawLevel.sourcePath ?? "",
+    sourceCategory: normalizeLevelSourceCategory(rawLevel.sourceCategory, rawLevel.sourcePath),
+    pairs: pairs.map((pair, index) => ({
       ...pair,
       label: definitions[pair.id]?.label ?? pair.label ?? String(index + 1),
       color: definitions[pair.id]?.color ?? pair.color ?? palette[index % palette.length]
@@ -60,4 +65,15 @@ function normalizeLevelDifficulty(value) {
   const difficulty = Number(value);
   if (!Number.isFinite(difficulty)) return 1;
   return Math.min(5, Math.max(1, Math.round(difficulty)));
+}
+
+function normalizeLevelSourceCategory(category, sourcePath = "") {
+  if (category === "tests" || category === "delete" || category === "official") return category;
+  const [directory] = String(sourcePath).split("/");
+  if (directory === "tests" || directory === "delete" || directory === "official") return directory;
+  return "official";
+}
+
+function isValidRawLevel(level) {
+  return level && typeof level === "object" && Array.isArray(level.pairs);
 }

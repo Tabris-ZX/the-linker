@@ -1,7 +1,7 @@
 <template>
   <section class="personalization-panel app-card" aria-labelledby="personalization-title">
     <div class="personalization-header">
-      <h2 id="personalization-title">个性化</h2>
+      <h2 id="personalization-title">设置</h2>
       <button type="button" class="close-button" aria-label="关闭个性化" @click="app.closePersonalization">
         关闭
       </button>
@@ -54,6 +54,20 @@
       复制 JSON
     </button>
     <pre class="personalization-json">{{ app.mapStyleJson }}</pre>
+    <div class="personalization-data-actions">
+      <button type="button" class="personalization-clear-data-button" @click="app.requestClearGameData">
+        清空数据
+      </button>
+      <div v-if="app.isClearDataConfirming" class="personalization-confirm-actions">
+        <button type="button" class="personalization-confirm-button" @click="app.clearGameData">
+          确定
+        </button>
+        <button type="button" class="personalization-cancel-button" @click="app.cancelClearGameData">
+          取消
+        </button>
+      </div>
+      <span v-if="app.clearDataStatusText">{{ app.clearDataStatusText }}</span>
+    </div>
   </section>
 </template>
 

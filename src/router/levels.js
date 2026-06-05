@@ -1,61 +1,20 @@
-import { appConfig } from "../config/index.js";
-
 /**
  * 获取完整关卡列表。
  *
- * 开发环境优先请求 Vite 本地接口，这样能直接读取配置里的关卡目录。
- * 静态构建环境则回退到构建产物里的 index.json 和单个关卡 JSON 文件。
+ * 通过 Vite 本地接口读取配置里的关卡目录。
  *
  * @returns {Promise<Array<object>>} 关卡原始数据列表。
  */
 export async function fetchLevelFiles() {
-  if (import.meta.env.DEV) {
+  for (const apiUrl of getLevelApiUrls()) {
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}api/levels`, { cache: "no-cache" });
-      if (response.ok) {
-        return response.json();
-      }
+      const response = await fetch(apiUrl, { cache: "no-cache" });
+      if (response.ok) return response.json();
     } catch {
-      // 静态回退保证页面不通过 Vite dev server 启动时也能正常加载。
+      // Ignore unavailable local API; the page remains usable with an empty list.
     }
   }
-
-  const loadedLevels = [];
-  const levelFiles = await fetchStaticLevelIndex();
-  for (const file of levelFiles) {
-    const level = await fetchStaticLevelFile(file);
-    if (level) loadedLevels.push(level);
-  }
-
-  return loadedLevels;
-}
-
-/**
- * 读取静态构建时生成的关卡索引文件。
- *
- * @returns {Promise<string[]>} 关卡 JSON 文件名列表。
- */
-export async function fetchStaticLevelIndex() {
-  try {
-    const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/index.json`, { cache: "no-cache" });
-    if (!response.ok) return [];
-    const files = await response.json();
-    return Array.isArray(files) ? files : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * 从配置的关卡目录读取一个静态关卡文件。
- *
- * @param {string} file 关卡 JSON 文件名。
- * @returns {Promise<object|null>} 关卡原始数据；读取失败时返回 null。
- */
-export async function fetchStaticLevelFile(file) {
-  const response = await fetch(`${import.meta.env.BASE_URL}${appConfig.level.path}/${file}`, { cache: "no-cache" });
-  if (!response.ok) return null;
-  return response.json();
+  return [];
 }
 
 /**
@@ -68,21 +27,63 @@ export async function fetchStaticLevelFile(file) {
  * @returns {Promise<object>} 服务端写入后的关卡数据。
  */
 export async function saveLevelRequest(level, options = {}) {
-  const response = await fetch("/api/levels", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      ...level,
-      saveMode: options.mode ?? "create"
-    })
-  });
+  let lastError = {};
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message ?? "保存失败，请确认正在通过 npm run dev 启动项目");
+  for (const apiUrl of getLevelApiUrls()) {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...level,
+        saveMode: options.mode ?? "create"
+      })
+    });
+
+    if (response.ok) {
+      return response.json();
+    }
+
+    lastError = await response.json().catch(() => ({}));
   }
 
-  return response.json();
+  throw new Error(lastError.message ?? "保存失败，请确认正在通过 npm run dev 启动项目");
+}
+
+/**
+ * 将测试关卡移动到正式版或待删除版目录。
+ *
+ * @param {string} levelId 关卡 id。
+ * @param {"include"|"reject"} action 处理动作。
+ * @returns {Promise<object>} 移动后的关卡数据。
+ */
+export async function reviewLevelRequest(levelId, action) {
+  let lastError = {};
+
+  for (const apiUrl of getLevelReviewApiUrls()) {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ levelId, action })
+    });
+
+    if (response.ok) {
+      return response.json();
+    }
+
+    lastError = await response.json().catch(() => ({}));
+  }
+
+  throw new Error(lastError.message ?? "处理失败，请确认正在通过 npm run dev 启动项目");
+}
+
+function getLevelApiUrls() {
+  return ["/api/levels"];
+}
+
+function getLevelReviewApiUrls() {
+  return ["/api/levels/review"];
 }

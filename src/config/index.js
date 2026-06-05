@@ -12,6 +12,7 @@ export const appConfig = {
   server: {
     port: normalizePort(rawConfig.server?.port, 5173)
   },
+  devPassword: String(rawConfig.devPassword ?? rawConfig["dev-password"] ?? rawConfig.server?.devPassword ?? rawConfig.server?.["dev-password"] ?? ""),
   level: {
     path: normalizePath(rawConfig.level?.path ?? "data/levels")
   },

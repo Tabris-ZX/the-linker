@@ -1,12 +1,12 @@
-/* Custom level creator layout and preview-board controls. */
-.view-creator {
+/* Custom level editor layout and preview-board controls. */
+.view-editor {
   grid-template-columns: minmax(0, 1280px);
   justify-content: center;
   min-height: calc(var(--page-height) - var(--topbar-height));
   overflow: visible;
 }
 
-.app-shell:has(.view-creator.is-active) {
+.app-shell:has(.view-editor.is-active) {
   height: auto;
   min-height: calc(var(--page-height) - var(--topbar-height));
   overflow: visible;
@@ -16,36 +16,46 @@
   min-height: calc(var(--page-height) - var(--topbar-height) - 20px);
   padding: 16px 22px;
   overflow: visible;
+  transform: translateY(5px);
 }
 
-.creator-workspace {
+.editor-workspace {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
   align-items: start;
 }
 
-.creator-form {
+.editor-form {
   display: grid;
-  grid-template-columns: 180px 114px 130px repeat(4, 88px) 142px 112px 112px;
+  grid-template-columns: 180px 114px 130px repeat(4, 88px) 180px;
   gap: 8px;
   align-items: end;
   margin-bottom: 8px;
 }
 
-.creator-form label {
+.editor-form label {
   display: grid;
   gap: 6px;
   color: var(--muted);
   font-size: 0.95rem;
 }
 
-.creator-form button {
+.editor-form button {
   width: 100%;
   min-height: 42px;
   align-self: end;
   justify-self: stretch;
   padding: 8px 12px;
+}
+
+.editor-form-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 180px));
+  gap: 10px;
+  justify-content: start;
+  align-items: end;
 }
 
 input,
@@ -78,8 +88,7 @@ textarea:focus {
 }
 
 .level-output-panel {
-  max-height: clamp(72px, calc(var(--page-height) - var(--topbar-height) - 642px), 168px);
-  margin-bottom: 8px;
+  margin-top: 10px;
   border: 2px solid var(--ink);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
@@ -100,13 +109,31 @@ textarea:focus {
   color: var(--ink);
 }
 
-.level-output-panel pre {
-  max-height: clamp(40px, calc(var(--page-height) - var(--topbar-height) - 686px), 124px);
+.level-output-header button {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.level-output-textarea {
+  display: block;
+  min-height: 168px;
+  max-height: 280px;
   margin: 0;
-  overflow: auto;
   padding: 10px;
   font: 700 0.78rem/1.35 Consolas, "Courier New", monospace;
-  white-space: pre-wrap;
+  resize: vertical;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  white-space: pre;
+  overflow: auto;
+}
+
+.level-output-textarea:focus {
+  border-color: transparent;
+  outline-offset: -3px;
 }
 
 .pair-picker {

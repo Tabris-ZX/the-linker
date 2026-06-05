@@ -1,28 +1,29 @@
-﻿import { saveLevelFile } from "../services/levels.js";
-import { getAllGridEdges, getGridNodes, getGridRadius, isAdjacent, keyOf, normalizeGridType, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
+﻿import { isEditorEdgeInBounds, validateEditorLevelAnswer } from "./checker.js";
+import { saveLevelFile } from "../services/levels.js";
+import { getGridNodes, getGridRadius, keyOf, normalizeGridType, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
-export const creatorMethods = {
+export const editorMethods = {
     /**
      * 同步编辑器网格边界，并清理越界点、边和答案。
      *
      * @returns {void}
      */
-    syncCreatorBounds() {
-      this.creatorState.gridType = normalizeGridType(this.creatorState.gridType);
-      this.creatorState.width = clampNumber(this.creatorState.width, 2, 12);
-      this.creatorState.height = clampNumber(this.creatorState.height, 2, 12);
-      this.creatorState.radius = clampNumber(this.creatorState.radius ?? 3, 1, 8);
-      const validNodes = new Set(getGridNodes(this.creatorState).map(([x, y]) => keyOf(x, y)));
-      this.creatorState.points = Object.fromEntries(
-        Object.entries(this.creatorState.points).map(([pairId, points]) => [
+    syncEditorBounds() {
+      this.editorState.gridType = normalizeGridType(this.editorState.gridType);
+      this.editorState.width = clampNumber(this.editorState.width, 2, 12);
+      this.editorState.height = clampNumber(this.editorState.height, 2, 12);
+      this.editorState.radius = clampNumber(this.editorState.radius ?? 3, 1, 8);
+      const validNodes = new Set(getGridNodes(this.editorState).map(([x, y]) => keyOf(x, y)));
+      this.editorState.points = Object.fromEntries(
+        Object.entries(this.editorState.points).map(([pairId, points]) => [
           pairId,
           points.filter(([x, y]) => validNodes.has(keyOf(x, y))).slice(0, 2)
         ])
       );
-      this.creatorState.removedEdges = this.creatorState.removedEdges.filter((edge) => this.isCreatorEdgeInBounds(edge));
-      this.creatorState.answers = Object.fromEntries(
-        Object.entries(this.creatorState.answers).filter(([, pairId]) => this.creatorState.pairIds.includes(pairId))
+      this.editorState.removedEdges = this.editorState.removedEdges.filter((edge) => this.isEditorEdgeInBounds(edge));
+      this.editorState.answers = Object.fromEntries(
+        Object.entries(this.editorState.answers).filter(([, pairId]) => this.editorState.pairIds.includes(pairId))
       );
       this.writeLevelTemplate(false);
     },
@@ -32,20 +33,20 @@ export const creatorMethods = {
      *
      * @returns {void}
      */
-    syncCreatorPairCount() {
-      this.creatorPairCount = clampNumber(this.creatorPairCount, 1, 12);
-      const pairIds = Object.keys(this.pointDefinitions).slice(0, this.creatorPairCount);
-      this.creatorState.pairIds = pairIds;
-      if (!pairIds.includes(this.creatorState.activePairId)) {
-        this.creatorState.activePairId = pairIds[0];
+    syncEditorPairCount() {
+      this.editorPairCount = clampNumber(this.editorPairCount, 1, 12);
+      const pairIds = Object.keys(this.pointDefinitions).slice(0, this.editorPairCount);
+      this.editorState.pairIds = pairIds;
+      if (!pairIds.includes(this.editorState.activePairId)) {
+        this.editorState.activePairId = pairIds[0];
       }
-      this.creatorState.points = Object.fromEntries(
-        Object.entries(this.creatorState.points).filter(([pairId]) => pairIds.includes(pairId))
+      this.editorState.points = Object.fromEntries(
+        Object.entries(this.editorState.points).filter(([pairId]) => pairIds.includes(pairId))
       );
-      this.creatorState.answers = Object.fromEntries(
-        Object.entries(this.creatorState.answers).filter(([, pairId]) => pairIds.includes(pairId))
+      this.editorState.answers = Object.fromEntries(
+        Object.entries(this.editorState.answers).filter(([, pairId]) => pairIds.includes(pairId))
       );
-      this.setCreatorModeHint();
+      this.setEditorModeHint();
       this.writeLevelTemplate(false);
     },
 
@@ -54,8 +55,8 @@ export const creatorMethods = {
      *
      * @returns {void}
      */
-    syncCreatorDifficulty() {
-      this.creatorState.difficulty = clampNumber(this.creatorState.difficulty, 1, 5);
+    syncEditorDifficulty() {
+      this.editorState.difficulty = clampNumber(this.editorState.difficulty, 1, 5);
       this.writeLevelTemplate(false);
     },
 
@@ -64,9 +65,9 @@ export const creatorMethods = {
      *
      * @returns {void}
      */
-    syncCreatorName() {
-      if (this.creatorEditingLevelId) return;
-      this.creatorState.name = String(this.creatorState.name ?? "");
+    syncEditorName() {
+      if (this.editorEditingLevelId) return;
+      this.editorState.name = String(this.editorState.name ?? "");
       this.writeLevelTemplate(false);
     },
 
@@ -76,9 +77,9 @@ export const creatorMethods = {
      * @param {string} levelId 要编辑的关卡 id。
      * @returns {void}
      */
-    handleCreatorLevelSelection(levelId) {
+    handleEditorLevelSelection(levelId) {
       if (!levelId) {
-        this.resetCreatorEditor();
+        this.resetEditorEditor();
         return;
       }
 
@@ -88,7 +89,7 @@ export const creatorMethods = {
         return;
       }
 
-      this.loadCreatorLevel(level);
+      this.loadEditorLevel(level);
     },
 
     /**
@@ -96,10 +97,10 @@ export const creatorMethods = {
      *
      * @returns {void}
      */
-    resetCreatorEditor() {
-      const pairIds = Object.keys(this.pointDefinitions).slice(0, clampNumber(this.creatorPairCount, 1, 12));
-      this.creatorEditingLevelId = "";
-      this.creatorState = {
+    resetEditorEditor() {
+      const pairIds = Object.keys(this.pointDefinitions).slice(0, clampNumber(this.editorPairCount, 1, 12));
+      this.editorEditingLevelId = "";
+      this.editorState = {
         name: "",
         gridType: "square",
         difficulty: 1,
@@ -108,13 +109,13 @@ export const creatorMethods = {
         radius: 3,
         pairIds,
         activePairId: pairIds[0],
-        mode: this.creatorState.mode ?? "mark",
+        mode: this.editorState.mode ?? "mark",
         points: {},
         removedEdges: [],
         answers: {}
       };
-      this.creatorPairCount = pairIds.length;
-      this.setCreatorModeHint();
+      this.editorPairCount = pairIds.length;
+      this.setEditorModeHint();
       this.writeLevelTemplate(false);
     },
 
@@ -124,11 +125,11 @@ export const creatorMethods = {
      * @param {object} level 关卡数据。
      * @returns {void}
      */
-    loadCreatorLevel(level) {
+    loadEditorLevel(level) {
       const pairIds = level.pairs.map((pair) => pair.id);
-      this.creatorEditingLevelId = level.id;
-      this.creatorPairCount = pairIds.length;
-      this.creatorState = {
+      this.editorEditingLevelId = level.id;
+      this.editorPairCount = pairIds.length;
+      this.editorState = {
         name: level.name ?? "",
         gridType: normalizeGridType(level.gridType ?? "square"),
         difficulty: clampNumber(level.difficulty, 1, 5),
@@ -137,15 +138,15 @@ export const creatorMethods = {
         radius: getGridRadius(level),
         pairIds,
         activePairId: pairIds[0],
-        mode: this.creatorState.mode ?? "mark",
+        mode: this.editorState.mode ?? "mark",
         points: Object.fromEntries(level.pairs.map((pair) => [pair.id, pair.points.map(([x, y]) => [x, y]).slice(0, 2)])),
         removedEdges: [...(level.removedEdges ?? [])],
         answers: Object.fromEntries((level.answers ?? []).map((answer) => {
-          if (typeof answer === "string") return [answer, this.inferCreatorAnswerPairId(answer, level) ?? pairIds[0]];
+          if (typeof answer === "string") return [answer, this.inferEditorAnswerPairId(answer, level) ?? pairIds[0]];
           return [answer.edge, answer.pairId];
         }).filter(([edge, pairId]) => edge && pairIds.includes(pairId)))
       };
-      this.setCreatorModeHint();
+      this.setEditorModeHint();
       this.writeLevelTemplate(false);
       this.previewHint = `正在修改 ${level.id}，名称和 id 将保持不变`;
     },
@@ -157,7 +158,7 @@ export const creatorMethods = {
      * @param {object} level 关卡数据。
      * @returns {string} 推断出的点对 id。
      */
-    inferCreatorAnswerPairId(edge, level) {
+    inferEditorAnswerPairId(edge, level) {
       const points = pointsFromEdgeKey(edge);
       if (!points) return "";
       const endpointKeys = new Map();
@@ -178,9 +179,22 @@ export const creatorMethods = {
      * @param {string} pairId 点对 id。
      * @returns {void}
      */
-    selectCreatorPair(pairId) {
-      this.creatorState.activePairId = pairId;
-      this.setCreatorModeHint();
+    selectEditorPair(pairId) {
+      this.editorState.activePairId = pairId;
+      this.setEditorModeHint();
+    },
+
+    /**
+     * 清空当前编辑器中的所有点位、禁用边和答案线路。
+     *
+     * @returns {void}
+     */
+    clearEditorLayout() {
+      this.editorState.points = {};
+      this.editorState.removedEdges = [];
+      this.editorState.answers = {};
+      this.previewHint = "已清空当前所有点位和连线";
+      this.writeLevelTemplate(false);
     },
 
     /**
@@ -189,17 +203,17 @@ export const creatorMethods = {
      * @param {MouseEvent} event 鼠标事件。
      * @returns {void}
      */
-    handleCreatorPreviewClick(event) {
+    handleEditorPreviewClick(event) {
       const node = event.target.closest("[data-preview-node]");
       if (node) {
         const [x, y] = pointFromKey(node.dataset.previewNode);
-        this.toggleCreatorPoint(x, y);
+        this.toggleEditorPoint(x, y);
         return;
       }
 
       const edge = event.target.closest("[data-preview-edge]");
       if (!edge) return;
-      this.toggleCreatorEdge(edge.dataset.previewEdge);
+      this.toggleEditorEdge(edge.dataset.previewEdge);
     },
 
     /**
@@ -209,20 +223,20 @@ export const creatorMethods = {
      * @param {number} y 节点纵坐标。
      * @returns {void}
      */
-    toggleCreatorPoint(x, y) {
-      const occupied = this.getCreatorPointAt(x, y);
+    toggleEditorPoint(x, y) {
+      const occupied = this.getEditorPointAt(x, y);
       if (occupied) {
-        const points = this.creatorState.points[occupied.pairId] ?? [];
-        this.creatorState.points[occupied.pairId] = points.filter((point) => point[0] !== x || point[1] !== y);
+        const points = this.editorState.points[occupied.pairId] ?? [];
+        this.editorState.points[occupied.pairId] = points.filter((point) => point[0] !== x || point[1] !== y);
         this.previewHint = `已删除 ${this.getPointLabel(occupied.pairId)} 号点的一个端点`;
         this.writeLevelTemplate(false);
         return;
       }
 
-      const points = [...(this.creatorState.points[this.creatorState.activePairId] ?? [])];
+      const points = [...(this.editorState.points[this.editorState.activePairId] ?? [])];
       if (points.length >= 2) points.shift();
-      this.creatorState.points[this.creatorState.activePairId] = [...points, [x, y]];
-      this.previewHint = `${this.getPointLabel(this.creatorState.activePairId)} 号点已放置 ${Math.min(points.length + 1, 2)}/2`;
+      this.editorState.points[this.editorState.activePairId] = [...points, [x, y]];
+      this.previewHint = `${this.getPointLabel(this.editorState.activePairId)} 号点已放置 ${Math.min(points.length + 1, 2)}/2`;
       this.writeLevelTemplate(false);
     },
 
@@ -232,37 +246,37 @@ export const creatorMethods = {
      * @param {string} edge 边 key。
      * @returns {void}
      */
-    toggleCreatorEdge(edge) {
+    toggleEditorEdge(edge) {
       // Edge mode removes travel; mark mode records the puzzle answer.
-      if (!this.isCreatorEdgeInBounds(edge)) return;
+      if (!this.isEditorEdgeInBounds(edge)) return;
 
-      if (this.creatorState.mode === "edge") {
-        if (this.creatorState.removedEdges.includes(edge)) {
-          this.creatorState.removedEdges = this.creatorState.removedEdges.filter((item) => item !== edge);
+      if (this.editorState.mode === "edge") {
+        if (this.editorState.removedEdges.includes(edge)) {
+          this.editorState.removedEdges = this.editorState.removedEdges.filter((item) => item !== edge);
           this.previewHint = "已恢复这条边";
         } else {
-          this.creatorState.removedEdges = [...this.creatorState.removedEdges, edge];
-          this.creatorState.answers = omitKey(this.creatorState.answers, edge);
+          this.editorState.removedEdges = [...this.editorState.removedEdges, edge];
+          this.editorState.answers = omitKey(this.editorState.answers, edge);
           this.previewHint = "已移除这条边，挑战时无法通行";
         }
         this.writeLevelTemplate(false);
         return;
       }
 
-      if (this.creatorState.removedEdges.includes(edge)) {
+      if (this.editorState.removedEdges.includes(edge)) {
         this.previewHint = "被移除的边不能标记为答案线路";
         return;
       }
 
-      if (this.creatorState.answers[edge] === this.creatorState.activePairId) {
-        this.creatorState.answers = omitKey(this.creatorState.answers, edge);
-        this.previewHint = `已取消 ${this.getPointLabel(this.creatorState.activePairId)} 号线标记`;
+      if (this.editorState.answers[edge] === this.editorState.activePairId) {
+        this.editorState.answers = omitKey(this.editorState.answers, edge);
+        this.previewHint = `已取消 ${this.getPointLabel(this.editorState.activePairId)} 号线标记`;
       } else {
-        this.creatorState.answers = {
-          ...this.creatorState.answers,
-          [edge]: this.creatorState.activePairId
+        this.editorState.answers = {
+          ...this.editorState.answers,
+          [edge]: this.editorState.activePairId
         };
-        this.previewHint = `已标记 ${this.getPointLabel(this.creatorState.activePairId)} 号答案线路`;
+        this.previewHint = `已标记 ${this.getPointLabel(this.editorState.activePairId)} 号答案线路`;
       }
       this.writeLevelTemplate(false);
     },
@@ -274,8 +288,8 @@ export const creatorMethods = {
      * @param {number} y 节点纵坐标。
      * @returns {{ pairId: string, index: number }|null} 端点信息。
      */
-    getCreatorPointAt(x, y) {
-      for (const [pairId, points] of Object.entries(this.creatorState.points)) {
+    getEditorPointAt(x, y) {
+      for (const [pairId, points] of Object.entries(this.editorState.points)) {
         const index = points.findIndex((point) => point[0] === x && point[1] === y);
         if (index >= 0) return { pairId, index };
       }
@@ -288,12 +302,8 @@ export const creatorMethods = {
      * @param {string} edge 边 key。
      * @returns {boolean} 是否是有效边。
      */
-    isCreatorEdgeInBounds(edge) {
-      const points = pointsFromEdgeKey(edge);
-      if (!points) return false;
-      const validNodes = new Set(getGridNodes(this.creatorState).map(([x, y]) => keyOf(x, y)));
-      return points.every(([x, y]) => validNodes.has(keyOf(x, y)))
-        && isAdjacent(points[0], points[1], this.creatorState.gridType);
+    isEditorEdgeInBounds(edge) {
+      return isEditorEdgeInBounds(this.editorState, edge);
     },
 
     /**
@@ -301,13 +311,13 @@ export const creatorMethods = {
      *
      * @returns {void}
      */
-    setCreatorModeHint() {
-      const label = this.pointDefinitions[this.creatorState.activePairId]?.label ?? "";
+    setEditorModeHint() {
+      const label = this.pointDefinitions[this.editorState.activePairId]?.label ?? "";
       const hints = {
         edge: "移除模式：点击格子边切换禁用，挑战地图中会显示为空白。",
         mark: `标记模式：当前颜色为 ${label} 号，点击格子边标出答案线路。`
       };
-      this.previewHint = `点交点可放置或删除色点；${hints[this.creatorState.mode] ?? hints.edge}`;
+      this.previewHint = `点交点可放置或删除色点；${hints[this.editorState.mode] ?? hints.edge}`;
     },
 
     /**
@@ -317,8 +327,26 @@ export const creatorMethods = {
      * @returns {void}
      */
     writeLevelTemplate(showOutput = true) {
-      this.levelOutput = JSON.stringify(this.buildCreatorLevelTemplate(), null, 2);
+      this.levelOutput = JSON.stringify(this.buildEditorLevelTemplate(), null, 2);
       this.isLevelOutputVisible = showOutput;
+    },
+
+    /**
+     * 复制当前编辑器生成的关卡 JSON。
+     *
+     * @returns {Promise<void>}
+     */
+    async copyEditorLevelOutput() {
+      if (!this.levelOutput) {
+        this.writeLevelTemplate(true);
+      }
+
+      try {
+        await this.copyTextToClipboard(this.levelOutput);
+        this.previewHint = "已复制生成的 JSON";
+      } catch {
+        this.previewHint = "复制失败，请手动选择文本复制";
+      }
     },
 
     /**
@@ -327,29 +355,29 @@ export const creatorMethods = {
      * @param {string} [id] 关卡 id，默认使用编辑 id 或自动生成 id。
      * @returns {object} 关卡模板。
      */
-    buildCreatorLevelTemplate(id = this.creatorEditingLevelId || this.getCreatorDefaultId()) {
+    buildEditorLevelTemplate(id = this.editorEditingLevelId || this.getEditorDefaultId()) {
       // Build the exact JSON saved into levels/ and used by the challenge screen.
-      const editingLevel = this.creatorEditingLevelId ? this.levels.find((level) => level.id === this.creatorEditingLevelId) : null;
-      const name = editingLevel?.name ?? (this.creatorState.name.trim() || this.getDefaultCreatorLevelName(id));
+      const editingLevel = this.editorEditingLevelId ? this.levels.find((level) => level.id === this.editorEditingLevelId) : null;
+      const name = editingLevel?.name ?? (this.editorState.name.trim() || this.getDefaultEditorLevelName(id));
       const level = {
         id,
         name,
-        difficulty: clampNumber(this.creatorState.difficulty, 1, 5),
-        gridType: this.creatorState.gridType,
-        pairs: this.creatorState.pairIds.map((pairId) => ({
+        difficulty: clampNumber(this.editorState.difficulty, 1, 5),
+        gridType: this.editorState.gridType,
+        pairs: this.editorState.pairIds.map((pairId) => ({
           id: pairId,
           label: this.pointDefinitions[pairId]?.label ?? pairId,
           color: this.pointDefinitions[pairId]?.color ?? "var(--accent)",
-          points: this.getCreatorPairPoints(pairId)
+          points: this.getEditorPairPoints(pairId)
         })),
-        removedEdges: [...this.creatorState.removedEdges],
-        answers: Object.entries(this.creatorState.answers).map(([edge, pairId]) => ({ edge, pairId }))
+        removedEdges: [...this.editorState.removedEdges],
+        answers: Object.entries(this.editorState.answers).map(([edge, pairId]) => ({ edge, pairId }))
       };
-      if (this.creatorState.gridType === "equilateral-triangle") {
-        level.radius = clampNumber(this.creatorState.radius, 1, 8);
+      if (this.editorState.gridType === "equilateral-triangle") {
+        level.radius = clampNumber(this.editorState.radius, 1, 8);
       } else {
-        level.width = this.creatorState.width;
-        level.height = this.creatorState.height;
+        level.width = this.editorState.width;
+        level.height = this.editorState.height;
       }
       return level;
     },
@@ -359,10 +387,10 @@ export const creatorMethods = {
      *
      * @returns {string} 默认关卡 id。
      */
-    getCreatorDefaultId() {
-      return this.creatorState.gridType === "equilateral-triangle"
-        ? `custom-r${this.creatorState.radius}-${this.creatorState.pairIds.length}`
-        : `custom-${this.creatorState.width}x${this.creatorState.height}-${this.creatorState.pairIds.length}`;
+    getEditorDefaultId() {
+      return this.editorState.gridType === "equilateral-triangle"
+        ? `custom-r${this.editorState.radius}-${this.editorState.pairIds.length}`
+        : `custom-${this.editorState.width}x${this.editorState.height}-${this.editorState.pairIds.length}`;
     },
 
     /**
@@ -371,8 +399,8 @@ export const creatorMethods = {
      * @param {string} pairId 点对 id。
      * @returns {Array<[number, number]>} 点对端点。
      */
-    getCreatorPairPoints(pairId) {
-      const placedPoints = this.creatorState.points[pairId] ?? [];
+    getEditorPairPoints(pairId) {
+      const placedPoints = this.editorState.points[pairId] ?? [];
       if (placedPoints.length === 2) return placedPoints;
 
       const answerPoints = this.getAnswerEndpoints(pairId);
@@ -387,7 +415,7 @@ export const creatorMethods = {
      */
     getAnswerEndpoints(pairId) {
       const degree = new Map();
-      Object.entries(this.creatorState.answers).forEach(([edge, answerPairId]) => {
+      Object.entries(this.editorState.answers).forEach(([edge, answerPairId]) => {
         if (answerPairId !== pairId) return;
         const points = pointsFromEdgeKey(edge);
         if (!points) return;
@@ -408,19 +436,19 @@ export const creatorMethods = {
      *
      * @returns {Promise<void>}
      */
-    async saveCreatorLevel() {
+    async saveEditorLevel() {
       // Persist the generated level through the dev-server file API.
-      const validationMessage = this.validateCreatorLevel();
+      const validationMessage = this.validateEditorLevel();
       if (validationMessage) {
         this.previewHint = validationMessage;
         return;
       }
 
-      const template = this.buildCreatorLevelTemplate();
+      const template = this.buildEditorLevelTemplate();
       let savedLevel;
       try {
         savedLevel = await saveLevelFile(template, this.pointDefinitions, {
-          mode: this.creatorEditingLevelId ? "update" : "create"
+          mode: this.editorEditingLevelId ? "update" : "create"
         });
       } catch (error) {
         this.previewHint = error.message;
@@ -432,9 +460,9 @@ export const creatorMethods = {
       this.loadLevel(index >= 0 ? index : this.levels.length - 1);
       this.levelOutput = JSON.stringify(savedLevel, null, 2);
       this.isLevelOutputVisible = true;
-      this.previewHint = this.creatorEditingLevelId
+      this.previewHint = this.editorEditingLevelId
         ? `已更新 levels/${savedLevel.id}.json`
-        : `已保存到 levels/${savedLevel.id}.json，并加入关卡入口`;
+        : `已保存到 levels/tests/${savedLevel.id}.json，并加入测试版`;
     },
 
     /**
@@ -453,7 +481,7 @@ export const creatorMethods = {
      * @param {string} id 关卡 id。
      * @returns {string} 默认名称。
      */
-    getDefaultCreatorLevelName(id) {
+    getDefaultEditorLevelName(id) {
       return id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level";
     },
 
@@ -462,99 +490,11 @@ export const creatorMethods = {
      *
      * @returns {string} 校验失败提示；通过时为空字符串。
      */
-    validateCreatorLevel() {
-      const endpointEntries = this.creatorState.pairIds.map((pairId) => [pairId, this.getCreatorPairPoints(pairId)]);
-      const incompletePair = endpointEntries.find(([, points]) => points.length !== 2);
-      if (incompletePair) {
-        return `请先给 ${this.getPointLabel(incompletePair[0])} 号点放满两个端点`;
-      }
-
-      const removedEdges = new Set(this.creatorState.removedEdges);
-      const pairGraphs = new Map();
-      const degree = new Map();
-      const usedEdges = Object.keys(this.creatorState.answers);
-      const openNodeKeys = new Set();
-      const endpointKeys = new Set();
-
-      if (usedEdges.length === 0) {
-        return "请先标记答案线路";
-      }
-
-      getAllGridEdges(this.creatorState).forEach((edge) => {
-        if (removedEdges.has(edge)) return;
-        const points = pointsFromEdgeKey(edge);
-        if (!points) return;
-        points.forEach(([x, y]) => openNodeKeys.add(keyOf(x, y)));
-      });
-
-      for (const edge of usedEdges) {
-        if (!this.isCreatorEdgeInBounds(edge)) return `答案线路 ${edge} 不在当前地图范围内`;
-        if (removedEdges.has(edge)) return `答案线路 ${edge} 已被移除，不能保存`;
-
-        const points = pointsFromEdgeKey(edge);
-        if (!points) return `答案线路 ${edge} 格式无效`;
-
-        const [from, to] = points.map(([x, y]) => keyOf(x, y));
-        const pairId = this.creatorState.answers[edge];
-        if (!this.creatorState.pairIds.includes(pairId)) return `答案线路 ${edge} 使用了无效点对`;
-        if (!pairGraphs.has(pairId)) pairGraphs.set(pairId, new Map());
-        const pairGraph = pairGraphs.get(pairId);
-        if (!pairGraph.has(from)) pairGraph.set(from, new Set());
-        if (!pairGraph.has(to)) pairGraph.set(to, new Set());
-        pairGraph.get(from).add(to);
-        pairGraph.get(to).add(from);
-
-        degree.set(from, (degree.get(from) ?? 0) + 1);
-        degree.set(to, (degree.get(to) ?? 0) + 1);
-      }
-
-      for (const [, points] of endpointEntries) {
-        points.forEach(([x, y]) => endpointKeys.add(keyOf(x, y)));
-      }
-
-      for (const [x, y] of getGridNodes(this.creatorState)) {
-          const nodeKey = keyOf(x, y);
-          const nodeDegree = degree.get(nodeKey) ?? 0;
-          if (endpointKeys.has(nodeKey)) continue;
-          if (!openNodeKeys.has(nodeKey)) {
-            if (nodeDegree !== 0) return `节点 ${x},${y} 周围边已全部移除，不能接入答案线路`;
-            continue;
-          }
-          if (nodeDegree !== 2) return `节点 ${x},${y} 需要连接两条答案线路，或移除周围所有边`;
-      }
-
-      for (const [pairId, points] of endpointEntries) {
-        const [start, end] = points.map(([x, y]) => keyOf(x, y));
-        const pairGraph = pairGraphs.get(pairId) ?? new Map();
-        if (!pairGraph.has(start) || !pairGraph.has(end)) return `${this.getPointLabel(pairId)} 号点没有接入答案线路`;
-        if (!this.areCreatorNodesConnected(start, end, pairGraph)) {
-          return `${this.getPointLabel(pairId)} 号点的两个端点没有连通`;
-        }
-      }
-
-      return "";
-    },
-
-    /**
-     * 判断答案图中两个节点是否连通。
-     *
-     * @param {string} start 起始节点 key。
-     * @param {string} end 目标节点 key。
-     * @param {Map<string, Set<string>>} graph 邻接表。
-     * @returns {boolean} 是否连通。
-     */
-    areCreatorNodesConnected(start, end, graph) {
-      const queue = [start];
-      const visited = new Set(queue);
-      while (queue.length > 0) {
-        const current = queue.shift();
-        if (current === end) return true;
-        for (const next of graph.get(current) ?? []) {
-          if (visited.has(next)) continue;
-          visited.add(next);
-          queue.push(next);
-        }
-      }
-      return false;
+    validateEditorLevel() {
+      return validateEditorLevelAnswer(
+        this.editorState,
+        (pairId) => this.getEditorPairPoints(pairId),
+        (pairId) => this.getPointLabel(pairId)
+      );
     }
 };

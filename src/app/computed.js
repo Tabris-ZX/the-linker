@@ -28,7 +28,7 @@ export const computed = {
      * @returns {Array<object>} 当前可显示的标签页。
      */
     visibleViewTabs() {
-      return this.viewTabs.filter((tab) => tab.id !== "creator" || this.canUseLevelEditor);
+      return this.viewTabs.filter((tab) => tab.id !== "editor" || this.canUseLevelEditor);
     },
 
     /**
@@ -69,13 +69,15 @@ export const computed = {
     },
 
     /**
-     * 根据难度和完成状态过滤关卡。
+     * 根据版本、难度和完成状态过滤关卡。
      *
      * @returns {Array<{ level: object, index: number }>} 过滤后的关卡项。
      */
     filteredLevelItems() {
       return this.levels
         .map((level, index) => ({ level, index }))
+        .filter(({ level }) => this.isLevelCategoryVisible(level))
+        .filter(({ level }) => this.levelCategoryFilter === "all" || this.getLevelCategory(level) === this.levelCategoryFilter)
         .filter(({ level }) => this.levelDifficultyFilter === "all" || this.normalizeLevelDifficulty(level.difficulty) === Number(this.levelDifficultyFilter))
         .filter(({ level }) => {
           if (this.levelCompletionFilter === "all") return true;
@@ -92,12 +94,12 @@ export const computed = {
     groupedFilteredLevels() {
       const groups = new Map();
       this.filteredLevelItems.forEach((item) => {
-        const difficulty = this.normalizeLevelDifficulty(item.level.difficulty);
+        const difficulty = `${this.getLevelCategoryLabel(item.level.sourceCategory)} · 难度 ${this.normalizeLevelDifficulty(item.level.difficulty)}`;
         if (!groups.has(difficulty)) groups.set(difficulty, []);
         groups.get(difficulty).push(item);
       });
       return [...groups.entries()]
-        .sort(([left], [right]) => left - right)
+        .sort(([, leftLevels], [, rightLevels]) => this.compareLevelItems(leftLevels[0], rightLevels[0]))
         .map(([difficulty, levels]) => ({ difficulty, levels }));
     },
 
@@ -289,8 +291,8 @@ export const computed = {
      *
      * @returns {string} SVG viewBox 字符串。
      */
-    creatorViewBox() {
-      const bounds = getGridBounds(this.creatorState);
+    editorViewBox() {
+      const bounds = getGridBounds(this.editorState);
       return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
     },
 
@@ -299,8 +301,8 @@ export const computed = {
      *
      * @returns {Record<string, string|number>} CSS 变量映射。
      */
-    creatorPreviewStyle() {
-      const bounds = getGridBounds(this.creatorState);
+    editorPreviewStyle() {
+      const bounds = getGridBounds(this.editorState);
       return {
         "--preview-cols": bounds.cols,
         "--preview-rows": bounds.rows,
@@ -316,8 +318,8 @@ export const computed = {
      *
      * @returns {Array<object>} 网格线渲染数据。
      */
-    creatorGridLines() {
-      return buildGridLines(this.creatorState);
+    editorGridLines() {
+      return buildGridLines(this.editorState);
     },
 
     /**
@@ -325,13 +327,13 @@ export const computed = {
      *
      * @returns {Array<object>} 已移除边线数据。
      */
-    creatorRemovedEdges() {
-      return this.creatorState.removedEdges.map((edge) => {
+    editorRemovedEdges() {
+      return this.editorState.removedEdges.map((edge) => {
         const points = pointsFromEdgeKey(edge);
         if (!points) return null;
         return {
           key: edge,
-          attrs: lineAttrs(toRenderPoint(points[0], this.creatorState.gridType), toRenderPoint(points[1], this.creatorState.gridType))
+          attrs: lineAttrs(toRenderPoint(points[0], this.editorState.gridType), toRenderPoint(points[1], this.editorState.gridType))
         };
       }).filter(Boolean);
     },
@@ -341,13 +343,13 @@ export const computed = {
      *
      * @returns {Array<object>} 答案边线数据。
      */
-    creatorAnswerEdges() {
-      return Object.entries(this.creatorState.answers).map(([edge, pairId]) => {
+    editorAnswerEdges() {
+      return Object.entries(this.editorState.answers).map(([edge, pairId]) => {
         const points = pointsFromEdgeKey(edge);
         if (!points) return null;
         return {
           key: edge,
-          attrs: lineAttrs(toRenderPoint(points[0], this.creatorState.gridType), toRenderPoint(points[1], this.creatorState.gridType)),
+          attrs: lineAttrs(toRenderPoint(points[0], this.editorState.gridType), toRenderPoint(points[1], this.editorState.gridType)),
           color: this.pointDefinitions[pairId]?.color ?? "var(--accent)"
         };
       }).filter(Boolean);
@@ -358,14 +360,14 @@ export const computed = {
      *
      * @returns {Array<object>} 命中边渲染数据。
      */
-    creatorHitEdges() {
-      return getAllGridEdges(this.creatorState)
+    editorHitEdges() {
+      return getAllGridEdges(this.editorState)
         .map((edge) => {
           const points = pointsFromEdgeKey(edge);
           if (!points) return null;
           return {
             key: edge,
-            attrs: lineAttrs(toRenderPoint(points[0], this.creatorState.gridType), toRenderPoint(points[1], this.creatorState.gridType))
+            attrs: lineAttrs(toRenderPoint(points[0], this.editorState.gridType), toRenderPoint(points[1], this.editorState.gridType))
           };
         })
         .filter(Boolean);
@@ -376,22 +378,22 @@ export const computed = {
      *
      * @returns {Array<object>} 节点渲染数据。
      */
-    creatorNodes() {
+    editorNodes() {
       const nodes = [];
       const connectedNodes = new Set();
-      const bounds = getGridBounds(this.creatorState);
-      getAllGridEdges(this.creatorState).forEach((edge) => {
-        if (this.creatorState.removedEdges.includes(edge)) return;
+      const bounds = getGridBounds(this.editorState);
+      getAllGridEdges(this.editorState).forEach((edge) => {
+        if (this.editorState.removedEdges.includes(edge)) return;
         const points = pointsFromEdgeKey(edge);
         if (!points) return;
         points.forEach(([x, y]) => connectedNodes.add(keyOf(x, y)));
       });
 
-      for (const [x, y] of getGridNodes(this.creatorState)) {
-        const pointAtNode = this.getCreatorPointAt(x, y);
+      for (const [x, y] of getGridNodes(this.editorState)) {
+        const pointAtNode = this.getEditorPointAt(x, y);
         const point = pointAtNode ? this.pointDefinitions[pointAtNode.pairId] : null;
         if (!point && !connectedNodes.has(keyOf(x, y))) continue;
-        const [renderX, renderY] = toRenderPoint([x, y], this.creatorState.gridType);
+        const [renderX, renderY] = toRenderPoint([x, y], this.editorState.gridType);
         nodes.push({
           key: keyOf(x, y),
           x,

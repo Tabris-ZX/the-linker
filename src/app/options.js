@@ -1,24 +1,27 @@
 ﻿import { appConfig, defaultPointPaletteId, pointDefinitions, pointPalettes, themes } from "../config/index.js";
 import { computed } from "./computed.js";
-import { creatorMethods } from "../editor/methods.js";
+import { editorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
+import { recordVisitorRequest } from "../router/visitors.js";
 import AppNav from "../components/AppNav.vue";
 import ChallengeView from "../views/ChallengeView.vue";
-import CreatorView from "../views/CreatorView.vue";
+import EditorView from "../views/EditorView.vue";
 import PersonalizationView from "../views/PersonalizationView.vue";
+import RuleView from "../views/RuleView.vue";
 import faviconUrl from "../../favicon.ico";
 
 const viewTabs = [
   { id: "challenge", label: "关卡挑战" },
-  { id: "creator", label: "关卡编辑器" }
+  { id: "editor", label: "关卡编辑器" }
 ];
 
 export default {
   components: {
     AppNav,
     ChallengeView,
-    CreatorView,
-    PersonalizationView
+    EditorView,
+    PersonalizationView,
+    RuleView
   },
 
   /**
@@ -55,8 +58,12 @@ export default {
       currentLevelIndex: -1,
       currentLevel: null,
       isLevelPickerOpen: false,
+      levelCategoryFilter: "all",
       levelDifficultyFilter: "all",
       levelCompletionFilter: "all",
+      levelPickerScrollTop: 0,
+      isDeveloperMode: false,
+      developerStatusText: "",
       completedLevels: {},
       paths: {},
       activePair: null,
@@ -70,10 +77,14 @@ export default {
       isPersonalBest: false,
       isVictoryDismissed: false,
       shareStatusText: "分享",
+      nextLevelStatusText: "",
+      clearDataStatusText: "",
+      isClearDataConfirming: false,
+      isRulePanelOpen: false,
       isPersonalizationOpen: false,
       mapStyle: { ...appConfig.mapStyle },
-      creatorPairCount: 5,
-      creatorState: {
+      editorPairCount: 5,
+      editorState: {
         name: "",
         gridType: "square",
         difficulty: 1,
@@ -87,7 +98,7 @@ export default {
         removedEdges: [],
         answers: {}
       },
-      creatorEditingLevelId: "",
+      editorEditingLevelId: "",
       previewHint: "点交点可放置或删除色点；标记模式：点击格子边标出答案线路。",
       isLevelOutputVisible: false,
       levelOutput: ""
@@ -101,13 +112,14 @@ export default {
    * @returns {Promise<void>}
    */
   async mounted() {
+    recordVisitorRequest();
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
     this.loadCompletedLevels();
     await this.detectLevelEditorAvailability();
     await this.loadLevels();
     if (this.levels.length > 0) {
-      this.loadLevel(0);
+      this.loadLevel(this.getInitialLevelIndex());
     }
     if (this.canUseLevelEditor) {
       this.writeLevelTemplate(false);
@@ -131,7 +143,7 @@ export default {
      * @returns {void}
      */
     activeView(view) {
-      if (view === "creator" && !this.canUseLevelEditor) {
+      if (view === "editor" && !this.canUseLevelEditor) {
         this.activeView = "challenge";
       }
     },
@@ -157,6 +169,6 @@ export default {
 
   methods: {
     ...methods,
-    ...creatorMethods
+    ...editorMethods
   }
 };

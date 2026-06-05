@@ -11,7 +11,7 @@
   --accent-strong: #115e59;
   --danger: #b91c1c;
   --success: #047857;
-  --topbar-height: 58px;
+  --topbar-height: 60px;
   --page-height: 810px;
   --cell-size: 88px;
   --board-max-width: 1200px;
@@ -245,11 +245,18 @@ h2 {
 }
 
 .app-topbar button,
+.developer-button,
 .personalize-button,
+.rule-button,
 .challenge-actions button {
   padding: 6px 9px;
   box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
   white-space: nowrap;
+}
+
+.developer-button.is-unlocked {
+  color: #fff;
+  background: var(--success);
 }
 
 .close-button {
@@ -343,6 +350,70 @@ h2 {
   overflow: auto;
 }
 
+.rule-panel {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 13;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(680px, calc(var(--page-height) - var(--topbar-height) - 28px));
+  padding: 14px;
+}
+
+.rule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rule-header h2 {
+  margin: 0;
+}
+
+.rule-content {
+  min-height: 180px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: #fff;
+  font: 700 0.9rem/1.65 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.rule-content h1,
+.rule-content h2,
+.rule-content h3 {
+  margin: 0 0 8px;
+  font: 900 1.08rem/1.25 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.rule-content p,
+.rule-content ul {
+  margin: 0 0 10px;
+}
+
+.rule-content ul {
+  padding-left: 20px;
+}
+
+.rule-content li + li {
+  margin-top: 4px;
+}
+
+.rule-content code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--line) 55%, #fff 45%);
+  font: 800 0.86em/1.2 Consolas, "Courier New", monospace;
+}
+
 .personalization-header {
   display: flex;
   align-items: center;
@@ -408,4 +479,59 @@ h2 {
   background: #fff;
   font: 700 0.82rem/1.45 Consolas, "Courier New", monospace;
   white-space: pre-wrap;
+}
+
+.personalization-data-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 2px solid var(--line);
+}
+
+.personalization-clear-data-button {
+  padding: 7px 10px;
+  background: var(--danger);
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-clear-data-button:hover {
+  background: #991b1b;
+}
+
+.personalization-confirm-actions {
+  display: inline-flex;
+  gap: 7px;
+}
+
+.personalization-confirm-button,
+.personalization-cancel-button {
+  padding: 7px 10px;
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-confirm-button {
+  background: var(--danger);
+}
+
+.personalization-confirm-button:hover {
+  background: #991b1b;
+}
+
+.personalization-cancel-button {
+  color: var(--ink);
+  background: #fff;
+}
+
+.personalization-cancel-button:hover {
+  color: #fff;
+  background: var(--accent);
+}
+
+.personalization-data-actions span {
+  margin-left: auto;
+  color: var(--success);
+  font: 900 0.84rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }

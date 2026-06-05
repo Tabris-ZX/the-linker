@@ -10,6 +10,14 @@
         </div>
         <div class="level-picker-filters">
           <label>
+            版本
+            <select v-model="app.levelCategoryFilter">
+              <option value="all">全部</option>
+              <option value="official">正式版</option>
+              <option value="tests">开发者版</option>
+            </select>
+          </label>
+          <label>
             难度
             <select v-model="app.levelDifficultyFilter">
               <option value="all">全部</option>
@@ -27,25 +35,30 @@
             </select>
           </label>
         </div>
-        <div class="level-group-list">
+        <div ref="levelGroupList" class="level-group-list" @scroll="app.handleLevelPickerScroll">
           <section v-for="group in app.groupedFilteredLevels" :key="group.difficulty" class="level-group">
-            <h2>难度 {{ group.difficulty }}</h2>
+            <h2>{{ group.difficulty }}</h2>
             <div class="level-card-grid">
-              <button
+              <article
                 v-for="item in group.levels"
                 :key="item.level.id"
-                type="button"
                 class="level-card"
                 :class="{ 'is-active': item.index === app.currentLevelIndex, 'is-completed': app.isLevelCompleted(item.level.id) }"
-                @click="app.selectLevelFromPicker(item.index)"
               >
-                <strong>{{ item.level.name || item.level.id }}</strong>
-                <span>{{ item.level.id }} · 难度 {{ app.normalizeLevelDifficulty(item.level.difficulty) }}</span>
-                <small>{{ app.getLevelBestTimeText(item.level.id) }}</small>
-              </button>
+                <button type="button" class="level-card-main" @click="app.selectLevelFromPicker(item.index)">
+                  <strong>{{ item.level.name || item.level.id }}</strong>
+                  <span>{{ item.level.id }} · {{ app.getLevelCategoryLabel(item.level.sourceCategory) }} · 难度 {{ app.normalizeLevelDifficulty(item.level.difficulty) }}</span>
+                  <small>{{ app.getLevelBestTimeText(item.level.id) }}</small>
+                </button>
+                <div v-if="app.isDeveloperMode && item.level.sourceCategory === 'tests'" class="level-review-actions">
+                  <button type="button" @click="app.reviewTestLevel(item.level.id, 'include')">收录</button>
+                  <button type="button" @click="app.reviewTestLevel(item.level.id, 'reject')">不收录</button>
+                </div>
+              </article>
             </div>
           </section>
         </div>
+        <p v-if="app.developerStatusText" class="level-picker-status">{{ app.developerStatusText }}</p>
       </section>
       <div v-if="app.isLevelsLoading" class="challenge-status" role="status" aria-live="polite">
         加载中...
@@ -108,6 +121,9 @@
           <strong v-if="app.isPersonalBest" class="victory-pb">PB</strong>
         </div>
         <div class="victory-actions">
+          <button type="button" class="victory-share-button" @click="app.goToNextUncompletedLevel">
+            下一关
+          </button>
           <button type="button" class="victory-share-button" @click="app.shareVictory">
             {{ app.shareStatusText }}
           </button>
@@ -115,6 +131,7 @@
             关闭
           </button>
         </div>
+        <p v-if="app.nextLevelStatusText" class="victory-status">{{ app.nextLevelStatusText }}</p>
       </div>
     </section>
   </section>
@@ -123,6 +140,24 @@
 <script>
 export default {
   name: "ChallengeView",
-  inject: ["app"]
+  inject: ["app"],
+  watch: {
+    "app.isLevelPickerOpen"(isOpen) {
+      if (!isOpen) return;
+      this.$nextTick(this.restoreLevelPickerScroll);
+    }
+  },
+  mounted() {
+    if (this.app.isLevelPickerOpen) {
+      this.$nextTick(this.restoreLevelPickerScroll);
+    }
+  },
+  methods: {
+    restoreLevelPickerScroll() {
+      const list = this.$refs.levelGroupList;
+      if (!list) return;
+      list.scrollTop = this.app.levelPickerScrollTop;
+    }
+  }
 };
 </script>

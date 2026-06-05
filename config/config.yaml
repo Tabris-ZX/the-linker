@@ -1,6 +1,8 @@
 server:
   port: 5174
 
+dev-password: "123"
+
 level:
   path: data/levels
 

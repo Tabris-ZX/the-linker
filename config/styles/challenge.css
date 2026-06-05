@@ -22,16 +22,17 @@
 
 .level-picker-panel {
   position: absolute;
-  top: 50%;
+  top: 14px;
   left: 50%;
   z-index: 8;
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 10px;
   width: min(460px, calc(100vw - 56px));
   max-height: min(620px, calc(var(--page-height) - var(--topbar-height) - 44px));
   padding: 14px;
   overflow: hidden;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
 }
 
 .level-picker-header,
@@ -66,10 +67,13 @@
 
 .level-group-list {
   display: grid;
+  align-content: start;
   gap: 12px;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .level-group h2 {
@@ -88,9 +92,27 @@
   display: grid;
   gap: 4px;
   min-height: 82px;
-  padding: 10px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
   color: var(--ink);
   background: #fff;
+  text-align: left;
+  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
+  overflow: hidden;
+}
+
+.level-card-main {
+  display: grid;
+  gap: 4px;
+  min-height: 82px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
   text-align: left;
 }
 
@@ -114,6 +136,10 @@
   background: var(--accent);
 }
 
+.level-card-main:hover {
+  background: transparent;
+}
+
 .level-card.is-active span,
 .level-card.is-active small,
 .level-card:hover span,
@@ -123,6 +149,44 @@
 
 .level-card.is-completed {
   border-color: var(--success);
+  background: #dcfce7;
+}
+
+.level-card.is-completed:hover,
+.level-card.is-completed.is-active {
+  color: #fff;
+  background: var(--accent);
+}
+
+.level-card.is-completed span,
+.level-card.is-completed small {
+  color: #166534;
+}
+
+.level-card.is-completed:hover span,
+.level-card.is-completed:hover small,
+.level-card.is-completed.is-active span,
+.level-card.is-completed.is-active small {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.level-review-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+
+.level-review-actions button {
+  padding: 5px 6px;
+  font: 900 0.74rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.14);
+}
+
+.level-picker-status {
+  margin: 0;
+  color: var(--muted);
+  font: 800 0.82rem/1.3 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
 .board-wrap {
@@ -274,6 +338,13 @@
   color: #fff;
   font: 900 0.85rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.16);
+}
+
+.victory-status {
+  margin: 0;
+  color: var(--accent-strong);
+  font: 900 0.86rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-align: right;
 }
 
 .node {

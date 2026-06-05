@@ -1,8 +1,12 @@
 ﻿import { appConfig } from "../config/index.js";
+import { areAllNodesExclusive, areAllPathsStructurallyValid, getAnswerEdges, getFilledEdges, getFilledNodes, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
+import { reviewLevelRequest } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, loadLevelFiles } from "../services/levels.js";
-import { edgeKey, fromRenderPoint, getAllGridEdges, getGridBounds, getGridNodes, isAdjacent, keyOf, pointsFromEdgeKey, positionToArray, samePoint } from "../utils/geometry.js";
+import { edgeKey, fromRenderPoint, getAllGridEdges, getGridBounds, getGridNodes, isAdjacent, keyOf, positionToArray, samePoint } from "../utils/geometry.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
+const LAST_LEVEL_STORAGE_KEY = "the-linker-last-level-id";
+const GAME_STORAGE_KEY_PREFIX = "the-linker-";
 
 export const methods = {
     /**
@@ -13,7 +17,7 @@ export const methods = {
     async detectLevelEditorAvailability() {
       this.canUseLevelEditor = import.meta.env.DEV;
 
-      if (!this.canUseLevelEditor && this.activeView === "creator") {
+      if (!this.canUseLevelEditor && this.activeView === "editor") {
         this.activeView = "challenge";
       }
     },
@@ -53,7 +57,21 @@ export const methods = {
       this.currentLevel = cloneLevel(hydrateLevel(this.levels[index], this.pointDefinitions));
       this.isLevelPickerOpen = false;
       this.isPersonalBest = false;
+      this.saveLastLevelId(this.currentLevel.id);
       this.resetPaths();
+    },
+
+    /**
+     * 获取上次打开的关卡索引，记录失效时回退到第一关。
+     *
+     * @returns {number} 初始关卡索引。
+     */
+    getInitialLevelIndex() {
+      const lastLevelId = this.loadLastLevelId();
+      const lastLevelIndex = this.levels.findIndex((level) => level.id === lastLevelId && this.isLevelCategoryVisible(level));
+      if (lastLevelIndex >= 0) return lastLevelIndex;
+      const firstVisibleIndex = this.levels.findIndex((level) => this.isLevelCategoryVisible(level));
+      return firstVisibleIndex >= 0 ? firstVisibleIndex : 0;
     },
 
     /**
@@ -75,12 +93,119 @@ export const methods = {
     },
 
     /**
+     * 记录关卡选择列表滚动位置，便于下次打开时恢复。
+     *
+     * @param {Event} event 滚动事件。
+     * @returns {void}
+     */
+    handleLevelPickerScroll(event) {
+      this.levelPickerScrollTop = event?.currentTarget?.scrollTop ?? 0;
+    },
+
+    /**
+     * 解锁当前会话的开发者模式。
+     *
+     * @returns {void}
+     */
+    unlockDeveloperMode() {
+      if (this.isDeveloperMode) {
+        this.developerStatusText = "开发者模式已开启";
+        return;
+      }
+
+      const password = window.prompt("请输入开发者密码");
+      if (password === null) return;
+      if (password !== appConfig.devPassword) {
+        this.developerStatusText = "密码错误";
+        return;
+      }
+
+      this.isDeveloperMode = true;
+      this.developerStatusText = "开发者模式已开启";
+    },
+
+    /**
+     * 判断关卡分类是否对当前用户可见。
+     *
+     * @param {object} level 关卡数据。
+     * @returns {boolean} 是否可见。
+     */
+    isLevelCategoryVisible(level) {
+      return this.getLevelCategory(level) === "official" || this.isDeveloperMode;
+    },
+
+    /**
+     * 获取关卡分类。
+     *
+     * @param {object} level 关卡数据。
+     * @returns {"official"|"tests"|"delete"} 关卡分类。
+     */
+    getLevelCategory(level) {
+      return ["official", "tests", "delete"].includes(level?.sourceCategory) ? level.sourceCategory : "official";
+    },
+
+    /**
+     * 获取关卡分类显示名。
+     *
+     * @param {string} category 关卡分类。
+     * @returns {string} 显示名。
+     */
+    getLevelCategoryLabel(category) {
+      const labels = {
+        official: "正式版",
+        tests: "开发者版",
+        delete: "待删除版"
+      };
+      return labels[category] ?? labels.official;
+    },
+
+    /**
+     * 按分类、难度和 id 排序关卡选择项。
+     *
+     * @param {{ level: object }} left 左侧关卡项。
+     * @param {{ level: object }} right 右侧关卡项。
+     * @returns {number} 排序结果。
+     */
+    compareLevelItems(left, right) {
+      const categoryOrder = { official: 0, tests: 1, delete: 2 };
+      const leftLevel = left?.level ?? {};
+      const rightLevel = right?.level ?? {};
+      return (categoryOrder[this.getLevelCategory(leftLevel)] ?? 9) - (categoryOrder[this.getLevelCategory(rightLevel)] ?? 9)
+        || this.normalizeLevelDifficulty(leftLevel.difficulty) - this.normalizeLevelDifficulty(rightLevel.difficulty)
+        || String(leftLevel.id ?? "").localeCompare(String(rightLevel.id ?? ""));
+    },
+
+    /**
+     * 将测试关卡收录为正式版，或移入待删除版。
+     *
+     * @param {string} levelId 关卡 id。
+     * @param {"include"|"reject"} action 处理动作。
+     * @returns {Promise<void>}
+     */
+    async reviewTestLevel(levelId, action) {
+      try {
+        await reviewLevelRequest(levelId, action);
+        await this.loadLevels();
+        const movedIndex = this.levels.findIndex((level) => level.id === levelId);
+        if (movedIndex >= 0) {
+          this.loadLevel(movedIndex);
+        }
+        this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删除版";
+      } catch (error) {
+        this.developerStatusText = error.message;
+      }
+    },
+
+    /**
      * 切换个性化设置面板。
      *
      * @returns {void}
      */
     togglePersonalization() {
       this.isPersonalizationOpen = !this.isPersonalizationOpen;
+      if (this.isPersonalizationOpen) {
+        this.isRulePanelOpen = false;
+      }
     },
 
     /**
@@ -90,6 +215,27 @@ export const methods = {
      */
     closePersonalization() {
       this.isPersonalizationOpen = false;
+    },
+
+    /**
+     * 切换玩法说明面板。
+     *
+     * @returns {void}
+     */
+    toggleRulePanel() {
+      this.isRulePanelOpen = !this.isRulePanelOpen;
+      if (this.isRulePanelOpen) {
+        this.isPersonalizationOpen = false;
+      }
+    },
+
+    /**
+     * 关闭玩法说明面板。
+     *
+     * @returns {void}
+     */
+    closeRulePanel() {
+      this.isRulePanelOpen = false;
     },
 
     /**
@@ -131,6 +277,75 @@ export const methods = {
      */
     saveCompletedLevels() {
       window.localStorage.setItem(COMPLETED_LEVELS_STORAGE_KEY, JSON.stringify(this.completedLevels));
+    },
+
+    /**
+     * 显示清空游戏数据确认操作。
+     *
+     * @returns {void}
+     */
+    requestClearGameData() {
+      this.isClearDataConfirming = true;
+      this.clearDataStatusText = "";
+    },
+
+    /**
+     * 取消清空游戏数据。
+     *
+     * @returns {void}
+     */
+    cancelClearGameData() {
+      this.isClearDataConfirming = false;
+    },
+
+    /**
+     * 清空浏览器中属于本游戏的本地数据。
+     *
+     * @returns {void}
+     */
+    clearGameData() {
+      try {
+        Object.keys(window.localStorage)
+          .filter((key) => key.startsWith(GAME_STORAGE_KEY_PREFIX))
+          .forEach((key) => window.localStorage.removeItem(key));
+      } catch {
+        // Ignore storage errors so the in-memory reset can still happen.
+      }
+
+      this.completedLevels = {};
+      this.isPersonalBest = false;
+      this.isClearDataConfirming = false;
+      this.shareStatusText = "分享";
+      this.nextLevelStatusText = "";
+      this.clearDataStatusText = "已清空";
+    },
+
+    /**
+     * 从本地存储读取上次打开的关卡 id。
+     *
+     * @returns {string} 关卡 id。
+     */
+    loadLastLevelId() {
+      try {
+        return window.localStorage.getItem(LAST_LEVEL_STORAGE_KEY) || "";
+      } catch {
+        return "";
+      }
+    },
+
+    /**
+     * 将当前关卡 id 写入本地存储。
+     *
+     * @param {string} levelId 关卡 id。
+     * @returns {void}
+     */
+    saveLastLevelId(levelId) {
+      if (!levelId) return;
+      try {
+        window.localStorage.setItem(LAST_LEVEL_STORAGE_KEY, levelId);
+      } catch {
+        // Ignore storage errors so level loading remains usable in restricted browsers.
+      }
     },
 
     /**
@@ -254,6 +469,37 @@ export const methods = {
       } catch {
         this.shareStatusText = "复制失败";
       }
+    },
+
+    /**
+     * 从当前关卡之后寻找下一个未通关关卡。
+     *
+     * @returns {number} 未通关关卡索引；没有时返回 -1。
+     */
+    getNextUncompletedLevelIndex() {
+      if (!this.levels.length) return -1;
+
+      for (let offset = 1; offset <= this.levels.length; offset += 1) {
+        const index = (this.currentLevelIndex + offset) % this.levels.length;
+        if (!this.isLevelCompleted(this.levels[index].id)) return index;
+      }
+
+      return -1;
+    },
+
+    /**
+     * 通关后跳到下一个未通关关卡；全部通关时显示提示。
+     *
+     * @returns {void}
+     */
+    goToNextUncompletedLevel() {
+      const nextIndex = this.getNextUncompletedLevelIndex();
+      if (nextIndex < 0) {
+        this.nextLevelStatusText = "全部关卡已通关";
+        return;
+      }
+
+      this.loadLevel(nextIndex);
     },
 
     /**
@@ -413,6 +659,7 @@ export const methods = {
       this.isPersonalBest = false;
       this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
+      this.nextLevelStatusText = "";
     },
 
     /**
@@ -435,6 +682,7 @@ export const methods = {
       this.isPersonalBest = false;
       this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
+      this.nextLevelStatusText = "";
     },
 
     /**
@@ -535,6 +783,7 @@ export const methods = {
       this.isWon = false;
       this.isPersonalBest = false;
       this.isVictoryDismissed = false;
+      this.nextLevelStatusText = "";
 
       const currentPath = this.paths[pairId] ?? [];
       if (mode === "path-end") {
@@ -672,11 +921,12 @@ export const methods = {
      * @returns {void}
      */
     evaluateBoard() {
-      // Win only when every pair is connected and the required answer/board coverage is filled.
+      // Win when every pair is connected and every traversable node is covered.
       if (!this.areAllPathsStructurallyValid()) {
         this.isWon = false;
         this.isVictoryDismissed = false;
         this.shareStatusText = "分享";
+        this.nextLevelStatusText = "";
         return;
       }
 
@@ -687,6 +937,7 @@ export const methods = {
       if (!this.isWon) {
         this.isVictoryDismissed = false;
         this.shareStatusText = "分享";
+        this.nextLevelStatusText = "";
       }
       if (this.isWon && !wasWon) {
         this.stopGameTimer();
@@ -833,6 +1084,7 @@ export const methods = {
       this.isWon = false;
       this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
+      this.nextLevelStatusText = "";
     },
 
     /**
@@ -1053,8 +1305,7 @@ export const methods = {
      * @returns {boolean} 是否全部有效。
      */
     areAllPathsStructurallyValid() {
-      return this.areAllNodesExclusive()
-        && Object.entries(this.paths).every(([pairId, path]) => this.isPathStructurallyValid(pairId, path));
+      return areAllPathsStructurallyValid(this.currentLevel, this.paths, this.endpoints);
     },
 
     /**
@@ -1063,16 +1314,7 @@ export const methods = {
      * @returns {boolean} 是否无跨点对重叠。
      */
     areAllNodesExclusive() {
-      const occupiedNodes = new Map();
-      for (const [pairId, path] of Object.entries(this.paths)) {
-        for (const point of path) {
-          const nodeKey = keyOf(point[0], point[1]);
-          const occupant = occupiedNodes.get(nodeKey);
-          if (occupant && occupant !== pairId) return false;
-          occupiedNodes.set(nodeKey, pairId);
-        }
-      }
-      return true;
+      return areAllNodesExclusive(this.paths);
     },
 
     /**
@@ -1083,39 +1325,16 @@ export const methods = {
      * @returns {boolean} 路径结构是否有效。
      */
     isPathStructurallyValid(pairId, path) {
-      const seen = new Set();
-      const availableEdges = new Set(getAllGridEdges(this.currentLevel));
-      for (let index = 0; index < path.length; index += 1) {
-        const point = path[index];
-        const key = keyOf(point[0], point[1]);
-        if (seen.has(key)) return false;
-        seen.add(key);
-
-        const neighbors = [path[index - 1], path[index + 1]].filter(Boolean);
-        if (neighbors.some((neighbor) => !isAdjacent(point, neighbor, this.currentLevel.gridType))) return false;
-        if (neighbors.some((neighbor) => !availableEdges.has(edgeKey(point, neighbor)))) return false;
-
-        const isEndpoint = this.endpoints[key] === pairId;
-        if (isEndpoint && neighbors.length > 1) return false;
-        if (!isEndpoint && neighbors.length > 2) return false;
-      }
-      return true;
+      return isPathStructurallyValid(this.currentLevel, pairId, path, this.endpoints);
     },
 
     /**
-     * 判断棋盘是否填满必需答案边或可通行节点。
+     * 判断棋盘是否填满所有可通行节点。
      *
      * @returns {boolean} 是否满足填充条件。
      */
     isBoardFilled() {
-      const answerEdges = this.getAnswerEdges();
-      if (answerEdges.size > 0) {
-        const filledEdges = this.getFilledEdges();
-        return [...answerEdges].every((edge) => filledEdges.has(edge));
-      }
-
-      const filledNodes = this.getFilledNodes();
-      return this.getRequiredNodes().every((node) => filledNodes.has(node));
+      return isLevelAnswerFilled(this.currentLevel, this.paths);
     },
 
     /**
@@ -1124,15 +1343,7 @@ export const methods = {
      * @returns {Set<string>} 答案边集合。
      */
     getAnswerEdges() {
-      const edges = new Set();
-      (this.currentLevel.answers ?? []).forEach((answer) => {
-        if (typeof answer === "string") {
-          edges.add(answer);
-          return;
-        }
-        if (answer?.edge) edges.add(answer.edge);
-      });
-      return edges;
+      return getAnswerEdges(this.currentLevel);
     },
 
     /**
@@ -1141,13 +1352,7 @@ export const methods = {
      * @returns {Set<string>} 已绘制边集合。
      */
     getFilledEdges() {
-      const edges = new Set();
-      Object.values(this.paths).forEach((path) => {
-        for (let index = 1; index < path.length; index += 1) {
-          edges.add(edgeKey(path[index - 1], path[index]));
-        }
-      });
-      return edges;
+      return getFilledEdges(this.paths);
     },
 
     /**
@@ -1156,11 +1361,7 @@ export const methods = {
      * @returns {Set<string>} 已占用节点集合。
      */
     getFilledNodes() {
-      const nodes = new Set();
-      Object.values(this.paths).forEach((path) => {
-        path.forEach(([x, y]) => nodes.add(keyOf(x, y)));
-      });
-      return nodes;
+      return getFilledNodes(this.paths);
     },
 
     /**
@@ -1169,15 +1370,7 @@ export const methods = {
      * @returns {string[]} 必需节点 key 列表。
      */
     getRequiredNodes() {
-      const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
-      const nodesWithOpenEdge = new Set();
-      getAllGridEdges(this.currentLevel).forEach((edge) => {
-        if (removedEdges.has(edge)) return;
-        const points = pointsFromEdgeKey(edge);
-        if (!points) return;
-        points.forEach(([x, y]) => nodesWithOpenEdge.add(keyOf(x, y)));
-      });
-      return [...nodesWithOpenEdge];
+      return getRequiredNodes(this.currentLevel);
     },
 
     /**

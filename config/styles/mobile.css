@@ -2,10 +2,11 @@
   .app-topbar {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(max-content, 1fr) auto auto auto;
     grid-template-areas:
-      "brand timer github"
-      "actions actions actions";
+      "brand developer github rule"
+      "timer timer timer timer"
+      "actions actions actions actions";
     align-items: center;
     gap: 5px 7px;
     height: auto;
@@ -22,16 +23,17 @@
   .brand {
     min-width: 0;
     gap: 6px;
-    font-size: 1rem;
+    font-size: 0.9rem;
   }
 
   .brand-icon {
-    display: none;
+    width: 24px;
+    height: 24px;
   }
 
   .brand span {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: clip;
     white-space: nowrap;
   }
 
@@ -58,15 +60,34 @@
     white-space: nowrap;
   }
 
+  .developer-button {
+    grid-area: developer;
+    min-width: 44px;
+  }
+
   .github-link {
     grid-area: github;
     width: 32px;
     height: 32px;
   }
 
+  .rule-button {
+    grid-area: rule;
+    min-width: 44px;
+  }
+
   .personalize-button,
   .personalization-panel {
     display: none;
+  }
+
+  .rule-panel {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    width: min(460px, calc(100vw - 20px));
+    max-height: min(76dvh, 560px);
+    padding: 12px;
+    transform: translate(-50%, -50%);
   }
 
   .challenge-actions {
@@ -111,7 +132,7 @@
     font-size: 0.74rem;
   }
 
-  .view-creator {
+  .view-editor {
     height: calc(100dvh - var(--topbar-height));
     overflow: auto;
   }
@@ -123,11 +144,16 @@
     overflow: visible;
   }
 
-  .creator-workspace {
+  .editor-workspace {
     grid-template-columns: 1fr;
   }
 
-  .creator-form {
+  .editor-form {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .editor-form-actions {
     grid-template-columns: 1fr;
     gap: 7px;
   }
@@ -166,7 +192,12 @@
   }
 
   .level-output-panel {
-    max-height: 150px;
+    margin-top: 8px;
+  }
+
+  .level-output-textarea {
+    min-height: 150px;
+    max-height: 42dvh;
   }
 
   .preview-hint {
@@ -250,11 +281,12 @@
 
   .level-picker-panel {
     position: fixed;
-    inset: 50% auto auto 50%;
+    inset: calc(var(--topbar-height) + 10px) auto auto 50%;
     width: min(460px, calc(100vw - 20px));
-    max-height: min(76dvh, 560px);
+    height: auto;
+    max-height: min(calc(100dvh - var(--topbar-height) - 20px), 560px);
     padding: 12px;
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
   }
 
   .level-picker-header,
@@ -264,7 +296,7 @@
 
   .level-picker-filters {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .level-picker-filters label {

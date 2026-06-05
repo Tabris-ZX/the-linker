@@ -18,6 +18,9 @@
           {{ tab.label }}
         </button>
       </nav>
+      <button class="developer-button" :class="{ 'is-unlocked': isDeveloperMode }" type="button" @click="$emit('unlockDeveloperMode')">
+        开发者模式
+      </button>
     </div>
 
     <div class="topbar-center">
@@ -44,8 +47,11 @@
         </svg>
         
       </a>
+      <button class="rule-button" type="button" @click="$emit('toggleRulePanel')">
+        玩法
+      </button>
       <button class="personalize-button" type="button" @click="$emit('togglePersonalization')">
-        个性化
+        设置
       </button>
     </div>
   </header>
@@ -75,11 +81,15 @@ export default {
       type: Boolean,
       default: true
     },
+    isDeveloperMode: {
+      type: Boolean,
+      default: false
+    },
     faviconUrl: {
       type: String,
       required: true
     }
   },
-  emits: ["update:activeView", "toggleLevelPicker", "resetPaths", "togglePersonalization"]
+  emits: ["update:activeView", "toggleLevelPicker", "resetPaths", "unlockDeveloperMode", "toggleRulePanel", "togglePersonalization"]
 };
 </script>

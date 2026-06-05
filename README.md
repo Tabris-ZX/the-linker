@@ -6,8 +6,8 @@
 
 ## 功能
 
-- 支持 GitHub Pages 静态部署
-- 本地开发服务器下启用关卡编辑器
+- 通过本地开发服务器运行
+- 本地开发服务器下启用关卡编辑器和关卡文件管理
 - 关卡使用 `data/levels` 下的 JSON 文件
 - 支持配置主题、点对颜色和背景图片
 
@@ -20,22 +20,47 @@ npm run dev
 
 只有通过本地 Vite 服务器运行，并且 `/api/levels` 可用时，才会显示关卡编辑入口。
 
-## 打包
-
-```bash
-npm run build
-```
-
-生产文件会生成到 `docs/`，方便直接用于 GitHub Pages。
-
-## GitHub Pages
-
-发布源选择仓库中的 `docs/` 目录即可。
-
-静态部署时会自动隐藏关卡编辑器。需要新增关卡时，把 JSON 文件放进 `data/levels` 后重新打包。
-
 ## 配置
 
 - `config/config.yaml`：主要路径、主题、背景
 - `config/styles`：地图样式、点对颜色、主题和 CSS
-- `data/levels`：可游玩的关卡
+- `data/levels/official`：正式关卡
+- `data/levels/tests`：测试关卡
+- `data/levels/delete`：待删除关卡
+
+## 关卡目录
+
+关卡支持放在 `data/levels` 的子目录里。当前约定：
+
+- 正式关卡放在 `data/levels/official`
+- 关卡编辑器和算法生成的新关卡默认放在 `data/levels/tests`
+- 测试后不收录的关卡放在 `data/levels/delete`
+
+普通用户只看到正式关卡。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `dev-password` 后，可以看到开发者版和待删除版；开发者版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删除版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入密码。
+
+## 关卡去重哈希
+
+项目用 `data/levels-hash.json` 记录每个关卡的结构哈希，新建关卡保存时会先计算哈希并拒绝重复关卡。
+
+重复判定规则：
+
+- 地图类型和尺寸必须一致。
+- 被移除的边集合一致。
+- 点对只比较端点位置，不比较颜色、标签或点对 id。
+- 每一对的两个端点内部无顺序要求，所有点对之间也无顺序要求。
+- 地图旋转后结构一致也算重复；镜像翻转不算旋转重复。
+
+哈希计算流程：
+
+1. 枚举关卡的所有合法旋转形态。
+2. 对每个形态生成稳定的 canonical JSON：包含 `gridType`、尺寸、排序后的 `removedEdges`、排序后的点对端点集合。
+3. 取字典序最小的 canonical JSON。
+4. 使用 SHA-256 生成最终哈希。
+
+本地重建索引：
+
+```bash
+node scripts/rebuild-level-hashes.mjs
+```
+
+该脚本会扫描 `data/levels/*.json`，重写 `data/levels-hash.json`，并在发现已有重复组时输出关卡 id。
