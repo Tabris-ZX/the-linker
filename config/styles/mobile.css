@@ -42,13 +42,13 @@
   }
 
   .topbar-center,
-  .challenge-toolbar,
+  .play-toolbar,
   .topbar-right {
     display: contents;
   }
 
-  .app-topbar:not(.is-challenge) .game-timer,
-  .app-topbar:not(.is-challenge) .challenge-actions {
+  .app-topbar:not(.is-play) .game-timer,
+  .app-topbar:not(.is-play) .play-actions {
     display: none;
   }
 
@@ -89,7 +89,7 @@
     transform: translate(-50%, -50%);
   }
 
-  .challenge-actions {
+  .play-actions {
     grid-area: actions;
     display: grid;
     grid-template-columns: auto minmax(48px, 78px) auto;
@@ -239,7 +239,7 @@
     overflow: hidden;
   }
 
-  .view-challenge {
+  .view-play {
     height: calc(100dvh - var(--topbar-height));
     min-height: calc(100dvh - var(--topbar-height));
     align-items: center;

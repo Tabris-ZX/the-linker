@@ -21,7 +21,7 @@ export const methods = {
       this.canUseLevelEditor = import.meta.env.DEV;
 
       if (!this.canUseLevelEditor && this.activeView === "editor") {
-        this.activeView = "challenge";
+        this.activeView = "play";
       }
     },
 

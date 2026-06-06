@@ -1,5 +1,5 @@
-/* Challenge page and reusable square-board rendering styles. */
-.view-challenge {
+/* Play page and reusable square-board rendering styles. */
+.view-play {
   height: calc(var(--page-height) - var(--topbar-height));
   min-height: calc(var(--page-height) - var(--topbar-height));
   place-items: center;
@@ -204,7 +204,7 @@
   padding: 0;
 }
 
-.challenge-status {
+.play-status {
   display: grid;
   place-items: center;
   min-width: min(360px, calc(100vw - 56px));

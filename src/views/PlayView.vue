@@ -1,5 +1,5 @@
 <template>
-  <section class="view view-challenge" :class="{ 'is-active': app.activeView === 'challenge' }" :hidden="app.activeView !== 'challenge'" aria-labelledby="game-title">
+  <section class="view view-play" :class="{ 'is-active': app.activeView === 'play' }" :hidden="app.activeView !== 'play'" aria-labelledby="game-title">
     <section class="game-panel">
       <section v-if="app.isLevelPickerOpen" class="level-picker-panel app-card" aria-label="关卡选择">
         <div class="level-picker-header">
@@ -61,10 +61,10 @@
         </div>
         <p v-if="app.developerStatusText" class="level-picker-status">{{ app.developerStatusText }}</p>
       </section>
-      <div v-if="app.isLevelsLoading" class="challenge-status" role="status" aria-live="polite">
+      <div v-if="app.isLevelsLoading" class="play-status" role="status" aria-live="polite">
         加载中...
       </div>
-      <div v-else-if="!app.currentLevel" class="challenge-status" role="status" aria-live="polite">
+      <div v-else-if="!app.currentLevel" class="play-status" role="status" aria-live="polite">
         暂无关卡
       </div>
       <div v-else class="board-wrap">
@@ -140,7 +140,7 @@
 
 <script>
 export default {
-  name: "ChallengeView",
+  name: "PlayView",
   inject: ["app"],
   watch: {
     "app.isLevelPickerOpen"(isOpen) {

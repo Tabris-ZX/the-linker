@@ -24,11 +24,11 @@
     </div>
 
     <div class="topbar-center">
-      <div class="challenge-toolbar" :class="{ 'is-hidden': activeView !== 'challenge' }" aria-label="关卡工具栏">
+      <div class="play-toolbar" :class="{ 'is-hidden': activeView !== 'play' }" aria-label="关卡工具栏">
         <div class="game-timer" aria-label="计时">
           {{ timerText }}
         </div>
-        <div class="challenge-actions">
+        <div class="play-actions">
           <button class="level-picker-button" type="button" @click="$emit('toggleLevelPicker')">
             关卡选择
           </button>

@@ -451,7 +451,7 @@ export const editorMethods = {
      * @returns {object} 关卡模板。
      */
     buildEditorLevelTemplate(id = this.editorEditingLevelId || this.getEditorDefaultId()) {
-      // Build the exact JSON saved into levels/ and used by the challenge screen.
+      // Build the exact JSON saved into levels/ and used by the play screen.
       const editingLevel = this.editorEditingLevelId ? this.levels.find((level) => level.id === this.editorEditingLevelId) : null;
       const name = editingLevel?.name ?? (this.editorState.name.trim() || this.getDefaultEditorLevelName(id));
       const level = {

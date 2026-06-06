@@ -17,7 +17,7 @@
   <main class="app-shell">
     <RuleView v-if="isRulePanelOpen" />
     <PersonalizationView v-if="isPersonalizationOpen" />
-    <ChallengeView />
+    <PlayView />
     <EditorView />
   </main>
 
@@ -53,7 +53,7 @@
 <script>
 import appOptions from "./app/options.js";
 import "../config/styles/base.css";
-import "../config/styles/challenge.css";
+import "../config/styles/play.css";
 import "../config/styles/editor.css";
 import "../config/styles/mobile.css";
 

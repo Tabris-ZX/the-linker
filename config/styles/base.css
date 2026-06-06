@@ -248,7 +248,7 @@ h2 {
 .developer-button,
 .personalize-button,
 .rule-button,
-.challenge-actions button {
+.play-actions button {
   padding: 6px 9px;
   box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
   white-space: nowrap;
@@ -288,7 +288,7 @@ h2 {
   box-shadow: 1px 1px 0 rgba(32, 33, 36, 0.14);
 }
 
-.challenge-toolbar {
+.play-toolbar {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -297,12 +297,12 @@ h2 {
   min-width: 420px;
 }
 
-.challenge-toolbar.is-hidden {
+.play-toolbar.is-hidden {
   visibility: hidden;
   pointer-events: none;
 }
 
-.challenge-actions {
+.play-actions {
   position: relative;
   z-index: 5;
   display: inline-flex;

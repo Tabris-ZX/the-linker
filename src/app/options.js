@@ -3,7 +3,7 @@ import { computed } from "./computed.js";
 import { editorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
 import AppNav from "../components/AppNav.vue";
-import ChallengeView from "../views/ChallengeView.vue";
+import PlayView from "../views/PlayView.vue";
 import EditorView from "../views/EditorView.vue";
 import PersonalizationView from "../views/PersonalizationView.vue";
 import RuleView from "../views/RuleView.vue";
@@ -12,14 +12,14 @@ import faviconUrl from "../../favicon.ico";
 export const EDITOR_PAIR_LIMIT = 16;
 
 const viewTabs = [
-  { id: "challenge", label: "关卡挑战" },
+  { id: "play", label: "关卡游玩" },
   { id: "editor", label: "关卡编辑器" }
 ];
 
 export default {
   components: {
     AppNav,
-    ChallengeView,
+    PlayView,
     EditorView,
     PersonalizationView,
     RuleView
@@ -48,7 +48,7 @@ export default {
       pointDefinitions,
       pointPalettes,
       faviconUrl,
-      activeView: "challenge",
+      activeView: "play",
       viewTabs,
       canUseLevelEditor: false,
       themes,
@@ -166,7 +166,7 @@ export default {
      */
     async activeView(view) {
       if (view === "editor" && !this.canUseLevelEditor) {
-        this.activeView = "challenge";
+        this.activeView = "play";
         return;
       }
     },
