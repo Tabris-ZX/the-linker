@@ -299,7 +299,7 @@ export const methods = {
     getLevelCategoryLabel(category) {
       const labels = {
         official: "正式版",
-        tests: "开发者版",
+        tests: "测试版",
         deleted: "待删版"
       };
       return labels[category] ?? labels.official;
@@ -651,6 +651,22 @@ export const methods = {
     },
 
     /**
+     * 生成可写回 map.json 的地图样式片段。
+     *
+     * @param {object} style 地图样式状态。
+     * @returns {object} 可序列化地图样式。
+     */
+    serializeMapStyle(style) {
+      return {
+        dotScale: style.dotScale,
+        nodeScale: style.nodeScale,
+        lineScale: style.lineScale,
+        gridLineScale: style.gridLineScale,
+        snapPointRadius: style.snapPointRadius
+      };
+    },
+
+    /**
      * 复制当前地图样式 JSON 到剪贴板。
      *
      * @returns {Promise<void>}
@@ -727,6 +743,11 @@ export const methods = {
       if (this.currentLevel) {
         this.currentLevel = cloneLevel(hydrateLevel(this.currentLevel, nextDefinitions));
       }
+      if (this.canUseLevelEditor) {
+        this.editorPairCount = Math.min(this.editorPairCount, this.getEditorPairLimit());
+        this.syncEditorPairCount();
+        return;
+      }
       this.writeLevelTemplate(false);
     },
 
@@ -749,7 +770,6 @@ export const methods = {
       const image = await this.findAvailableBackgroundImage(images);
       if (!image) {
         document.documentElement.style.setProperty("--background-image", "none");
-        console.warn(`Background image not found: ${images.join(", ")}. Put it under the background/ directory.`);
         return;
       }
 

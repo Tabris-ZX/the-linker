@@ -38,7 +38,7 @@
         </label>
         <label>
           点对数量
-          <input v-model.number="app.editorPairCount" type="number" min="1" max="12" :disabled="Boolean(app.editorEditingLevelId)" @input="app.syncEditorPairCount">
+          <input v-model.number="app.editorPairCount" type="number" min="1" :max="app.editorPairLimit" @input="app.syncEditorPairCount">
         </label>
         <label>
           难度
@@ -53,6 +53,10 @@
         </label>
         <div class="editor-form-actions" aria-label="关卡操作">
           <button type="submit">生成 JSON</button>
+          <label class="editor-import-button">
+            导入 JSON
+            <input type="file" accept="application/json,.json" @change="app.importEditorLevelJson">
+          </label>
           <button type="button" @click="app.clearEditorLayout">清空内容</button>
           <button v-if="app.isDeveloperMode" type="button" @click="app.saveEditorLevel">保存关卡</button>
         </div>

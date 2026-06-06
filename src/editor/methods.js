@@ -34,8 +34,9 @@ export const editorMethods = {
      * @returns {void}
      */
     syncEditorPairCount() {
-      this.editorPairCount = clampNumber(this.editorPairCount, 1, 12);
-      const pairIds = Object.keys(this.pointDefinitions).slice(0, this.editorPairCount);
+      const pairLimit = this.getEditorPairLimit();
+      this.editorPairCount = clampNumber(this.editorPairCount, 1, pairLimit);
+      const pairIds = this.getEditorPairIds(this.editorPairCount);
       this.editorState.pairIds = pairIds;
       if (!pairIds.includes(this.editorState.activePairId)) {
         this.editorState.activePairId = pairIds[0];
@@ -97,12 +98,35 @@ export const editorMethods = {
     },
 
     /**
+     * 获取编辑器当前可用点对上限。
+     *
+     * @returns {number} 可用点对上限。
+     */
+    getEditorPairLimit() {
+      const configuredLimit = Number(this.editorPairLimit ?? 16);
+      const definitionCount = Object.keys(this.pointDefinitions).length;
+      return Math.max(1, Math.min(Number.isFinite(configuredLimit) ? configuredLimit : 16, definitionCount || 1));
+    },
+
+    /**
+     * 按当前颜色配置和已有点对顺序生成编辑器点对 id。
+     *
+     * @param {number} count 点对数量。
+     * @returns {string[]} 点对 id 列表。
+     */
+    getEditorPairIds(count) {
+      const definitionIds = Object.keys(this.pointDefinitions);
+      const existingIds = this.editorState.pairIds.filter((pairId) => definitionIds.includes(pairId));
+      return [...new Set([...existingIds, ...definitionIds])].slice(0, count);
+    },
+
+    /**
      * 重置编辑器为新建关卡状态。
      *
      * @returns {void}
      */
     resetEditorEditor() {
-      const pairIds = Object.keys(this.pointDefinitions).slice(0, clampNumber(this.editorPairCount, 1, 12));
+      const pairIds = this.getEditorPairIds(clampNumber(this.editorPairCount, 1, this.getEditorPairLimit()));
       this.editorEditingLevelId = "";
       this.editorState = {
         name: "",
@@ -153,6 +177,67 @@ export const editorMethods = {
       this.setEditorModeHint();
       this.writeLevelTemplate(false);
       this.previewHint = `正在修改 ${level.id}，名称和 id 将保持不变`;
+    },
+
+    /**
+     * 从本地 JSON 文件导入别人制作的地图设计。
+     *
+     * @param {Event} event 文件选择事件。
+     * @returns {Promise<void>}
+     */
+    async importEditorLevelJson(event) {
+      const input = event?.target;
+      const file = input?.files?.[0];
+      if (!file) return;
+
+      try {
+        this.loadImportedEditorLevel(JSON.parse(await file.text()));
+      } catch (error) {
+        this.previewHint = error.message || "JSON 导入失败";
+      } finally {
+        if (input) input.value = "";
+      }
+    },
+
+    /**
+     * 将导入的关卡 JSON 作为新关卡载入编辑器。
+     *
+     * @param {object} level 导入的关卡对象。
+     * @returns {void}
+     */
+    loadImportedEditorLevel(level) {
+      if (!level || typeof level !== "object" || !Array.isArray(level.pairs)) {
+        throw new Error("导入失败：JSON 必须包含 pairs 数组");
+      }
+
+      const invalidPair = level.pairs.find((pair) => !pair?.id || !Array.isArray(pair.points));
+      if (invalidPair) {
+        throw new Error("导入失败：每个点对都需要 id 和 points 数组");
+      }
+
+      const pairIds = level.pairs.map((pair) => String(pair.id ?? "")).filter(Boolean);
+      if (pairIds.length === 0) {
+        throw new Error("导入失败：至少需要一个点对");
+      }
+      if (pairIds.length > this.getEditorPairLimit()) {
+        throw new Error(`导入失败：最多支持 ${this.getEditorPairLimit()} 组点对`);
+      }
+
+      this.loadEditorLevel({
+        ...level,
+        id: "",
+        name: String(level.name ?? ""),
+        pairs: level.pairs.map((pair) => ({
+          ...pair,
+          id: String(pair.id),
+          points: Array.isArray(pair.points) ? pair.points : []
+        }))
+      });
+      this.editorEditingLevelId = "";
+      this.editorState.name = String(level.name ?? "");
+      this.syncEditorBounds();
+      this.writeLevelTemplate(false);
+      this.previewHint = `已导入 ${level.name || level.id || "JSON"}，将作为新关卡保存`;
     },
 
     /**

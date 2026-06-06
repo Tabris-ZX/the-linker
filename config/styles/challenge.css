@@ -439,7 +439,11 @@
   position: relative;
   z-index: 3;
   width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
-  aspect-ratio: 1;
+  height: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  min-width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  min-height: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  flex: 0 0 auto;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   border: clamp(2px, calc(var(--cell-size) * 0.04), 5px) solid #fff;
@@ -447,7 +451,8 @@
   color: #fff;
   background: var(--dot-color);
   box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink), 0 clamp(3px, calc(var(--cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
-  font: 900 clamp(0.78rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.44), 3rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font: 900 clamp(1.16rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.72), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  white-space: nowrap;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,

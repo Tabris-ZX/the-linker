@@ -162,13 +162,7 @@ export const computed = {
      */
     mapStyleJson() {
       return JSON.stringify({
-        mapStyle: {
-          dotScale: this.mapStyle.dotScale,
-          nodeScale: this.mapStyle.nodeScale,
-          lineScale: this.mapStyle.lineScale,
-          gridLineScale: this.mapStyle.gridLineScale,
-          snapPointRadius: this.mapStyle.snapPointRadius
-        }
+        mapStyle: this.serializeMapStyle(this.mapStyle)
       }, null, 2);
     },
 

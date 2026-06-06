@@ -1,8 +1,16 @@
-# the linker
+# The Linker
 
 一个用 Vue 和 Vite 制作的连线解谜小游戏。
 
 连接相同数字的点，避开被移除的边，并铺满需要经过的地图即可胜利。
+
+## 名字由来
+
+the witness
+the room
+the talos principle
+the looker
+...
 
 ## 功能
 
@@ -36,7 +44,7 @@ npm run dev
 - 关卡编辑器和算法生成的新关卡默认放在 `data/levels/tests`
 - 测试后不收录的关卡放在 `data/levels/deleted`
 
-普通用户只看到正式关卡，但可以打开关卡编辑器新建关卡并生成 JSON；生成后可复制 JSON 并通过右上角 GitHub 链接提交 issue 投稿。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `server.dev-token` 后，可以看到开发者版和待删版，并保存或审核关卡；开发者版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入 token。
+普通用户只看到正式关卡，但可以打开关卡编辑器新建关卡并生成 JSON；生成后可复制 JSON 并通过右上角 GitHub 链接提交 issue 投稿。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `server.dev-token` 后，可以看到测试版和待删版，并保存或审核关卡；测试版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入 token。
 
 ## 关卡去重哈希
 

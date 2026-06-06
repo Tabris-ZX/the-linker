@@ -14,8 +14,8 @@
   --topbar-height: 60px;
   --page-height: 810px;
   --cell-size: 88px;
-  --board-max-width: 1200px;
-  --board-max-height: 600px;
+  --board-max-width: 1280px;
+  --board-max-height: 640px;
   --background-image: none;
   --background-opacity: 0;
   --background-blur: 0px;
@@ -453,6 +453,18 @@ h2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.map-style-controls {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.map-style-controls h3 {
+  margin: 0;
+  color: var(--accent-strong);
+  font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
 .personalization-panel label span {

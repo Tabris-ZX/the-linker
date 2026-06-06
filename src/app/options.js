@@ -2,13 +2,14 @@
 import { computed } from "./computed.js";
 import { editorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
-import { recordVisitorRequest } from "../router/visitors.js";
 import AppNav from "../components/AppNav.vue";
 import ChallengeView from "../views/ChallengeView.vue";
 import EditorView from "../views/EditorView.vue";
 import PersonalizationView from "../views/PersonalizationView.vue";
 import RuleView from "../views/RuleView.vue";
 import faviconUrl from "../../favicon.ico";
+
+export const EDITOR_PAIR_LIMIT = 16;
 
 const viewTabs = [
   { id: "challenge", label: "关卡挑战" },
@@ -94,6 +95,7 @@ export default {
       isRulePanelOpen: false,
       isPersonalizationOpen: false,
       mapStyle: { ...appConfig.mapStyle },
+      editorPairLimit: EDITOR_PAIR_LIMIT,
       editorPairCount: 5,
       editorState: {
         name: "",
@@ -123,7 +125,6 @@ export default {
    * @returns {Promise<void>}
    */
   async mounted() {
-    recordVisitorRequest();
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
     this.loadCompletedLevels();

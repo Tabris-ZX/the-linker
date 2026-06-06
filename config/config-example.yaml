@@ -1,0 +1,15 @@
+server:
+  port: 5174
+  dev-token: ""
+
+level:
+  path: data/levels
+
+styles:
+  path: config/styles
+
+background:
+  path: config/background
+  image: "default"
+  opacity: 0.2
+  blur: 0px

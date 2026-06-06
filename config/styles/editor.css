@@ -41,7 +41,8 @@
   font-size: 0.95rem;
 }
 
-.editor-form button {
+.editor-form button,
+.editor-import-button {
   width: 100%;
   min-height: 42px;
   align-self: end;
@@ -49,10 +50,38 @@
   padding: 8px 12px;
 }
 
+.editor-import-button {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
+  cursor: pointer;
+}
+
+.editor-import-button:hover {
+  background: var(--accent-strong);
+}
+
+.editor-import-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
+}
+
+.editor-import-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .editor-form-actions {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(3, minmax(140px, 180px));
+  grid-template-columns: repeat(4, minmax(140px, 180px));
   gap: 10px;
   justify-content: start;
   align-items: end;
@@ -152,8 +181,10 @@ textarea:focus {
 }
 
 .pair-chip {
+  width: 42px;
   min-width: 42px;
   height: 42px;
+  min-height: 42px;
   display: inline-grid;
   place-items: center;
   border: 2px solid var(--ink);
@@ -161,7 +192,8 @@ textarea:focus {
   color: #fff;
   background: var(--pair-color);
   box-shadow: 3px 3px 0 rgba(32, 33, 36, 0.16);
-  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font: 900 clamp(0.72rem, 2.8vw, 1rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  white-space: nowrap;
 }
 
 .pair-chip.is-active {
@@ -313,7 +345,11 @@ textarea:focus {
   position: relative;
   z-index: 3;
   width: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
-  aspect-ratio: 1;
+  height: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
+  min-width: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
+  min-height: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
+  flex: 0 0 auto;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   border: clamp(2px, calc(var(--preview-cell-size) * 0.04), 5px) solid #fff;
@@ -321,7 +357,8 @@ textarea:focus {
   color: #fff;
   background: var(--dot-color);
   box-shadow: 0 0 0 clamp(1px, calc(var(--preview-cell-size) * 0.03), 4px) var(--ink), 0 clamp(2px, calc(var(--preview-cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
-  font: 900 clamp(1rem, calc(var(--preview-cell-size) * 0.24), 2.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font: 900 clamp(1.44rem, calc(var(--preview-cell-size) * 0.4), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  white-space: nowrap;
   animation: pop-dot 150ms ease-out;
 }
 

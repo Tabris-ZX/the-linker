@@ -1,5 +1,7 @@
-.vscode/
-data/
 dist/
 node_modules/
 prompts/
+
+# 安全性忽略
+data/
+config/config.yaml

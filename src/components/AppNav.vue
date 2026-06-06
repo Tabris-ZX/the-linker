@@ -19,7 +19,7 @@
         </button>
       </nav>
       <button class="developer-button" :class="{ 'is-unlocked': isDeveloperMode }" type="button" @click="$emit('unlockDeveloperMode')">
-        开发者模式
+        SU模式
       </button>
     </div>
 

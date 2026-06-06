@@ -1,10 +1,11 @@
 import clientConfig from "virtual:the-linker-client-config";
+import stylesColors from "../../config/styles/colors.json";
 import stylesMapRaw from "../../config/styles/map.json?raw";
-import stylesPoints from "../../config/styles/points.json";
 import stylesThemes from "../../config/styles/themes.json";
 
 const rawConfig = clientConfig;
 const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
+const mapStyleConfig = parseJsonConfig(stylesMapRaw);
 const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "");
 
 export const appConfig = {
@@ -21,7 +22,7 @@ export const appConfig = {
   colors: {
     palette: rawConfig.colors?.palette ?? rawConfig.colors?.default ?? "default"
   },
-  mapStyle: normalizeMapStyle(parseJsonConfig(stylesMapRaw)),
+  mapStyle: normalizeMapStyle(mapStyleConfig.mapStyle ?? mapStyleConfig.levelMapStyle ?? mapStyleConfig),
   background: {
     path: normalizePath(rawConfig.background?.path ?? "background"),
     image: backgroundImages[0] ?? "",
@@ -56,7 +57,7 @@ function loadThemes() {
  * @returns {Record<string, object>} 点位调色板映射。
  */
 function loadPointPalettes() {
-  return Object.entries(stylesPoints ?? {})
+  return Object.entries(stylesColors ?? {})
     .filter(([, palette]) => palette && typeof palette === "object")
     .reduce((palettes, [id, palette]) => {
       palettes[id] = palette;
@@ -100,7 +101,7 @@ function parseJsonConfig(rawValue) {
 function normalizeMapStyle(config) {
   const rawStyle = config?.mapStyle ?? config ?? {};
   return {
-    dotScale: clampNumber(Number(rawStyle.dotScale), 0.2, 0.5),
+    dotScale: clampNumber(Number(rawStyle.dotScale), 0.3, 0.7),
     nodeScale: clampNumber(Number(rawStyle.nodeScale), 0.04, 0.5),
     lineScale: clampNumber(Number(rawStyle.lineScale), 0.1, 0.5),
     gridLineScale: clampNumber(Number(rawStyle.gridLineScale), 0.02, 0.2),

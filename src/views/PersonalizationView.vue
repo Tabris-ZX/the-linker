@@ -20,36 +20,39 @@
         </select>
       </label>
     </div>
-    <label>
-      点对大小
-      <span>{{ app.mapStyle.dotScale.toFixed(2) }}</span>
-      <input v-model.number="app.mapStyle.dotScale" type="range" min="0.2" max="0.5" step="0.01">
-      <input v-model.number="app.mapStyle.dotScale" type="number" min="0.2" max="0.5" step="0.01">
-    </label>
-    <label>
-      节点大小
-      <span>{{ app.mapStyle.nodeScale.toFixed(2) }}</span>
-      <input v-model.number="app.mapStyle.nodeScale" type="range" min="0.04" max="0.5" step="0.01">
-      <input v-model.number="app.mapStyle.nodeScale" type="number" min="0.04" max="0.5" step="0.01">
-    </label>
-    <label>
-      连线宽度
-      <span>{{ app.mapStyle.lineScale.toFixed(2) }}</span>
-      <input v-model.number="app.mapStyle.lineScale" type="range" min="0.1" max="0.5" step="0.01">
-      <input v-model.number="app.mapStyle.lineScale" type="number" min="0.1" max="0.5" step="0.01">
-    </label>
-    <label>
-      格边宽度
-      <span>{{ app.mapStyle.gridLineScale.toFixed(2) }}</span>
-      <input v-model.number="app.mapStyle.gridLineScale" type="range" min="0.02" max="0.2" step="0.01">
-      <input v-model.number="app.mapStyle.gridLineScale" type="number" min="0.02" max="0.2" step="0.01">
-    </label>
-    <label>
-      吸附强度
-      <span>{{ app.mapStyle.snapPointRadius.toFixed(2) }}</span>
-      <input v-model.number="app.mapStyle.snapPointRadius" type="range" min="0.1" max="0.5" step="0.01">
-      <input v-model.number="app.mapStyle.snapPointRadius" type="number" min="0.1" max="0.5" step="0.01">
-    </label>
+    <section class="map-style-controls" aria-label="地图样式">
+      <h3>地图样式</h3>
+      <label>
+        点对大小
+        <span>{{ app.mapStyle.dotScale.toFixed(2) }}</span>
+        <input v-model.number="app.mapStyle.dotScale" type="range" min="0.3" max="0.7" step="0.01">
+        <input v-model.number="app.mapStyle.dotScale" type="number" min="0.3" max="0.7" step="0.01">
+      </label>
+      <label>
+        节点大小
+        <span>{{ app.mapStyle.nodeScale.toFixed(2) }}</span>
+        <input v-model.number="app.mapStyle.nodeScale" type="range" min="0.04" max="0.5" step="0.01">
+        <input v-model.number="app.mapStyle.nodeScale" type="number" min="0.04" max="0.5" step="0.01">
+      </label>
+      <label>
+        连线宽度
+        <span>{{ app.mapStyle.lineScale.toFixed(2) }}</span>
+        <input v-model.number="app.mapStyle.lineScale" type="range" min="0.1" max="0.5" step="0.01">
+        <input v-model.number="app.mapStyle.lineScale" type="number" min="0.1" max="0.5" step="0.01">
+      </label>
+      <label>
+        格边宽度
+        <span>{{ app.mapStyle.gridLineScale.toFixed(2) }}</span>
+        <input v-model.number="app.mapStyle.gridLineScale" type="range" min="0.02" max="0.2" step="0.01">
+        <input v-model.number="app.mapStyle.gridLineScale" type="number" min="0.02" max="0.2" step="0.01">
+      </label>
+      <label>
+        吸附强度
+        <span>{{ app.mapStyle.snapPointRadius.toFixed(2) }}</span>
+        <input v-model.number="app.mapStyle.snapPointRadius" type="range" min="0.1" max="0.5" step="0.01">
+        <input v-model.number="app.mapStyle.snapPointRadius" type="number" min="0.1" max="0.5" step="0.01">
+      </label>
+    </section>
     <button type="button" class="personalization-copy-button" @click="app.copyMapStyleJson">
       复制 JSON
     </button>

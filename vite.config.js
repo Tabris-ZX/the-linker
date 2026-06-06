@@ -13,8 +13,6 @@ const officialLevelsDir = path.join(levelsDir, "official");
 const testsLevelsDir = path.join(levelsDir, "tests");
 const deleteLevelsDir = path.join(levelsDir, "deleted");
 const levelsHashFile = path.resolve(projectRoot, "data/levels-hash.json");
-const visitorsDir = path.resolve(projectRoot, "data/visitors");
-const visitorRecordFile = path.join(visitorsDir, "record.json");
 const backgroundDir = path.resolve(projectRoot, appConfig.background?.path ?? "background");
 const LEVEL_SAVE_INTERVAL_MS = 30_000;
 const MAX_REQUEST_BODY_BYTES = 128 * 1024;
@@ -26,9 +24,11 @@ export default defineConfig({
   server: {
     port: normalizePort(appConfig.server?.port, 5173),
     strictPort: false,
-    allowedHosts: ['linker.tabriszx.site']
+    allowedHosts: ["linker.tabriszx.site"],
+    hmr: false
   },
   plugins: [
+    stripViteClientPlugin(),
     clientConfigPlugin(appConfig),
     protectConfigPlugin(),
     vue(),
@@ -112,27 +112,22 @@ export default defineConfig({
           }
         });
       }
-    },
-    {
-      name: "the-linker-visitors-api",
-      configureServer(server) {
-        registerMiddleware(server, "/api/visitors", async (request, response) => {
-          try {
-            if (request.method !== "POST") {
-              sendJson(response, 405, { error: "Method not allowed" });
-              return;
-            }
-
-            const record = await recordVisitor(getRequestIp(request));
-            sendJson(response, 200, record);
-          } catch (error) {
-            sendJson(response, 500, { error: error.message });
-          }
-        });
-      }
     }
   ]
 });
+
+function stripViteClientPlugin() {
+  return {
+    name: "the-linker-strip-vite-client",
+    transformIndexHtml(html, context) {
+      if (context?.server?.config?.server?.hmr !== false) return html;
+      return html.replace(
+        /\s*<script type="module" src="\/@vite\/client"><\/script>\s*/,
+        "\n"
+      );
+    }
+  };
+}
 
 function clientConfigPlugin(config) {
   return {
@@ -452,59 +447,6 @@ function safeEqual(left, right) {
   const leftBuffer = Buffer.from(String(left));
   const rightBuffer = Buffer.from(String(right));
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-async function recordVisitor(ip) {
-  await fs.mkdir(visitorsDir, { recursive: true });
-  const record = await readVisitorRecord();
-  const normalizedIp = normalizeVisitorIp(ip);
-  const currentIpCount = Number(record.IPs?.[normalizedIp] ?? 0);
-  const nextRecord = {
-    count: Number(record.count ?? 0) + 1,
-    IPs: {
-      ...(record.IPs ?? {}),
-      [normalizedIp]: currentIpCount + 1
-    }
-  };
-
-  await fs.writeFile(visitorRecordFile, `${JSON.stringify(nextRecord, null, 2)}\n`, "utf8");
-  return nextRecord;
-}
-
-async function readVisitorRecord() {
-  const source = await fs.readFile(visitorRecordFile, "utf8").catch(async () => {
-    const legacySource = await fs.readFile(path.join(visitorsDir, "record.json"), "utf8").catch(() => "");
-    return legacySource;
-  });
-
-  if (!source) return { count: 0, IPs: {} };
-
-  try {
-    const record = JSON.parse(source);
-    return {
-      count: Number(record.count ?? 0),
-      IPs: normalizeVisitorIps(record.IPs)
-    };
-  } catch {
-    return { count: 0, IPs: {} };
-  }
-}
-
-function normalizeVisitorIps(ips) {
-  if (!ips || typeof ips !== "object") return {};
-  return Object.fromEntries(Object.entries(ips).map(([ip, count]) => [ip, Number(count ?? 0)]));
-}
-
-function getRequestIp(request) {
-  const forwardedFor = request.headers["x-forwarded-for"];
-  const forwardedIp = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
-  return forwardedIp?.split(",")[0]?.trim()
-    ?? request.socket?.remoteAddress
-    ?? "unknown";
-}
-
-function normalizeVisitorIp(ip) {
-  return String(ip || "unknown").replace(/^::ffff:/, "");
 }
 
 function readRequestBody(request) {
