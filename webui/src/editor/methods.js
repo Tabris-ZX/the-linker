@@ -665,7 +665,9 @@ export const editorMethods = {
      * @returns {string} 默认名称。
      */
     getDefaultEditorLevelName(id) {
-      return id.startsWith("level-") ? `Level ${id.slice(6)}` : "Custom Level";
+      if (/^[1-5]\d{3}$/.test(id)) return `Lv ${id}`;
+      if (/^[1-5]\d{3}-tmp$/.test(id)) return `Imp ${id}`;
+      return id.startsWith("level-") ? `Lv ${id.slice(6)}` : "Custom Level";
     },
 
     /**

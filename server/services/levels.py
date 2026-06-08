@@ -20,8 +20,10 @@ from server.services.level_hash import (
 )
 from server.utils.http import http_error
 
-LEVEL_ID_RE = re.compile(r"^level-\d+$")
-LEVEL_FILE_RE = re.compile(r"^level-(\d+)\.json$")
+STABLE_LEVEL_ID_RE = re.compile(r"^[1-5]\d{3}$")
+TEMP_LEVEL_ID_RE = re.compile(r"^[1-5]\d{3}-tmp$")
+LEVEL_ID_RE = re.compile(r"^(?:[1-5]\d{3}(?:-tmp)?|level-\d+)$")
+LEVEL_FILE_RE = re.compile(r"^(?:[1-5]\d{3}(?:-tmp)?|level-\d+)\.json$")
 CATEGORY_ORDER = {"stable": 0, "alpha": 1, "removed": 2}
 LEVELS_CACHE_TTL_SECONDS = 30
 LEVEL_INDEX_VERSION = 1
@@ -56,6 +58,27 @@ def get_answers_dir() -> Path:
 def normalize_level_category(category: Any) -> str:
     value = str(category or "stable")
     return value if value in CATEGORY_ORDER else "stable"
+
+
+def normalize_level_difficulty(value: Any) -> int:
+    try:
+        difficulty = int(round(float(value)))
+    except (TypeError, ValueError):
+        return 1
+    return min(5, max(1, difficulty))
+
+
+def is_temporary_level_id(level_id: str) -> bool:
+    return bool(TEMP_LEVEL_ID_RE.match(level_id))
+
+
+def is_stable_level_id(level_id: str) -> bool:
+    return bool(STABLE_LEVEL_ID_RE.match(level_id))
+
+
+def get_default_level_name(level_id: str, category: str = "stable") -> str:
+    prefix = "Lv" if normalize_level_category(category) == "stable" and is_stable_level_id(level_id) else "Imp"
+    return f"{prefix} {level_id}"
 
 
 def get_answer_file_path(level: dict[str, Any] | None = None, *, source_path: str = "", level_id: str = "", category: str = "") -> Path:
@@ -96,14 +119,21 @@ def write_answer_file(level: dict[str, Any], answers: list[Any]) -> None:
     write_json_file(answer_path, {"levelId": level.get("id"), "answers": answers})
 
 
-def move_answer_file(level_id: str, source_category: str, target_category: str) -> None:
-    source_path = get_answers_dir() / normalize_level_category(source_category) / f"{level_id}.json"
-    target_path = get_answers_dir() / normalize_level_category(target_category) / f"{level_id}.json"
+def move_answer_file(source_level_id: str, source_category: str, target_level_id: str, target_category: str) -> None:
+    source_path = get_answers_dir() / normalize_level_category(source_category) / f"{source_level_id}.json"
+    target_path = get_answers_dir() / normalize_level_category(target_category) / f"{target_level_id}.json"
     if not source_path.is_file():
         return
+    try:
+        payload = json.loads(source_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        payload = {"answers": []}
+    if isinstance(payload, dict):
+        payload["levelId"] = target_level_id
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.unlink(missing_ok=True)
-    shutil.move(str(source_path), str(target_path))
+    target_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    source_path.unlink(missing_ok=True)
 
 
 def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
@@ -305,13 +335,18 @@ def read_level_file(file_path: Path) -> dict[str, Any]:
 
 
 def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
-    return {
+    item = {
         "id": level.get("id"),
         "name": level.get("name"),
         "difficulty": level.get("difficulty", 1),
         "sourcePath": level.get("sourcePath", ""),
         "sourceCategory": normalize_level_category(level.get("sourceCategory", "stable")),
     }
+    if level.get("legacyId"):
+        item["legacyId"] = level.get("legacyId")
+    if level.get("legacySourcePath"):
+        item["legacySourcePath"] = level.get("legacySourcePath")
+    return item
 
 
 def save_level(level: dict[str, Any]) -> dict[str, Any]:
@@ -319,10 +354,11 @@ def save_level(level: dict[str, Any]) -> dict[str, Any]:
     if level.get("saveMode") == "update":
         return update_existing_level(level)
 
-    level_id = get_next_level_id()
     saved_level, answers = split_level_answers(level)
     saved_level.pop("saveMode", None)
     saved_level = normalize_level_for_storage(saved_level)
+    saved_level["difficulty"] = normalize_level_difficulty(saved_level.get("difficulty", 1))
+    level_id = get_next_level_id(saved_level["difficulty"], "alpha")
 
     level_hash = create_level_hash(saved_level)
     hash_index = refresh_levels_hash_index()
@@ -332,7 +368,7 @@ def save_level(level: dict[str, Any]) -> dict[str, Any]:
 
     saved_level["id"] = level_id
     if not saved_level.get("name") or saved_level.get("name") == "Custom Level":
-        saved_level["name"] = f"Level {level_id[6:]}"
+        saved_level["name"] = get_default_level_name(level_id, "alpha")
 
     file_path = alpha_levels_dir() / f"{level_id}.json"
     write_json_file(file_path, saved_level)
@@ -349,7 +385,7 @@ def save_level(level: dict[str, Any]) -> dict[str, Any]:
 def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
     level_id = str(level.get("id") or "")
     if not LEVEL_ID_RE.match(level_id):
-        raise http_error(500, "Error", "只能修改已有的 level-xxx 关卡")
+        raise http_error(500, "Error", "只能修改已有的关卡")
 
     file_path = find_level_file_path(level_id)
     if not file_path:
@@ -360,7 +396,8 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
     saved_level.pop("saveMode", None)
     saved_level = normalize_level_for_storage(saved_level)
     saved_level["id"] = current_level.get("id", level_id)
-    saved_level["name"] = current_level.get("name", f"Level {level_id[6:]}")
+    saved_level["difficulty"] = normalize_level_difficulty(saved_level.get("difficulty", current_level.get("difficulty", 1)))
+    saved_level["name"] = current_level.get("name", get_default_level_name(level_id, get_level_source_category(file_path)))
 
     level_hash = create_level_hash(saved_level)
     hash_index = refresh_levels_hash_index()
@@ -381,9 +418,8 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
 
 def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     level_id = str(review.get("levelId") or "")
+    source_path_value = str(review.get("sourcePath") or "")
     action = str(review.get("action") or "")
-    if not LEVEL_ID_RE.match(level_id):
-        raise http_error(500, "Error", "只能处理 level-xxx 测试关卡")
     if action not in {"include", "reject"}:
         raise http_error(500, "Error", "未知的测试关卡处理动作")
 
@@ -391,22 +427,43 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     alpha_levels_dir().mkdir(parents=True, exist_ok=True)
     removed_levels_dir().mkdir(parents=True, exist_ok=True)
 
-    source_path = alpha_levels_dir() / f"{level_id}.json"
+    if source_path_value:
+        source_path = safe_child_path(get_levels_dir(), source_path_value)
+    else:
+        if not TEMP_LEVEL_ID_RE.match(level_id):
+            raise http_error(500, "Error", "只能处理测试关卡")
+        source_path = alpha_levels_dir() / f"{level_id}.json"
+
+    if not source_path.is_file() or not is_level_json_file(source_path):
+        raise http_error(500, "Error", f"找不到测试关卡 {source_path_value or level_id}")
+    if get_level_source_category(source_path) != "alpha":
+        raise http_error(500, "Error", "只能处理测试版关卡")
+
+    source_level_id = source_path.stem
+    if not TEMP_LEVEL_ID_RE.match(source_level_id):
+        raise http_error(500, "Error", "只能处理临时测试关卡")
+
+    source_level = json.loads(source_path.read_text(encoding="utf-8"))
+    difficulty = normalize_level_difficulty(source_level.get("difficulty", 1))
+    target_category = "stable" if action == "include" else "removed"
+    target_level_id = get_next_level_id(difficulty, "stable") if action == "include" else source_level_id
     target_dir = stable_levels_dir() if action == "include" else removed_levels_dir()
-    target_path = target_dir / f"{level_id}.json"
-    if not source_path.is_file():
-        raise http_error(500, "Error", f"找不到测试关卡 {level_id}")
+    target_path = target_dir / f"{target_level_id}.json"
+
+    moved_level = normalize_level_for_storage(source_level)
+    moved_level["id"] = target_level_id
+    moved_level["difficulty"] = difficulty
+    moved_level["name"] = get_default_level_name(target_level_id, target_category)
 
     target_path.unlink(missing_ok=True)
-    shutil.move(str(source_path), str(target_path))
-    move_answer_file(level_id, "alpha", "stable" if action == "include" else "removed")
+    write_json_file(target_path, moved_level)
+    move_answer_file(source_level_id, "alpha", target_level_id, target_category)
+    source_path.unlink(missing_ok=True)
     refresh_all_level_indexes()
-    moved_level = json.loads(target_path.read_text(encoding="utf-8"))
     return {
         **moved_level,
-        "id": level_id,
         "sourcePath": normalize_path(target_path.relative_to(get_levels_dir())),
-        "sourceCategory": get_level_source_category(target_path),
+        "sourceCategory": target_category,
     }
 
 
@@ -423,13 +480,29 @@ def refresh_levels_hash_index() -> dict[str, Any]:
     return index
 
 
-def get_next_level_id() -> str:
-    max_number = 0
-    for file_path in list_files(get_levels_dir()):
-        matched = LEVEL_FILE_RE.match(file_path.name)
-        if matched:
-            max_number = max(max_number, int(matched.group(1)))
-    return f"level-{max_number + 1:03d}"
+def get_next_level_id(difficulty: Any, category: str) -> str:
+    normalized_difficulty = normalize_level_difficulty(difficulty)
+    normalized_category = normalize_level_category(category)
+    is_temporary = normalized_category != "stable"
+    directories = [stable_levels_dir()] if not is_temporary else [alpha_levels_dir(), removed_levels_dir()]
+    used_numbers: set[int] = set()
+    pattern = TEMP_LEVEL_ID_RE if is_temporary else STABLE_LEVEL_ID_RE
+
+    for directory in directories:
+        for file_path in list_files(directory):
+            level_id = file_path.stem
+            if not pattern.match(level_id):
+                continue
+            if int(level_id[0]) != normalized_difficulty:
+                continue
+            used_numbers.add(int(level_id[1:4]))
+
+    for number in range(1, 1000):
+        if number not in used_numbers:
+            suffix = f"{number:03d}"
+            return f"{normalized_difficulty}{suffix}{'-tmp' if is_temporary else ''}"
+
+    raise http_error(500, "Error", f"难度 {normalized_difficulty} 的关卡编号已用尽")
 
 
 def find_level_file_path(level_id: str) -> Path | None:

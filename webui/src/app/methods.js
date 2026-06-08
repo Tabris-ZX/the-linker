@@ -58,6 +58,7 @@ export const methods = {
       this.isLevelsLoading = true;
       try {
         const indexLevels = await loadLevelIndex();
+        this.migrateLegacyLevelStorage(indexLevels);
         const existingDetails = this.levelDetails ?? {};
         this.levels = indexLevels.map((item) => {
           const detail = existingDetails[this.getLevelCacheKey(item)];
@@ -228,15 +229,11 @@ export const methods = {
      * @returns {void}
      */
     openDeveloperTokenDialog() {
-      if (this.developerTokenFailedAttempts > 0 && !this.developerTokenCaptcha) {
-        this.refreshDeveloperTokenCaptcha();
-      }
       this.appDialog = {
         type: "developer-token",
         title: "开发者模式",
         message: "请输入开发者 token",
         inputValue: "",
-        captchaValue: "",
         status: this.getDeveloperTokenCooldownText()
       };
     },
@@ -258,8 +255,6 @@ export const methods = {
         this.appDialog.status = "请输入 token";
         return;
       }
-      if (!this.validateDeveloperTokenCaptcha()) return;
-
       try {
         await verifyDeveloperToken(normalizedToken);
       } catch (error) {
@@ -267,17 +262,14 @@ export const methods = {
         this.saveDeveloperTokenAttempts();
         if (this.developerTokenFailedAttempts >= DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS) {
           this.developerTokenCooldownUntil = Date.now() + DEVELOPER_TOKEN_COOLDOWN_MS;
-          this.developerTokenCaptcha = null;
           this.saveDeveloperTokenCooldown();
           this.appDialog.status = this.getDeveloperTokenCooldownText();
           this.developerStatusText = "开发者 token 错误次数过多";
           return;
         }
 
-        this.refreshDeveloperTokenCaptcha();
         const remainingAttempts = DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS - this.developerTokenFailedAttempts;
-        this.appDialog.captchaValue = "";
-        this.appDialog.status = error.message + "，还可尝试 " + remainingAttempts + " 次；下次填写需要完成人机验证";
+        this.appDialog.status = error.message + "，还可尝试 " + remainingAttempts + " 次";
         this.developerStatusText = error.message;
         return;
       }
@@ -286,7 +278,6 @@ export const methods = {
       this.isDeveloperMode = true;
       this.developerTokenFailedAttempts = 0;
       this.developerTokenCooldownUntil = 0;
-      this.developerTokenCaptcha = null;
       this.saveDeveloperTokenAttempts();
       this.saveDeveloperTokenCooldown();
       this.closeAppDialog();
@@ -315,7 +306,6 @@ export const methods = {
         if (this.developerTokenCooldownUntil > 0) {
           this.developerTokenCooldownUntil = 0;
           this.developerTokenFailedAttempts = 0;
-          this.developerTokenCaptcha = null;
           this.saveDeveloperTokenAttempts();
           this.saveDeveloperTokenCooldown();
         }
@@ -339,7 +329,6 @@ export const methods = {
         title: "投稿 JSON 已生成",
         message: "请复制 JSON，并点击右上角 GitHub 链接提交 issue 投稿。",
         inputValue: "",
-        captchaValue: "",
         status: ""
       };
     },
@@ -355,7 +344,6 @@ export const methods = {
         title: "",
         message: "",
         inputValue: "",
-        captchaValue: "",
         status: ""
       };
     },
@@ -372,14 +360,10 @@ export const methods = {
           DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS,
           Math.max(0, Number(window.localStorage.getItem(DEVELOPER_TOKEN_ATTEMPTS_STORAGE_KEY) || 0))
         );
-        if (this.developerTokenFailedAttempts > 0 && this.developerTokenCooldownUntil <= Date.now()) {
-          this.refreshDeveloperTokenCaptcha();
-        }
       } catch {
         this.developerTokenCooldownUntil = 0;
         this.developerTokenFailedAttempts = 0;
-        this.developerTokenCaptcha = null;
-      }
+        }
     },
 
     /**
@@ -414,45 +398,6 @@ export const methods = {
       } catch {
         // Ignore unavailable storage.
       }
-    },
-
-    /**
-     * 刷新开发者 token 人机验证题。
-     *
-     * @returns {void}
-     */
-    refreshDeveloperTokenCaptcha() {
-      const left = Math.floor(Math.random() * 8) + 2;
-      const right = Math.floor(Math.random() * 8) + 2;
-      this.developerTokenCaptcha = {
-        left,
-        right,
-        answer: String(left + right)
-      };
-    },
-
-    /**
-     * 校验开发者 token 人机验证答案。
-     *
-     * @returns {boolean} 是否通过验证。
-     */
-    validateDeveloperTokenCaptcha() {
-      if (this.developerTokenFailedAttempts <= 0) return true;
-      if (!this.developerTokenCaptcha) {
-        this.refreshDeveloperTokenCaptcha();
-      }
-      const answer = String(this.appDialog.captchaValue ?? "").trim();
-      if (!answer) {
-        this.appDialog.status = "请先完成人机验证";
-        return false;
-      }
-      if (answer !== this.developerTokenCaptcha.answer) {
-        this.appDialog.captchaValue = "";
-        this.refreshDeveloperTokenCaptcha();
-        this.appDialog.status = "人机验证错误，请重新填写";
-        return false;
-      }
-      return true;
     },
 
     /**
@@ -513,15 +458,16 @@ export const methods = {
      * @param {"include"|"reject"} action 处理动作。
      * @returns {Promise<void>}
      */
-    async reviewTestLevel(levelId, action) {
+    async reviewTestLevel(level, action) {
       try {
-        await reviewLevelRequest(levelId, action);
+        const movedLevel = await reviewLevelRequest(level, action);
         await this.loadLevels();
-        const movedIndex = this.levels.findIndex((level) => level?.id === levelId && this.getLevelCategory(level) === (action === "include" ? "stable" : "removed"));
+        const movedKey = this.getLevelCacheKey(movedLevel);
+        const movedIndex = this.levels.findIndex((item) => this.getLevelCacheKey(item) === movedKey || (item?.id === movedLevel.id && this.getLevelCategory(item) === movedLevel.sourceCategory));
         if (movedIndex >= 0) {
           await this.loadLevel(movedIndex);
         }
-          this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删版";
+        this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删版";
       } catch (error) {
         this.developerStatusText = error.message;
       }
@@ -608,6 +554,39 @@ export const methods = {
      */
     saveCompletedLevels() {
       window.localStorage.setItem(COMPLETED_LEVELS_STORAGE_KEY, JSON.stringify(this.completedLevels));
+    },
+
+    /**
+     * 将旧关卡 id/sourcePath 的本地记录迁移到新 sourcePath。
+     *
+     * @param {Array<object>} levels 关卡目录。
+     * @returns {void}
+     */
+    migrateLegacyLevelStorage(levels) {
+      if (!Array.isArray(levels) || levels.length === 0) return;
+      const mappings = levels
+        .filter((level) => level?.sourcePath && (level.legacySourcePath || level.legacyId))
+        .flatMap((level) => [level.legacySourcePath, level.legacyId].filter(Boolean).map((legacyKey) => [legacyKey, level.sourcePath]));
+      if (mappings.length === 0) return;
+
+      let didChangeCompleted = false;
+      const nextCompletedLevels = { ...this.completedLevels };
+      mappings.forEach(([legacyKey, nextKey]) => {
+        if (!nextCompletedLevels[nextKey] && nextCompletedLevels[legacyKey]) {
+          nextCompletedLevels[nextKey] = nextCompletedLevels[legacyKey];
+          didChangeCompleted = true;
+        }
+      });
+      if (didChangeCompleted) {
+        this.completedLevels = nextCompletedLevels;
+        this.saveCompletedLevels();
+      }
+
+      const lastLevelKey = this.loadLastLevelId();
+      const lastLevelMapping = mappings.find(([legacyKey]) => legacyKey === lastLevelKey);
+      if (lastLevelMapping) {
+        this.saveLastLevelId(lastLevelMapping[1]);
+      }
     },
 
     /**

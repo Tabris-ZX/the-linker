@@ -87,11 +87,11 @@ export async function saveLevelRequest(level, options = {}) {
 /**
  * 将测试关卡移动到正式版或待删版目录。
  *
- * @param {string} levelId 关卡 id。
+ * @param {object|string} level 关卡目录项、完整关卡或关卡 id。
  * @param {"include"|"reject"} action 处理动作。
  * @returns {Promise<object>} 移动后的关卡数据。
  */
-export async function reviewLevelRequest(levelId, action) {
+export async function reviewLevelRequest(level, action) {
   let lastError = {};
 
   for (const apiUrl of getLevelReviewApiUrls()) {
@@ -101,7 +101,11 @@ export async function reviewLevelRequest(levelId, action) {
         "Content-Type": "application/json",
         ...getDeveloperAuthHeaders()
       },
-      body: JSON.stringify({ levelId, action })
+      body: JSON.stringify({
+        levelId: typeof level === "string" ? level : level?.id,
+        sourcePath: typeof level === "string" ? "" : level?.sourcePath,
+        action
+      })
     });
 
     if (response.ok) {

@@ -35,10 +35,6 @@
 
       <form v-if="appDialog.type === 'developer-token'" class="app-dialog-form" @submit.prevent="submitDeveloperToken">
         <input v-model.trim="appDialog.inputValue" type="password" autocomplete="off" placeholder="开发者 token" :disabled="Boolean(developerTokenCooldownText)">
-        <label v-if="isDeveloperTokenCaptchaRequired" class="captcha-field">
-          <span>{{ developerTokenCaptchaPrompt }}</span>
-          <input v-model.trim="appDialog.captchaValue" type="text" inputmode="numeric" autocomplete="off" placeholder="答案" :disabled="Boolean(developerTokenCooldownText)">
-        </label>
         <div class="victory-actions">
           <button type="submit" class="victory-share-button" :disabled="Boolean(developerTokenCooldownText)">确认</button>
           <button type="button" class="close-button" @click="closeAppDialog">关闭</button>

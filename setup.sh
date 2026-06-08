@@ -24,13 +24,13 @@ print(get_settings().backend_port)
 PY
 )"
 
-echo "[1/5] Build webui"
+echo "1/5 webui"
 cd "$WEBUI_DIR"
 npm install
 npm run build
 cd "$ROOT_DIR"
 
-echo "[2/5] Publish dist to $PUBLIC_DIR"
+echo "2/5 publish"
 if [[ ! -d "$PUBLIC_DIR" || ! -w "$PUBLIC_DIR" ]]; then
   if command -v sudo >/dev/null 2>&1; then
     sudo mkdir -p "$PUBLIC_DIR"
@@ -43,16 +43,15 @@ fi
 find "$PUBLIC_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 cp -a "$WEBUI_DIR/dist/." "$PUBLIC_DIR/"
 
-echo "[3/5] Sync Python dependencies"
+echo "3/5 deps"
 "$UV_BIN" sync
 
-echo "[4/5] Free backend port $BACKEND_PORT"
+echo "4/5 port"
 mapfile -t PORT_PIDS < <(ss -ltnp "sport = :$BACKEND_PORT" 2>/dev/null \
   | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' \
   | sort -u)
 
 if ((${#PORT_PIDS[@]} > 0)); then
-  echo "Killing processes on port $BACKEND_PORT: ${PORT_PIDS[*]}"
   kill "${PORT_PIDS[@]}" 2>/dev/null || true
   sleep 1
 
@@ -60,13 +59,10 @@ if ((${#PORT_PIDS[@]} > 0)); then
     | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' \
     | sort -u)
   if ((${#PORT_PIDS[@]} > 0)); then
-    echo "Force killing processes on port $BACKEND_PORT: ${PORT_PIDS[*]}"
     kill -9 "${PORT_PIDS[@]}" 2>/dev/null || true
     sleep 1
   fi
-else
-  echo "Port $BACKEND_PORT is free"
 fi
 
-echo "[5/5] Start FastAPI backend on port $BACKEND_PORT"
+echo "5/5 start :$BACKEND_PORT"
 exec "$UV_BIN" run python -m server.main

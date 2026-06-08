@@ -53,8 +53,8 @@
                   <small>{{ app.getLevelBestTimeText(app.getLevelCacheKey(item.level)) }}</small>
                 </button>
                 <div v-if="app.isDeveloperMode && app.getLevelCategory(item.level) === 'alpha'" class="level-review-actions">
-                  <button type="button" @click="app.reviewTestLevel(item.level.id, 'include')">收录</button>
-                  <button type="button" @click="app.reviewTestLevel(item.level.id, 'reject')">不收录</button>
+                  <button type="button" @click="app.reviewTestLevel(item.level, 'include')">收录</button>
+                  <button type="button" @click="app.reviewTestLevel(item.level, 'reject')">不收录</button>
                 </div>
               </article>
             </div>

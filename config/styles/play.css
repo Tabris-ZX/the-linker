@@ -107,9 +107,9 @@
   border: 2px solid var(--ink);
   border-radius: 6px;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
   text-align: left;
-  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
+  box-shadow: 4px 4px 0 var(--shadow-color);
   overflow: hidden;
 }
 
@@ -143,7 +143,7 @@
 
 .level-card.is-active,
 .level-card:hover {
-  color: #fff;
+  color: var(--button-ink);
   background: var(--accent);
 }
 
@@ -155,30 +155,30 @@
 .level-card.is-active small,
 .level-card:hover span,
 .level-card:hover small {
-  color: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--button-ink) 86%, transparent);
 }
 
 .level-card.is-completed {
   border-color: var(--success);
-  background: #dcfce7;
+  background: var(--completed-surface);
 }
 
 .level-card.is-completed:hover,
 .level-card.is-completed.is-active {
-  color: #fff;
+  color: var(--button-ink);
   background: var(--accent);
 }
 
 .level-card.is-completed span,
 .level-card.is-completed small {
-  color: #166534;
+  color: var(--completed-ink);
 }
 
 .level-card.is-completed:hover span,
 .level-card.is-completed:hover small,
 .level-card.is-completed.is-active span,
 .level-card.is-completed.is-active small {
-  color: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--button-ink) 86%, transparent);
 }
 
 .level-review-actions {
@@ -191,7 +191,7 @@
 .level-review-actions button {
   padding: 5px 6px;
   font: 900 0.74rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
-  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.14);
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
 }
 
 .level-picker-status {
@@ -218,8 +218,8 @@
   border: 2px solid var(--ink);
   border-radius: 8px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 6px 6px 0 rgba(32, 33, 36, 0.14);
+  background: var(--surface-raised);
+  box-shadow: 6px 6px 0 var(--shadow-color-soft);
   font: 900 1.1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
@@ -307,8 +307,8 @@
   border: 4px solid var(--ink);
   border-radius: 8px;
   color: var(--ink);
-  background: #fff;
-  box-shadow: 10px 10px 0 rgba(32, 33, 36, 0.2);
+  background: var(--surface);
+  box-shadow: 10px 10px 0 var(--shadow-color);
   font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   transform: translate(-50%, -50%);
 }
@@ -317,7 +317,7 @@
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(32, 33, 36, 0.24);
+  background: rgba(0, 0, 0, 0.42);
 }
 
 .app-dialog {
@@ -396,9 +396,9 @@
 .victory-share-button {
   padding: 5px 9px;
   border-width: 2px;
-  color: #fff;
+  color: var(--button-ink);
   font: 900 0.85rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
-  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.16);
+  box-shadow: 2px 2px 0 var(--shadow-color);
 }
 
 .victory-status {
@@ -474,9 +474,9 @@
   box-sizing: border-box;
   display: grid;
   place-items: center;
-  border: clamp(2px, calc(var(--cell-size) * 0.04), 5px) solid #fff;
+  border: clamp(2px, calc(var(--cell-size) * 0.04), 5px) solid var(--dot-border);
   border-radius: 999px;
-  color: #fff;
+  color: var(--button-ink);
   background: var(--dot-color);
   box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink), 0 clamp(3px, calc(var(--cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
   font: 900 clamp(1.16rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.72), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;

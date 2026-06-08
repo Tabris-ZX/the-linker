@@ -42,26 +42,6 @@ export const computed = {
     },
 
     /**
-     * 是否需要开发者 token 人机验证。
-     *
-     * @returns {boolean} 是否显示验证题。
-     */
-    isDeveloperTokenCaptchaRequired() {
-      return this.developerTokenFailedAttempts > 0 && !this.developerTokenCooldownText;
-    },
-
-    /**
-     * 获取开发者 token 人机验证题目。
-     *
-     * @returns {string} 验证题提示。
-     */
-    developerTokenCaptchaPrompt() {
-      const captcha = this.developerTokenCaptcha;
-      if (!captcha) return "人机验证";
-      return `人机验证：${captcha.left} + ${captcha.right} = ?`;
-    },
-
-    /**
      * 格式化当前计时文本。
      *
      * @returns {string} 计时显示文本。

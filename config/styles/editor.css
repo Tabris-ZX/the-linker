@@ -51,7 +51,7 @@
 }
 
 .editor-form button,
-.editor-import-button {
+.editor-form .editor-import-button {
   width: 100%;
   min-height: 42px;
   align-self: end;
@@ -59,27 +59,27 @@
   padding: 8px 12px;
 }
 
-.editor-import-button {
+.editor-form .editor-import-button {
   display: grid;
   place-items: center;
   border: 2px solid var(--ink);
   border-radius: 6px;
-  color: #fff;
+  color: var(--button-ink);
   background: var(--accent);
-  box-shadow: 4px 4px 0 rgba(32, 33, 36, 0.18);
+  box-shadow: 4px 4px 0 var(--shadow-color);
   cursor: pointer;
 }
 
-.editor-import-button:hover {
+.editor-form .editor-import-button:hover {
   background: var(--accent-strong);
 }
 
-.editor-import-button:active {
+.editor-form .editor-import-button:active {
   transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 rgba(32, 33, 36, 0.18);
+  box-shadow: 2px 2px 0 var(--shadow-color);
 }
 
-.editor-import-button input {
+.editor-form .editor-import-button input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -104,7 +104,7 @@ textarea {
   border-radius: 6px;
   padding: 8px 10px;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
 }
 
 input:focus,
@@ -129,7 +129,7 @@ textarea:focus {
   margin-top: 10px;
   border: 2px solid var(--ink);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-raised);
   overflow: hidden;
 }
 
@@ -164,7 +164,7 @@ textarea:focus {
   resize: vertical;
   border: 0;
   border-radius: 0;
-  background: #fff;
+  background: var(--surface);
   white-space: pre;
   overflow: auto;
 }
@@ -198,9 +198,9 @@ textarea:focus {
   place-items: center;
   border: 2px solid var(--ink);
   border-radius: 999px;
-  color: #fff;
+  color: var(--button-ink);
   background: var(--pair-color);
-  box-shadow: 3px 3px 0 rgba(32, 33, 36, 0.16);
+  box-shadow: 3px 3px 0 var(--shadow-color);
   font: 900 clamp(0.72rem, 2.8vw, 1rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   white-space: nowrap;
 }
@@ -232,7 +232,7 @@ textarea:focus {
   width: calc(var(--preview-cols) * var(--preview-cell-size));
   height: calc(var(--preview-rows) * var(--preview-cell-size));
   border: 0;
-  background: #fff;
+  background: var(--surface);
   touch-action: none;
   overflow: visible;
 }
@@ -361,9 +361,9 @@ textarea:focus {
   box-sizing: border-box;
   display: grid;
   place-items: center;
-  border: clamp(2px, calc(var(--preview-cell-size) * 0.04), 5px) solid #fff;
+  border: clamp(2px, calc(var(--preview-cell-size) * 0.04), 5px) solid var(--dot-border);
   border-radius: 999px;
-  color: #fff;
+  color: var(--button-ink);
   background: var(--dot-color);
   box-shadow: 0 0 0 clamp(1px, calc(var(--preview-cell-size) * 0.03), 4px) var(--ink), 0 clamp(2px, calc(var(--preview-cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
   font: 900 clamp(1.44rem, calc(var(--preview-cell-size) * 0.4), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;

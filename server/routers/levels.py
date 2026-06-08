@@ -64,7 +64,7 @@ async def get_level_detail(level_id: str, request: Request) -> dict[str, Any]:
 async def get_level_detail_by_source_path(path: str, request: Request) -> dict[str, Any]:
     """按 sourcePath 读取完整关卡。
 
-    sourcePath 可区分 stable/level-001.json 和 alpha/level-001.json 这类同 id 关卡。
+    sourcePath 可区分 stable/1001.json 和 alpha/1001-tmp.json 这类不同目录关卡。
     未授权用户只能读取 stable 关卡；带有效开发者 Token 时可读取 alpha 和 removed 关卡。
     """
     level = read_level_by_source_path(path)
@@ -89,7 +89,7 @@ async def post_level(request: Request) -> dict[str, Any]:
     """保存关卡。
 
     需要开发者 Bearer Token。请求体为关卡 JSON，saveMode=create 时写入 alpha 目录并自动分配 id，
-    saveMode=update 时更新已有 level-xxx 文件。保存前会执行频率限制和关卡哈希去重。
+    saveMode=update 时更新已有关卡文件。保存前会执行频率限制和关卡哈希去重。
     """
     authorize_developer_request(request)
     rate_limit = get_level_save_rate_limit()
@@ -115,7 +115,7 @@ async def review_level(request: Request) -> dict[str, Any]:
     """审核测试关卡。
 
     需要开发者 Bearer Token。action=include 会把 alpha 关卡移动到 stable，
-    action=reject 会把 alpha 关卡移动到 removed，并刷新关卡哈希索引。
+    action=reject 会把 alpha 关卡移动到 removed，并刷新关卡哈希索引。收录时会重新分配正式关卡 id。
     """
     authorize_developer_request(request)
     review = await read_json_body(request)

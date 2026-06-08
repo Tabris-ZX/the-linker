@@ -68,7 +68,6 @@ export default {
         title: "",
         message: "",
         inputValue: "",
-        captchaValue: "",
         status: ""
       },
       levelCategoryFilter: "all",
@@ -79,7 +78,6 @@ export default {
       developerStatusText: "",
       developerTokenFailedAttempts: 0,
       developerTokenCooldownUntil: 0,
-      developerTokenCaptcha: null,
       completedLevels: {},
       paths: {},
       activePair: null,
