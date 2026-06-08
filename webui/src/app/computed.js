@@ -119,7 +119,7 @@ export const computed = {
     /**
      * 获取当前目录中各分类关卡数量。
      *
-     * @returns {{ total: number, official: number, tests: number, deleted: number }} 分类数量。
+     * @returns {{ total: number, stable: number, alpha: number, removed: number }} 分类数量。
      */
     levelCategoryCounts() {
       return this.loadedLevels.reduce((counts, level) => {
@@ -127,7 +127,7 @@ export const computed = {
         counts.total += 1;
         counts[category] = (counts[category] ?? 0) + 1;
         return counts;
-      }, { total: 0, official: 0, tests: 0, deleted: 0 });
+      }, { total: 0, stable: 0, alpha: 0, removed: 0 });
     },
 
     /**
@@ -136,9 +136,11 @@ export const computed = {
      * @returns {string} 目录数量文本。
      */
     levelDirectoryStatusText() {
+      if (this.isLevelsLoading) return "目录加载中";
+      if (this.developerStatusText && this.levels.length === 0) return this.developerStatusText;
       const counts = this.levelCategoryCounts;
-      if (!this.isDeveloperMode) return `目录 ${counts.official}`;
-      return `目录 ${counts.total} · 正式 ${counts.official} · 测试 ${counts.tests} · 待删 ${counts.deleted}`;
+      if (!this.isDeveloperMode) return `目录 ${counts.stable}`;
+      return `目录 ${counts.total} · 正式 ${counts.stable} · 测试 ${counts.alpha} · 待删 ${counts.removed}`;
     },
 
     /**

@@ -14,9 +14,9 @@
             版本
             <select v-model="app.levelCategoryFilter">
               <option value="all">全部 {{ app.levelCategoryCounts.total }}</option>
-              <option value="official">正式版 {{ app.levelCategoryCounts.official }}</option>
-              <option value="tests">测试版 {{ app.levelCategoryCounts.tests }}</option>
-              <option value="deleted">待删版 {{ app.levelCategoryCounts.deleted }}</option>
+              <option value="stable">正式版 {{ app.levelCategoryCounts.stable }}</option>
+              <option value="alpha">测试版 {{ app.levelCategoryCounts.alpha }}</option>
+              <option value="removed">待删版 {{ app.levelCategoryCounts.removed }}</option>
             </select>
           </label>
           <label>
@@ -49,10 +49,10 @@
               >
                 <button type="button" class="level-card-main" @click="app.selectLevelFromPicker(item.index)">
                   <strong>{{ item.level.name || item.level.id }}</strong>
-                  <span>{{ item.level.id }} · {{ app.getLevelCategoryLabel(item.level.sourceCategory) }} · 难度 {{ app.normalizeLevelDifficulty(item.level.difficulty) }}</span>
+                  <span>{{ item.level.id }}</span>
                   <small>{{ app.getLevelBestTimeText(app.getLevelCacheKey(item.level)) }}</small>
                 </button>
-                <div v-if="app.isDeveloperMode && item.level.sourceCategory === 'tests'" class="level-review-actions">
+                <div v-if="app.isDeveloperMode && app.getLevelCategory(item.level) === 'alpha'" class="level-review-actions">
                   <button type="button" @click="app.reviewTestLevel(item.level.id, 'include')">收录</button>
                   <button type="button" @click="app.reviewTestLevel(item.level.id, 'reject')">不收录</button>
                 </div>
@@ -62,14 +62,14 @@
         </div>
         <p v-if="app.developerStatusText" class="level-picker-status">{{ app.developerStatusText }}</p>
       </section>
-      <div v-if="!app.isInitialLevelLoading && !app.currentLevel" class="play-status" role="status" aria-live="polite">
-        暂无关卡
+      <div v-if="!app.isInitialLevelLoading && !app.isLevelsLoading && !app.isLevelDetailLoading && !app.currentLevel" class="play-status" role="status" aria-live="polite">
+        {{ app.developerStatusText || "暂无关卡" }}
       </div>
       <div
         v-else
         class="board-wrap"
-        :class="{ 'is-loading': app.isInitialLevelLoading || !app.currentLevel }"
-        :aria-busy="app.isInitialLevelLoading ? 'true' : 'false'"
+        :class="{ 'is-loading': app.isInitialLevelLoading || app.isLevelsLoading || app.isLevelDetailLoading || !app.currentLevel }"
+        :aria-busy="app.isInitialLevelLoading || app.isLevelsLoading || app.isLevelDetailLoading ? 'true' : 'false'"
       >
         <div
           ref="boardRef"
@@ -82,7 +82,7 @@
           @click.prevent
           @dblclick.prevent="app.handleBoardDoubleClick"
         >
-          <div v-if="app.isInitialLevelLoading" class="board-loading" role="status" aria-live="polite">加载中...</div>
+          <div v-if="app.isInitialLevelLoading || app.isLevelsLoading || app.isLevelDetailLoading" class="board-loading" role="status" aria-live="polite">加载中...</div>
           <svg v-if="app.currentLevel" class="edge-grid" :viewBox="app.boardViewBox" preserveAspectRatio="none">
             <path v-if="app.gridPathD" :d="app.gridPathD"></path>
           </svg>

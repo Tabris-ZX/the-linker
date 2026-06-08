@@ -84,10 +84,6 @@ export function isPathStructurallyValid(level, pairId, path, endpoints) {
 export function getAnswerEdges(level) {
   const edges = new Set();
   (level.answers ?? []).forEach((answer) => {
-    if (typeof answer === "string") {
-      edges.add(answer);
-      return;
-    }
     if (answer?.edge) edges.add(answer.edge);
   });
   return edges;

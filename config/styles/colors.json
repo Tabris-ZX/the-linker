@@ -1,200 +1,56 @@
 {
   "默认": {
-    "red": {
-      "label": "1",
-      "color": "#ef4444"
-    },
-    "blue": {
-      "label": "2",
-      "color": "#2563eb"
-    },
-    "green": {
-      "label": "3",
-      "color": "#22c55e"
-    },
-    "amber": {
-      "label": "4",
-      "color": "#f59e0b"
-    },
-    "pink": {
-      "label": "5",
-      "color": "#ec4899"
-    },
-    "cyan": {
-      "label": "6",
-      "color": "#14b8a6"
-    },
-    "violet": {
-      "label": "7",
-      "color": "#8b5cf6"
-    },
-    "brown": {
-      "label": "8",
-      "color": "#a16207"
-    },
-    "teal": {
-      "label": "9",
-      "color": "#0f766e"
-    },
-    "orange": {
-      "label": "10",
-      "color": "#f97316"
-    },
-    "slate": {
-      "label": "11",
-      "color": "#475569"
-    },
-    "lime": {
-      "label": "12",
-      "color": "#84cc16"
-    },
-    "indigo": {
-      "label": "13",
-      "color": "#4f46e5"
-    },
-    "rose": {
-      "label": "14",
-      "color": "#e11d48"
-    },
-    "emerald": {
-      "label": "15",
-      "color": "#059669"
-    },
-    "zinc": {
-      "label": "16",
-      "color": "#52525b"
-    }
+    "1": "#ef4444",
+    "2": "#2563eb",
+    "3": "#22c55e",
+    "4": "#f59e0b",
+    "5": "#ec4899",
+    "6": "#14b8a6",
+    "7": "#8b5cf6",
+    "8": "#a16207",
+    "9": "#0f766e",
+    "10": "#f97316",
+    "11": "#475569",
+    "12": "#84cc16",
+    "13": "#4f46e5",
+    "14": "#e11d48",
+    "15": "#059669",
+    "16": "#52525b"
   },
   "马卡龙": {
-    "red": {
-      "label": "1",
-      "color": "#ff8fab"
-    },
-    "blue": {
-      "label": "2",
-      "color": "#8ecae6"
-    },
-    "green": {
-      "label": "3",
-      "color": "#b7e4c7"
-    },
-    "amber": {
-      "label": "4",
-      "color": "#ffd166"
-    },
-    "pink": {
-      "label": "5",
-      "color": "#ffc6ff"
-    },
-    "cyan": {
-      "label": "6",
-      "color": "#9bf6ff"
-    },
-    "violet": {
-      "label": "7",
-      "color": "#bdb2ff"
-    },
-    "brown": {
-      "label": "8",
-      "color": "#d7a86e"
-    },
-    "teal": {
-      "label": "9",
-      "color": "#a8dadc"
-    },
-    "orange": {
-      "label": "10",
-      "color": "#ffb4a2"
-    },
-    "slate": {
-      "label": "11",
-      "color": "#a3b18a"
-    },
-    "lime": {
-      "label": "12",
-      "color": "#caffbf"
-    },
-    "indigo": {
-      "label": "13",
-      "color": "#c4b5fd"
-    },
-    "rose": {
-      "label": "14",
-      "color": "#ffafcc"
-    },
-    "emerald": {
-      "label": "15",
-      "color": "#95d5b2"
-    },
-    "zinc": {
-      "label": "16",
-      "color": "#cbd5e1"
-    }
+    "1": "#ff8fab",
+    "2": "#8ecae6",
+    "3": "#b7e4c7",
+    "4": "#ffd166",
+    "5": "#ffc6ff",
+    "6": "#9bf6ff",
+    "7": "#bdb2ff",
+    "8": "#d7a86e",
+    "9": "#a8dadc",
+    "10": "#ffb4a2",
+    "11": "#a3b18a",
+    "12": "#caffbf",
+    "13": "#c4b5fd",
+    "14": "#ffafcc",
+    "15": "#95d5b2",
+    "16": "#cbd5e1"
   },
   "糖果": {
-    "red": {
-      "label": "1",
-      "color": "#ff4d6d"
-    },
-    "blue": {
-      "label": "2",
-      "color": "#4d96ff"
-    },
-    "green": {
-      "label": "3",
-      "color": "#6bcb77"
-    },
-    "amber": {
-      "label": "4",
-      "color": "#ffd93d"
-    },
-    "pink": {
-      "label": "5",
-      "color": "#ff66c4"
-    },
-    "cyan": {
-      "label": "6",
-      "color": "#00d1ff"
-    },
-    "violet": {
-      "label": "7",
-      "color": "#9b5de5"
-    },
-    "brown": {
-      "label": "8",
-      "color": "#c77d2d"
-    },
-    "teal": {
-      "label": "9",
-      "color": "#00c2a8"
-    },
-    "orange": {
-      "label": "10",
-      "color": "#ff9f1c"
-    },
-    "slate": {
-      "label": "11",
-      "color": "#64748b"
-    },
-    "lime": {
-      "label": "12",
-      "color": "#b8f35f"
-    },
-    "indigo": {
-      "label": "13",
-      "color": "#5b5cff"
-    },
-    "rose": {
-      "label": "14",
-      "color": "#ff2d55"
-    },
-    "emerald": {
-      "label": "15",
-      "color": "#00d084"
-    },
-    "zinc": {
-      "label": "16",
-      "color": "#8e8e93"
-    }
+    "1": "#ff4d6d",
+    "2": "#4d96ff",
+    "3": "#6bcb77",
+    "4": "#ffd93d",
+    "5": "#ff66c4",
+    "6": "#00d1ff",
+    "7": "#9b5de5",
+    "8": "#c77d2d",
+    "9": "#00c2a8",
+    "10": "#ff9f1c",
+    "11": "#64748b",
+    "12": "#b8f35f",
+    "13": "#5b5cff",
+    "14": "#ff2d55",
+    "15": "#00d084",
+    "16": "#8e8e93"
   }
 }

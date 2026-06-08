@@ -27,6 +27,7 @@ class AppSettings:
     levels_dir: Path
     levels_hash_file: Path
     levels_index_file: Path
+    answers_dir: Path
     background_dir: Path
     webui_dist_dir: Path
 
@@ -82,6 +83,7 @@ def get_settings() -> AppSettings:
         levels_index_file=resolve_config_path(
             path_config.get("levelsIndex") or path_config.get("levels_index") or "data/levels-index.json"
         ),
+        answers_dir=resolve_config_path(path_config.get("answers") or "data/answers"),
         background_dir=resolve_config_path(
             path_config.get("background") or background_config.get("path") or "background"
         ),

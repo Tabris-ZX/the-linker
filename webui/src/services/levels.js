@@ -1,5 +1,5 @@
 import { pointDefinitions } from "../config/index.js";
-import { fetchLevelDetail, fetchLevelIndex, saveLevelRequest } from "../router/levels.js";
+import { fetchLevelAnswers, fetchLevelDetail, fetchLevelIndex, saveLevelRequest } from "../router/levels.js";
 import { cloneLevel } from "../utils/object.js";
 import { normalizeGridType } from "../utils/geometry.js";
 
@@ -24,6 +24,11 @@ export async function loadLevelDetail(levelId, sourcePath = "") {
   return hydrateLevel(await fetchLevelDetail(levelId, sourcePath));
 }
 
+export async function loadLevelAnswers(level) {
+  const payload = await fetchLevelAnswers(level.sourcePath);
+  return Array.isArray(payload?.answers) ? payload.answers : [];
+}
+
 /**
  * 保存关卡文件，并按当前点位定义补全返回数据。
  *
@@ -46,31 +51,34 @@ export async function saveLevelFile(level, definitions = pointDefinitions, optio
 export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
   const palette = Object.values(definitions).map((point) => point.color);
   const pairs = Array.isArray(rawLevel?.pairs) ? rawLevel.pairs : [];
-  // Merge level files with JSON color config so level authors can omit repeated labels/colors.
+  const hydratedPairs = pairs.map((pair, index) => {
+    const pairId = String(pair?.id ?? "");
+    return {
+      ...pair,
+      id: pairId,
+      label: definitions[pairId]?.label ?? pairId,
+      color: definitions[pairId]?.color ?? palette[index % palette.length],
+      points: Array.isArray(pair?.points) ? pair.points : []
+    };
+  });
   return {
     ...rawLevel,
     gridType: normalizeGridType(rawLevel.gridType ?? "square"),
     difficulty: normalizeLevelDifficulty(rawLevel.difficulty),
     sourcePath: rawLevel.sourcePath ?? "",
     sourceCategory: normalizeLevelSourceCategory(rawLevel.sourceCategory, rawLevel.sourcePath),
-    pairs: pairs.map((pair, index) => ({
-      ...pair,
-      label: definitions[pair.id]?.label ?? pair.label ?? String(index + 1),
-      color: definitions[pair.id]?.color ?? pair.color ?? palette[index % palette.length]
-    })),
+    pairs: hydratedPairs,
     removedEdges: rawLevel.removedEdges ?? [],
-    answers: rawLevel.answers ?? []
+    answers: normalizeLevelAnswers(rawLevel.answers)
   };
 }
 
 export function hydrateLevelIndexItem(rawLevel) {
   return {
     ...rawLevel,
-    gridType: normalizeGridType(rawLevel.gridType ?? "square"),
     difficulty: normalizeLevelDifficulty(rawLevel.difficulty),
     sourcePath: rawLevel.sourcePath ?? "",
     sourceCategory: normalizeLevelSourceCategory(rawLevel.sourceCategory, rawLevel.sourcePath),
-    pairCount: Number.isFinite(Number(rawLevel.pairCount)) ? Number(rawLevel.pairCount) : 0,
     isLevelIndexItem: true
   };
 }
@@ -90,10 +98,20 @@ function normalizeLevelDifficulty(value) {
 }
 
 function normalizeLevelSourceCategory(category, sourcePath = "") {
-  if (category === "tests" || category === "deleted" || category === "official") return category;
+  if (["stable", "alpha", "removed"].includes(category)) return category;
   const [directory] = String(sourcePath).split("/");
-  if (directory === "tests" || directory === "deleted" || directory === "official") return directory;
-  return "official";
+  if (["stable", "alpha", "removed"].includes(directory)) return directory;
+  return "stable";
+}
+
+function normalizeLevelAnswers(answers) {
+  if (!Array.isArray(answers)) return [];
+  return answers
+    .filter((answer) => answer && typeof answer === "object" && answer.edge && /^\d+$/.test(String(answer.pairId ?? "")))
+    .map((answer) => ({
+      ...answer,
+      pairId: String(answer.pairId)
+    }));
 }
 
 function isValidRawLevel(level) {

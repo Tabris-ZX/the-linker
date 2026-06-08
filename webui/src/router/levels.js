@@ -34,6 +34,24 @@ export async function fetchLevelDetail(levelId, sourcePath = "") {
   throw new Error(payload.message ?? "关卡加载失败");
 }
 
+
+/**
+ * 按 sourcePath 获取编辑器答案线路。
+ *
+ * @param {string} sourcePath 关卡来源路径。
+ * @returns {Promise<object>} 答案数据。
+ */
+export async function fetchLevelAnswers(sourcePath = "") {
+  if (!sourcePath) return { answers: [] };
+  const response = await fetch(withCacheBuster(`/api/level/answers?path=${encodeURIComponent(sourcePath)}`), {
+    cache: "no-cache",
+    headers: getDeveloperAuthHeaders()
+  });
+  if (response.ok) return response.json();
+  const payload = await response.json().catch(() => ({}));
+  throw new Error(payload.message ?? "答案加载失败");
+}
+
 /**
  * 通过 FastAPI 后端保存关卡。
  *

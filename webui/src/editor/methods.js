@@ -1,5 +1,5 @@
-﻿import { isEditorEdgeInBounds, validateEditorLevelAnswer } from "./checker.js";
-import { saveLevelFile } from "../services/levels.js";
+import { isEditorEdgeInBounds, validateEditorLevelAnswer } from "./checker.js";
+import { hydrateLevel, loadLevelAnswers, saveLevelFile } from "../services/levels.js";
 import { getGridNodes, getGridRadius, keyOf, normalizeGridType, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
@@ -128,7 +128,8 @@ export const editorMethods = {
         return;
       }
 
-      this.loadEditorLevel(level);
+      const answers = await loadLevelAnswers(level);
+      this.loadEditorLevel(hydrateLevel({ ...level, answers }, this.pointDefinitions));
     },
 
     /**
@@ -203,10 +204,9 @@ export const editorMethods = {
         mode: this.editorState.mode ?? "mark",
         points: Object.fromEntries(level.pairs.map((pair) => [pair.id, pair.points.map(([x, y]) => [x, y]).slice(0, 2)])),
         removedEdges: [...(level.removedEdges ?? [])],
-        answers: Object.fromEntries((level.answers ?? []).map((answer) => {
-          if (typeof answer === "string") return [answer, this.inferEditorAnswerPairId(answer, level) ?? pairIds[0]];
-          return [answer.edge, answer.pairId];
-        }).filter(([edge, pairId]) => edge && pairIds.includes(pairId)))
+        answers: Object.fromEntries((level.answers ?? [])
+          .map((answer) => [answer.edge, String(answer.pairId)])
+          .filter(([edge, pairId]) => edge && pairIds.includes(pairId)))
       };
       this.setEditorModeHint();
       this.writeLevelTemplate(false);
@@ -239,9 +239,13 @@ export const editorMethods = {
      * @param {object} level 导入的关卡对象。
      * @returns {void}
      */
-    loadImportedEditorLevel(level) {
+    loadImportedEditorLevel(payload) {
+      const level = payload?.map && typeof payload.map === "object" ? {
+        ...payload.map,
+        answers: Array.isArray(payload.answers?.answers) ? payload.answers.answers : []
+      } : payload;
       if (!level || typeof level !== "object" || !Array.isArray(level.pairs)) {
-        throw new Error("导入失败：JSON 必须包含 pairs 数组");
+        throw new Error("导入失败：JSON 必须包含 pairs 数组，或包含 map/answers 对象");
       }
 
       const invalidPair = level.pairs.find((pair) => !pair?.id || !Array.isArray(pair.points));
@@ -450,7 +454,7 @@ export const editorMethods = {
      * @returns {void}
      */
     writeLevelTemplate(showOutput = true) {
-      this.levelOutput = JSON.stringify(this.buildEditorLevelTemplate(), null, 2);
+      this.levelOutput = JSON.stringify(this.buildEditorLevelExport(), null, 2);
       this.isLevelOutputVisible = showOutput;
       if (showOutput && !this.isDeveloperMode) {
         this.openSubmissionNoticeDialog();
@@ -479,37 +483,77 @@ export const editorMethods = {
     },
 
     /**
-     * 构建可保存到 levels 目录的关卡 JSON。
+     * 构建编辑器导出的拆分 JSON。
      *
      * @param {string} [id] 关卡 id，默认使用编辑 id 或自动生成 id。
-     * @returns {object} 关卡模板。
+     * @returns {{ map: object, answers: object }} 导出对象。
+     */
+    buildEditorLevelExport(id = "") {
+      const map = this.buildEditorMapTemplate(id);
+      return {
+        map,
+        answers: this.buildEditorAnswersTemplate(map.id)
+      };
+    },
+
+    /**
+     * 构建后端保存请求载荷。
+     *
+     * @param {string} [id] 关卡 id，默认使用编辑 id 或自动生成 id。
+     * @returns {object} 保存载荷。
      */
     buildEditorLevelTemplate(id = "") {
-      // Build the exact JSON saved into levels/ and used by the play screen.
+      const exportPayload = this.buildEditorLevelExport(id);
+      return {
+        ...exportPayload.map,
+        answers: exportPayload.answers.answers
+      };
+    },
+
+    /**
+     * 构建可保存到 data/levels 的地图 JSON。
+     *
+     * @param {string} [id] 关卡 id，默认使用编辑 id 或自动生成 id。
+     * @returns {object} 地图模板。
+     */
+    buildEditorMapTemplate(id = "") {
       const editingLevel = this.editorEditingLevelId ? this.levels.find((level) => this.getLevelCacheKey(level) === this.editorEditingLevelId) : null;
       const levelId = id || editingLevel?.id || this.getEditorDefaultId();
       const name = editingLevel?.name ?? (this.editorState.name.trim() || this.getDefaultEditorLevelName(levelId));
-      const level = {
+      const map = {
         id: levelId,
         name,
         difficulty: clampNumber(this.editorState.difficulty, 1, 5),
         gridType: this.editorState.gridType,
         pairs: this.editorState.pairIds.map((pairId) => ({
-          id: pairId,
-          label: this.pointDefinitions[pairId]?.label ?? pairId,
-          color: this.pointDefinitions[pairId]?.color ?? "var(--accent)",
+          id: String(pairId),
           points: this.getEditorPairPoints(pairId)
         })),
-        removedEdges: [...this.editorState.removedEdges],
-        answers: Object.entries(this.editorState.answers).map(([edge, pairId]) => ({ edge, pairId }))
+        removedEdges: [...this.editorState.removedEdges]
       };
       if (this.editorState.gridType === "equilateral-triangle") {
-        level.radius = clampNumber(this.editorState.radius, 1, 6);
+        map.radius = clampNumber(this.editorState.radius, 1, 6);
       } else {
-        level.width = clampNumber(this.editorState.width, 2, 10);
-        level.height = clampNumber(this.editorState.height, 2, 10);
+        map.width = clampNumber(this.editorState.width, 2, 10);
+        map.height = clampNumber(this.editorState.height, 2, 10);
       }
-      return level;
+      return map;
+    },
+
+    /**
+     * 构建可保存到 data/answers 的答案 JSON。
+     *
+     * @param {string} levelId 关卡 id。
+     * @returns {{ levelId: string, answers: Array<object> }} 答案模板。
+     */
+    buildEditorAnswersTemplate(levelId) {
+      return {
+        levelId,
+        answers: Object.entries(this.editorState.answers).map(([edge, pairId]) => ({
+          edge,
+          pairId: String(pairId)
+        }))
+      };
     },
 
     /**
@@ -594,14 +638,14 @@ export const editorMethods = {
       const savedKey = this.getLevelCacheKey(savedLevel);
       const index = this.levels.findIndex((item) => this.getLevelCacheKey(item) === savedKey);
       await this.loadLevel(index >= 0 ? index : this.getInitialLevelIndex());
-      if (savedLevel.sourceCategory === "tests") {
-        this.levelCategoryFilter = "tests";
+      if (savedLevel.sourceCategory === "alpha") {
+        this.levelCategoryFilter = "alpha";
       }
-      this.levelOutput = JSON.stringify(savedLevel, null, 2);
+      this.levelOutput = JSON.stringify(this.buildEditorLevelExport(savedLevel.id), null, 2);
       this.isLevelOutputVisible = true;
       this.previewHint = this.editorEditingLevelId
         ? `已更新 levels/${savedLevel.id}.json`
-        : `已保存到 levels/tests/${savedLevel.id}.json，并加入测试版`;
+        : `已保存到 levels/alpha/${savedLevel.id}.json，并加入测试版`;
     },
 
     /**

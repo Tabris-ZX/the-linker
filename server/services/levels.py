@@ -22,7 +22,7 @@ from server.utils.http import http_error
 
 LEVEL_ID_RE = re.compile(r"^level-\d+$")
 LEVEL_FILE_RE = re.compile(r"^level-(\d+)\.json$")
-CATEGORY_ORDER = {"official": 0, "tests": 1, "deleted": 2}
+CATEGORY_ORDER = {"stable": 0, "alpha": 1, "removed": 2}
 LEVELS_CACHE_TTL_SECONDS = 30
 LEVEL_INDEX_VERSION = 1
 
@@ -30,22 +30,103 @@ last_level_saved_at = 0.0
 levels_cache_signature: tuple[tuple[str, int, int], ...] | None = None
 levels_cache: list[dict[str, Any]] | None = None
 levels_cache_checked_at = 0.0
+level_index_cache: list[dict[str, Any]] | None = None
 
 
 def get_levels_dir() -> Path:
     return get_settings().levels_dir
 
 
-def official_levels_dir() -> Path:
-    return get_levels_dir() / "official"
+def stable_levels_dir() -> Path:
+    return get_levels_dir() / "stable"
 
 
-def tests_levels_dir() -> Path:
-    return get_levels_dir() / "tests"
+def alpha_levels_dir() -> Path:
+    return get_levels_dir() / "alpha"
 
 
-def deleted_levels_dir() -> Path:
-    return get_levels_dir() / "deleted"
+def removed_levels_dir() -> Path:
+    return get_levels_dir() / "removed"
+
+
+def get_answers_dir() -> Path:
+    return get_settings().answers_dir
+
+
+def normalize_level_category(category: Any) -> str:
+    value = str(category or "stable")
+    return value if value in CATEGORY_ORDER else "stable"
+
+
+def get_answer_file_path(level: dict[str, Any] | None = None, *, source_path: str = "", level_id: str = "", category: str = "") -> Path:
+    if source_path:
+        normalized_source_path = normalize_path(source_path)
+        directory, _, file_name = normalized_source_path.partition("/")
+        normalized_category = normalize_level_category(directory)
+        answer_source_path = normalize_path(f"{normalized_category}/{file_name}") if file_name else normalized_category
+        return safe_child_path(get_answers_dir(), answer_source_path)
+    source_category = normalize_level_category(category or (level.get("sourceCategory") if level else "stable"))
+    source_level_id = level_id or (str(level.get("id") or "") if level else "")
+    return get_answers_dir() / source_category / f"{source_level_id}.json"
+
+
+def split_level_answers(level: dict[str, Any]) -> tuple[dict[str, Any], list[Any]]:
+    level_payload = dict(level)
+    answers = level_payload.pop("answers", [])
+    return level_payload, answers if isinstance(answers, list) else []
+
+
+def read_level_answers(level: dict[str, Any]) -> list[Any]:
+    answer_path = get_answer_file_path(level)
+    try:
+        payload = json.loads(answer_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return level.get("answers", []) if isinstance(level.get("answers"), list) else []
+    if isinstance(payload, dict) and isinstance(payload.get("answers"), list):
+        return payload["answers"]
+    return payload if isinstance(payload, list) else []
+
+
+def read_level_with_answers(level: dict[str, Any]) -> dict[str, Any]:
+    return {**level, "answers": read_level_answers(level)}
+
+
+def write_answer_file(level: dict[str, Any], answers: list[Any]) -> None:
+    answer_path = get_answer_file_path(level)
+    write_json_file(answer_path, {"levelId": level.get("id"), "answers": answers})
+
+
+def move_answer_file(level_id: str, source_category: str, target_category: str) -> None:
+    source_path = get_answers_dir() / normalize_level_category(source_category) / f"{level_id}.json"
+    target_path = get_answers_dir() / normalize_level_category(target_category) / f"{level_id}.json"
+    if not source_path.is_file():
+        return
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.unlink(missing_ok=True)
+    shutil.move(str(source_path), str(target_path))
+
+
+def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(level)
+    payload.pop("sourcePath", None)
+    payload.pop("sourceCategory", None)
+    payload.pop("answers", None)
+    return payload
+
+
+def normalize_level_for_storage(level: dict[str, Any]) -> dict[str, Any]:
+    payload = strip_level_runtime_only_fields(level)
+    pairs = payload.get("pairs")
+    if isinstance(pairs, list):
+        payload["pairs"] = [
+            {
+                "id": str(pair.get("id") or index + 1),
+                "points": pair.get("points") if isinstance(pair.get("points"), list) else [],
+            }
+            for index, pair in enumerate(pairs)
+            if isinstance(pair, dict)
+        ]
+    return payload
 
 
 def list_files(directory: Path) -> list[Path]:
@@ -121,16 +202,17 @@ def get_cached_levels() -> list[dict[str, Any]]:
 
 
 def read_level_index_cache() -> list[dict[str, Any]]:
-    files = get_sorted_level_files()
-    signature = [list(item) for item in create_levels_signature(files)]
-    index_file = get_settings().levels_index_file
-    cached_index = read_levels_index_file(index_file)
-    if is_valid_level_index_cache(cached_index, signature):
-        return cached_index["levels"]
+    global level_index_cache
 
-    levels = [create_level_index_item(read_level_file(file_path)) for file_path in files]
-    write_level_index_file(index_file, levels, signature)
-    return levels
+    if level_index_cache is not None:
+        return level_index_cache
+
+    cached_index = read_levels_index_file(get_settings().levels_index_file)
+    if is_valid_level_index_cache(cached_index):
+        level_index_cache = cached_index["levels"]
+        return level_index_cache
+
+    return refresh_level_index()
 
 
 def read_levels_index_file(index_file: Path) -> dict[str, Any] | None:
@@ -141,12 +223,10 @@ def read_levels_index_file(index_file: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-def is_valid_level_index_cache(payload: dict[str, Any] | None, signature: list[list[Any]]) -> bool:
+def is_valid_level_index_cache(payload: dict[str, Any] | None) -> bool:
     if payload is None:
         return False
     if payload.get("version") != LEVEL_INDEX_VERSION:
-        return False
-    if payload.get("signature") != signature:
         return False
     return isinstance(payload.get("levels"), list)
 
@@ -162,10 +242,13 @@ def write_level_index_file(index_file: Path, levels: list[dict[str, Any]], signa
 
 
 def refresh_level_index() -> list[dict[str, Any]]:
+    global level_index_cache
+
     files = get_sorted_level_files()
     signature = [list(item) for item in create_levels_signature(files)]
     levels = [create_level_index_item(read_level_file(file_path)) for file_path in files]
     write_level_index_file(get_settings().levels_index_file, levels, signature)
+    level_index_cache = levels
     return levels
 
 
@@ -181,6 +264,12 @@ def invalidate_levels_cache() -> None:
     levels_cache = None
     levels_cache_checked_at = 0.0
     levels_cache_signature = None
+
+
+def invalidate_level_index_cache() -> None:
+    global level_index_cache
+
+    level_index_cache = None
 
 
 def refresh_level_storage_indexes() -> None:
@@ -206,6 +295,7 @@ def create_level_file_signature(file_path: Path) -> tuple[str, int, int]:
 def read_level_file(file_path: Path) -> dict[str, Any]:
     levels_dir = get_levels_dir()
     level = json.loads(file_path.read_text(encoding="utf-8"))
+    level.pop("answers", None)
     level.update({
         "id": file_path.stem,
         "sourcePath": normalize_path(file_path.relative_to(levels_dir)),
@@ -219,44 +309,40 @@ def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
         "id": level.get("id"),
         "name": level.get("name"),
         "difficulty": level.get("difficulty", 1),
-        "gridType": level.get("gridType", "square"),
-        "width": level.get("width"),
-        "height": level.get("height"),
-        "radius": level.get("radius"),
-        "pairCount": len(level.get("pairs") or []),
         "sourcePath": level.get("sourcePath", ""),
-        "sourceCategory": level.get("sourceCategory", "official"),
+        "sourceCategory": normalize_level_category(level.get("sourceCategory", "stable")),
     }
 
 
 def save_level(level: dict[str, Any]) -> dict[str, Any]:
-    tests_levels_dir().mkdir(parents=True, exist_ok=True)
+    alpha_levels_dir().mkdir(parents=True, exist_ok=True)
     if level.get("saveMode") == "update":
         return update_existing_level(level)
 
     level_id = get_next_level_id()
-    level_hash = create_level_hash(level)
+    saved_level, answers = split_level_answers(level)
+    saved_level.pop("saveMode", None)
+    saved_level = normalize_level_for_storage(saved_level)
+
+    level_hash = create_level_hash(saved_level)
     hash_index = refresh_levels_hash_index()
     duplicate_level_ids = hash_index["hashes"].get(level_hash["hash"], [])
     if duplicate_level_ids:
         raise http_error(500, "Error", f"关卡重复：与 {', '.join(duplicate_level_ids)} 的地图结构和点对位置一致")
 
-    saved_level = dict(level)
-    saved_level.pop("saveMode", None)
-    saved_level.pop("sourcePath", None)
-    saved_level.pop("sourceCategory", None)
     saved_level["id"] = level_id
     if not saved_level.get("name") or saved_level.get("name") == "Custom Level":
         saved_level["name"] = f"Level {level_id[6:]}"
 
-    file_path = tests_levels_dir() / f"{level_id}.json"
+    file_path = alpha_levels_dir() / f"{level_id}.json"
     write_json_file(file_path, saved_level)
+    write_answer_file({**saved_level, "sourceCategory": "alpha"}, answers)
     write_levels_hash_index(add_level_hash_to_index(hash_index, saved_level["id"], level_hash))
     refresh_level_storage_indexes()
     return {
         **saved_level,
         "sourcePath": normalize_path(file_path.relative_to(get_levels_dir())),
-        "sourceCategory": "tests",
+        "sourceCategory": "alpha",
     }
 
 
@@ -270,10 +356,9 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
         raise http_error(500, "Error", f"找不到要修改的关卡 {level_id}")
 
     current_level = json.loads(file_path.read_text(encoding="utf-8"))
-    saved_level = dict(level)
+    saved_level, answers = split_level_answers(level)
     saved_level.pop("saveMode", None)
-    saved_level.pop("sourcePath", None)
-    saved_level.pop("sourceCategory", None)
+    saved_level = normalize_level_for_storage(saved_level)
     saved_level["id"] = current_level.get("id", level_id)
     saved_level["name"] = current_level.get("name", f"Level {level_id[6:]}")
 
@@ -284,6 +369,7 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
         raise http_error(500, "Error", f"关卡重复：与 {', '.join(duplicate_level_ids)} 的地图结构和点对位置一致")
 
     write_json_file(file_path, saved_level)
+    write_answer_file({**saved_level, "sourceCategory": get_level_source_category(file_path)}, answers)
     write_levels_hash_index(add_level_hash_to_index(remove_level_hash_from_index(hash_index, saved_level["id"]), saved_level["id"], level_hash))
     refresh_level_storage_indexes()
     return {
@@ -301,18 +387,19 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     if action not in {"include", "reject"}:
         raise http_error(500, "Error", "未知的测试关卡处理动作")
 
-    official_levels_dir().mkdir(parents=True, exist_ok=True)
-    tests_levels_dir().mkdir(parents=True, exist_ok=True)
-    deleted_levels_dir().mkdir(parents=True, exist_ok=True)
+    stable_levels_dir().mkdir(parents=True, exist_ok=True)
+    alpha_levels_dir().mkdir(parents=True, exist_ok=True)
+    removed_levels_dir().mkdir(parents=True, exist_ok=True)
 
-    source_path = tests_levels_dir() / f"{level_id}.json"
-    target_dir = official_levels_dir() if action == "include" else deleted_levels_dir()
+    source_path = alpha_levels_dir() / f"{level_id}.json"
+    target_dir = stable_levels_dir() if action == "include" else removed_levels_dir()
     target_path = target_dir / f"{level_id}.json"
     if not source_path.is_file():
         raise http_error(500, "Error", f"找不到测试关卡 {level_id}")
 
     target_path.unlink(missing_ok=True)
     shutil.move(str(source_path), str(target_path))
+    move_answer_file(level_id, "alpha", "stable" if action == "include" else "removed")
     refresh_all_level_indexes()
     moved_level = json.loads(target_path.read_text(encoding="utf-8"))
     return {
@@ -355,7 +442,7 @@ def find_level_file_path(level_id: str) -> Path | None:
 def get_level_source_category(file_path: Path) -> str:
     relative_path = normalize_path(file_path.relative_to(get_levels_dir()))
     directory = relative_path.split("/", 1)[0]
-    return directory if directory in CATEGORY_ORDER else "official"
+    return normalize_level_category(directory)
 
 
 def get_level_save_rate_limit() -> dict[str, Any]:

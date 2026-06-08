@@ -123,12 +123,12 @@
           </div>
         </section>
       </div>
-      <section v-if="app.isLevelOutputVisible" class="level-output-panel" aria-label="生成的关卡 JSON">
+      <section v-if="app.isLevelOutputVisible" class="level-output-panel" aria-label="生成的 map 和 answers JSON">
         <div class="level-output-header">
-          <strong>生成的 JSON</strong>
+          <strong>生成的 map / answers JSON</strong>
           <button type="button" @click="app.copyEditorLevelOutput">复制 JSON</button>
         </div>
-        <textarea class="level-output-textarea" :value="app.levelOutput" readonly spellcheck="false" aria-label="生成的关卡 JSON 文本"></textarea>
+        <textarea class="level-output-textarea" :value="app.levelOutput" readonly spellcheck="false" aria-label="生成的 map 和 answers JSON 文本"></textarea>
       </section>
     </section>
   </section>

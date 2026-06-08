@@ -57,9 +57,19 @@ function loadPointPalettes() {
   return Object.entries(stylesColors ?? {})
     .filter(([, palette]) => palette && typeof palette === "object")
     .reduce((palettes, [id, palette]) => {
-      palettes[id] = palette;
+      palettes[id] = normalizePointPalette(palette);
       return palettes;
     }, {});
+}
+
+function normalizePointPalette(palette) {
+  return Object.entries(palette).reduce((definitions, [id, color]) => {
+    const pairId = String(id);
+    if (/^\d+$/.test(pairId) && typeof color === "string") {
+      definitions[pairId] = { label: pairId, color };
+    }
+    return definitions;
+  }, {});
 }
 
 /**

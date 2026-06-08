@@ -126,27 +126,16 @@ export default {
 
   computed,
   /**
-   * 应用挂载后加载配置、完成记录和关卡数据。
+   * 应用挂载后先渲染基础界面，再异步加载关卡目录和初始关卡。
    *
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  async mounted() {
+  mounted() {
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
     this.loadCompletedLevels();
     this.loadDeveloperTokenCooldown();
-    try {
-      await this.detectLevelEditorAvailability();
-      await this.loadLevels();
-      if (this.levels.length > 0) {
-        await this.loadLevel(await this.getInitialLevelIndexAsync());
-      }
-      if (this.canUseLevelEditor) {
-        this.writeLevelTemplate(false);
-      }
-    } finally {
-      this.isInitialLevelLoading = false;
-    }
+    this.initializeLevels();
     this.dialogIntervalId = window.setInterval(() => {
       this.dialogTick += 1;
       if (this.appDialog.type === "developer-token" && this.developerTokenCooldownUntil > 0) {

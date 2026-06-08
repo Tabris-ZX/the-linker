@@ -1,4 +1,4 @@
-﻿import { appConfig } from "../config/index.js";
+import { appConfig } from "../config/index.js";
 import { areAllNodesExclusive, areAllPathsStructurallyValid, getAnswerEdges, getFilledEdges, getFilledNodes, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
 import { reviewLevelRequest, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
@@ -23,6 +23,29 @@ export const methods = {
 
       if (!this.canUseLevelEditor && this.activeView === "editor") {
         this.activeView = "play";
+      }
+    },
+
+    /**
+     * 后台初始化关卡目录，并自动打开上次关卡或第一关。
+     *
+     * @returns {Promise<void>}
+     */
+    async initializeLevels() {
+      this.isInitialLevelLoading = true;
+      try {
+        await this.detectLevelEditorAvailability();
+        await this.loadLevels();
+        if (this.levels.length > 0) {
+          await this.loadLevel(await this.getInitialLevelIndexAsync());
+        }
+        if (this.canUseLevelEditor) {
+          this.writeLevelTemplate(false);
+        }
+      } catch (error) {
+        this.developerStatusText = error.message || "关卡目录加载失败";
+      } finally {
+        this.isInitialLevelLoading = false;
       }
     },
 
@@ -439,17 +462,17 @@ export const methods = {
      * @returns {boolean} 是否可见。
      */
     isLevelCategoryVisible(level) {
-      return this.getLevelCategory(level) === "official" || this.isDeveloperMode;
+      return this.getLevelCategory(level) === "stable" || this.isDeveloperMode;
     },
 
     /**
      * 获取关卡分类。
      *
      * @param {object} level 关卡数据。
-     * @returns {"official"|"tests"|"deleted"} 关卡分类。
+     * @returns {"stable"|"alpha"|"removed"} 关卡分类。
      */
     getLevelCategory(level) {
-      return ["official", "tests", "deleted"].includes(level?.sourceCategory) ? level.sourceCategory : "official";
+      return ["stable", "alpha", "removed"].includes(level?.sourceCategory) ? level.sourceCategory : "stable";
     },
 
     /**
@@ -460,11 +483,11 @@ export const methods = {
      */
     getLevelCategoryLabel(category) {
       const labels = {
-        official: "正式版",
-        tests: "测试版",
-        deleted: "待删版"
+        stable: "正式版",
+        alpha: "测试版",
+        removed: "待删版"
       };
-      return labels[category] ?? labels.official;
+      return labels[category] ?? labels.stable;
     },
 
     /**
@@ -475,7 +498,7 @@ export const methods = {
      * @returns {number} 排序结果。
      */
     compareLevelItems(left, right) {
-      const categoryOrder = { official: 0, tests: 1, deleted: 2 };
+      const categoryOrder = { stable: 0, alpha: 1, removed: 2 };
       const leftLevel = left?.level ?? {};
       const rightLevel = right?.level ?? {};
       return (categoryOrder[this.getLevelCategory(leftLevel)] ?? 9) - (categoryOrder[this.getLevelCategory(rightLevel)] ?? 9)
@@ -494,7 +517,7 @@ export const methods = {
       try {
         await reviewLevelRequest(levelId, action);
         await this.loadLevels();
-        const movedIndex = this.levels.findIndex((level) => level?.id === levelId && this.getLevelCategory(level) === (action === "include" ? "official" : "deleted"));
+        const movedIndex = this.levels.findIndex((level) => level?.id === levelId && this.getLevelCategory(level) === (action === "include" ? "stable" : "removed"));
         if (movedIndex >= 0) {
           await this.loadLevel(movedIndex);
         }
