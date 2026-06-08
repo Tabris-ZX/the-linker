@@ -44,27 +44,6 @@ Authorization: Bearer <developer-token>
 
 未授权用户只能读取正式关卡；开发者 Token 可读取测试版和待删版。
 
-## GET /api/levels
-
-兼容旧客户端的完整关卡列表接口，会返回关卡 JSON 内容。
-
-携带 `offset`、`limit` 或 `id` 查询参数时返回分页对象。默认每次返回 8 关，服务端最大允许 10 关，前端会按需继续加载：
-
-```json
-{
-  "levels": [],
-  "total": 13,
-  "offset": 0,
-  "limit": 8
-}
-```
-
-查询参数：
-
-- `offset`：分页起点，从 `0` 开始。
-- `limit`：每次返回数量，建议 `5-10`。
-- `id`：返回包含指定关卡 id 的页，用于恢复上次游玩的关卡。
-
 ## POST /api/developer/verify
 
 校验开发者 Token 是否有效。

@@ -60,8 +60,7 @@
             </div>
           </section>
         </div>
-        <p v-if="app.isLevelPageLoading" class="level-picker-status">继续加载关卡...</p>
-        <p v-else-if="app.developerStatusText" class="level-picker-status">{{ app.developerStatusText }}</p>
+        <p v-if="app.developerStatusText" class="level-picker-status">{{ app.developerStatusText }}</p>
       </section>
       <div v-if="!app.isInitialLevelLoading && !app.currentLevel" class="play-status" role="status" aria-live="polite">
         暂无关卡
@@ -153,46 +152,31 @@ export default {
   watch: {
     "app.isLevelPickerOpen"(isOpen) {
       if (!isOpen) return;
-      this.$nextTick(this.restoreAndCheckLevelPicker);
-    },
-    "app.isLevelPageLoading"(isLoading) {
-      if (isLoading || !this.app.isLevelPickerOpen) return;
-      this.$nextTick(this.checkLevelPickerAutoLoad);
-    },
-    "app.loadedLevelCount"() {
-      if (!this.app.isLevelPickerOpen) return;
-      this.$nextTick(this.checkLevelPickerAutoLoad);
+      this.$nextTick(this.restoreLevelPickerScroll);
     },
     "app.levelCategoryFilter"() {
       if (!this.app.isLevelPickerOpen) return;
-      this.$nextTick(this.checkLevelPickerAutoLoad);
+      this.$nextTick(this.restoreLevelPickerScroll);
     },
     "app.levelDifficultyFilter"() {
       if (!this.app.isLevelPickerOpen) return;
-      this.$nextTick(this.checkLevelPickerAutoLoad);
+      this.$nextTick(this.restoreLevelPickerScroll);
     },
     "app.levelCompletionFilter"() {
       if (!this.app.isLevelPickerOpen) return;
-      this.$nextTick(this.checkLevelPickerAutoLoad);
+      this.$nextTick(this.restoreLevelPickerScroll);
     }
   },
   mounted() {
     if (this.app.isLevelPickerOpen) {
-      this.$nextTick(this.restoreAndCheckLevelPicker);
+      this.$nextTick(this.restoreLevelPickerScroll);
     }
   },
   methods: {
-    restoreAndCheckLevelPicker() {
-      this.restoreLevelPickerScroll();
-      this.checkLevelPickerAutoLoad();
-    },
     restoreLevelPickerScroll() {
       const list = this.$refs.levelGroupList;
       if (!list) return;
       list.scrollTop = this.app.levelPickerScrollTop;
-    },
-    checkLevelPickerAutoLoad() {
-      this.app.loadNextLevelPageIfPickerNeedsMore(this.$refs.levelGroupList ?? null);
     }
   }
 };

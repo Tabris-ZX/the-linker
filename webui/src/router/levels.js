@@ -1,28 +1,6 @@
 let developerToken = "";
 
 /**
- * 获取完整关卡列表。
- *
- * 通过 FastAPI 后端读取配置里的关卡目录。
- *
- * @returns {Promise<Array<object>>} 关卡原始数据列表。
- */
-export async function fetchLevelFiles(options = {}) {
-  for (const apiUrl of getLevelApiUrls(options)) {
-    try {
-      const response = await fetch(apiUrl, {
-        cache: "no-cache",
-        headers: getDeveloperAuthHeaders()
-      });
-      if (response.ok) return response.json();
-    } catch {
-      // Ignore unavailable local API; the page remains usable with an empty list.
-    }
-  }
-  return options.page ? { levels: [], total: 0, offset: 0, limit: options.limit ?? 10 } : [];
-}
-
-/**
  * 获取关卡目录。
  *
  * @returns {Promise<Array<object>>} 关卡目录项列表。
@@ -68,26 +46,23 @@ export async function fetchLevelDetail(levelId, sourcePath = "") {
 export async function saveLevelRequest(level, options = {}) {
   let lastError = {};
 
-  for (const apiUrl of getLevelApiUrls()) {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getDeveloperAuthHeaders()
-      },
-      body: JSON.stringify({
-        ...level,
-        saveMode: options.mode ?? "create"
-      })
-    });
+  const response = await fetch(getLevelApiUrl(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getDeveloperAuthHeaders()
+    },
+    body: JSON.stringify({
+      ...level,
+      saveMode: options.mode ?? "create"
+    })
+  });
 
-    if (response.ok) {
-      return response.json();
-    }
-
-    lastError = await response.json().catch(() => ({}));
+  if (response.ok) {
+    return response.json();
   }
 
+  lastError = await response.json().catch(() => ({}));
   throw new Error(lastError.message ?? "保存失败，请确认后端服务正在运行");
 }
 
@@ -121,18 +96,8 @@ export async function reviewLevelRequest(levelId, action) {
   throw new Error(lastError.message ?? "处理失败，请确认后端服务正在运行");
 }
 
-function getLevelApiUrls(options = {}) {
-  const url = new URL("/api/levels", window.location.origin);
-  if (options.page) {
-    url.searchParams.set("offset", String(options.offset ?? 0));
-    url.searchParams.set("limit", String(options.limit ?? 10));
-  }
-  if (options.id) {
-    url.searchParams.set("id", String(options.id));
-    url.searchParams.set("limit", String(options.limit ?? 10));
-  }
-  url.searchParams.set("_", String(Date.now()));
-  return [url.pathname + url.search];
+function getLevelApiUrl() {
+  return "/api/levels";
 }
 
 function getLevelReviewApiUrls() {

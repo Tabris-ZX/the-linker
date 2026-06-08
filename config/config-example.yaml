@@ -26,11 +26,6 @@ path:
   background: config/background
   webuiDist: webui/dist
 
-level:
-  # defaultPageSize: 旧分页接口默认每次返回数量；新前端优先使用关卡目录接口
-  # maxPageSize: 旧分页接口允许的最大返回数量
-  defaultPageSize: 8
-  maxPageSize: 10
 
 background:
   # image: 背景图片名；不写扩展名时会按 webp/png 查找，填 no 可关闭背景

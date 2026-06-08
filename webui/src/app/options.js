@@ -56,11 +56,10 @@ export default {
       selectedPalette: pointPalettes[appConfig.colors.palette] ? appConfig.colors.palette : defaultPointPaletteId,
       isInitialLevelLoading: true,
       isLevelsLoading: true,
-      isLevelPageLoading: false,
+      isLevelDetailLoading: false,
       levels: [],
       levelDetails: {},
       levelTotalCount: 0,
-      loadedLevelPages: {},
       currentLevelIndex: -1,
       currentLevel: null,
       isLevelPickerOpen: false,
@@ -199,30 +198,6 @@ export default {
     selectedPalette(paletteId) {
       this.applyPointPalette(paletteId);
     },
-    /**
-     * 关卡筛选变化时，继续按页加载直到选择器有可显示内容。
-     *
-     * @returns {void}
-     */
-    levelCategoryFilter() {
-      this.loadLevelsUntilPickerHasVisibleItems();
-    },
-    /**
-     * 难度筛选变化时，继续按页加载直到选择器有可显示内容。
-     *
-     * @returns {void}
-     */
-    levelDifficultyFilter() {
-      this.loadLevelsUntilPickerHasVisibleItems();
-    },
-    /**
-     * 完成状态筛选变化时，继续按页加载直到选择器有可显示内容。
-     *
-     * @returns {void}
-     */
-    levelCompletionFilter() {
-      this.loadLevelsUntilPickerHasVisibleItems();
-    }
   },
 
   methods: {

@@ -9,9 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import Request
-
-from server.config import clamp_integer, get_settings
+from server.config import get_settings
 from server.paths import normalize_path, safe_child_path
 from server.services.level_hash import (
     add_level_hash_to_index,
@@ -379,25 +377,3 @@ def reset_level_save_marker(save_started_at: float) -> None:
     global last_level_saved_at
     if last_level_saved_at == save_started_at:
         last_level_saved_at = 0
-
-
-def get_level_page_options(request: Request, total: int) -> dict[str, Any]:
-    settings = get_settings()
-    params = request.query_params
-    has_limit = "limit" in params
-    has_offset = "offset" in params
-    level_id = str(params.get("id") or "").strip()
-    return {
-        "isPaged": has_limit or has_offset or bool(level_id),
-        "id": level_id,
-        "limit": clamp_integer(params.get("limit"), settings.default_level_page_size, 1, settings.max_level_page_size),
-        "offset": clamp_integer(params.get("offset"), 0, 0, max(0, total - 1)),
-    }
-
-
-def get_level_page_offset(levels: list[dict[str, Any]], options: dict[str, Any]) -> int:
-    if options["id"]:
-        for index, level in enumerate(levels):
-            if level.get("id") == options["id"]:
-                return (index // options["limit"]) * options["limit"]
-    return min(options["offset"], max(0, len(levels) - 1))

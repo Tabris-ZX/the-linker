@@ -1,7 +1,7 @@
 ﻿import { appConfig } from "../config/index.js";
 import { areAllNodesExclusive, areAllPathsStructurallyValid, getAnswerEdges, getFilledEdges, getFilledNodes, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
 import { reviewLevelRequest, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
-import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex, loadLevelPage } from "../services/levels.js";
+import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
 import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
@@ -11,8 +11,6 @@ const DEVELOPER_TOKEN_ATTEMPTS_STORAGE_KEY = "the-linker-developer-token-failed-
 const GAME_STORAGE_KEY_PREFIX = "the-linker-";
 const DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS = 3;
 const DEVELOPER_TOKEN_COOLDOWN_MS = 2 * 60 * 60 * 1000;
-const LEVEL_PAGE_SIZE = 8;
-const LEVEL_PAGE_MIN_SIZE = 5;
 
 export const methods = {
     /**
@@ -66,101 +64,12 @@ export const methods = {
             .filter(Boolean)
         );
         this.levelTotalCount = indexLevels.length;
-        this.loadedLevelPages = { index: true };
       } catch (error) {
         this.developerStatusText = error.message || "关卡目录加载失败";
         throw error;
       } finally {
         this.isLevelsLoading = false;
       }
-    },
-
-    /**
-     * 按页加载关卡，并合并到当前关卡缓存。
-     *
-     * @param {number} offset 分页起点。
-     * @param {{ id?: string }} [options] 目标关卡选项。
-     * @returns {Promise<object>} 分页结果。
-     */
-    async loadLevelPage(offset = 0, options = {}) {
-      if (options.id) {
-        const index = this.levels.findIndex((level) => level?.id === options.id || this.getLevelCacheKey(level) === options.id);
-        if (index >= 0) {
-          const detail = await this.ensureLevelDetail(index);
-          return detail ? { levels: [detail], total: this.levels.length, offset: index, limit: 1 } : null;
-        }
-      }
-      if (this.loadedLevelPages.index) return null;
-      if (this.isLevelPageLoading) return null;
-      if (!options.id && this.levels.length > 0 && !this.levels.some((level) => !level)) return null;
-      const pageOffset = Math.max(0, Math.floor(Number(offset) || 0));
-      const pageKey = options.id ? `id:${options.id}` : String(Math.floor(pageOffset / LEVEL_PAGE_SIZE));
-      if (!options.id && this.loadedLevelPages[pageKey]) return null;
-
-      this.isLevelPageLoading = true;
-      try {
-        const page = await loadLevelPage({ offset: pageOffset, limit: Math.max(LEVEL_PAGE_MIN_SIZE, LEVEL_PAGE_SIZE), id: options.id });
-        const nextLevels = this.levels.length >= page.total
-          ? [...this.levels]
-          : Array.from({ length: page.total }, (_, index) => this.levels[index] ?? null);
-
-        page.levels.forEach((item, index) => {
-          const level = hydrateLevel(item, this.pointDefinitions);
-          nextLevels[page.offset + index] = level;
-          this.levelDetails = {
-            ...this.levelDetails,
-            [this.getLevelCacheKey(level)]: level
-          };
-        });
-
-        this.levelTotalCount = page.total;
-        this.levels = nextLevels;
-        this.loadedLevelPages = {
-          ...this.loadedLevelPages,
-          [String(Math.floor(page.offset / LEVEL_PAGE_SIZE))]: true,
-          [pageKey]: true
-        };
-        return page;
-      } finally {
-        this.isLevelPageLoading = false;
-      }
-    },
-
-    /**
-     * 按当前选择器筛选条件补载关卡，直到出现可显示项或没有更多页。
-     *
-     * @returns {Promise<void>}
-     */
-    async loadLevelsUntilPickerHasVisibleItems() {
-      while (
-        this.isLevelPickerOpen
-        && !this.isLevelPageLoading
-        && this.filteredLevelItems.length === 0
-        && this.levels.some((level) => !level)
-      ) {
-        const loadedCount = this.loadedLevelCount;
-        const page = await this.loadLevelPage(this.getNextLevelPageOffset());
-        if (!page || this.loadedLevelCount === loadedCount) break;
-      }
-    },
-
-    /**
-     * 关卡选择器接近底部或内容不足一屏时加载下一页。
-     *
-     * @param {HTMLElement|null} list 关卡选择器滚动容器。
-     * @returns {Promise<void>}
-     */
-    async loadNextLevelPageIfPickerNeedsMore(list) {
-      if (!this.isLevelPickerOpen || this.isLevelPageLoading || !this.levels.some((level) => !level)) return;
-      if (!list) {
-        await this.loadLevelsUntilPickerHasVisibleItems();
-        return;
-      }
-
-      const remainingScroll = list.scrollHeight - list.scrollTop - list.clientHeight;
-      const shouldLoad = list.scrollHeight <= list.clientHeight + 1 || remainingScroll < 240;
-      if (!shouldLoad) return;
-      await this.loadLevelPage(this.getNextLevelPageOffset());
     },
 
     /**
@@ -176,7 +85,7 @@ export const methods = {
       const cacheKey = this.getLevelCacheKey(item);
       if (this.levelDetails[cacheKey]) return this.levelDetails[cacheKey];
 
-      this.isLevelPageLoading = true;
+      this.isLevelDetailLoading = true;
       try {
         const detail = hydrateLevel(await loadLevelDetail(item.id, item.sourcePath), this.pointDefinitions);
         this.levelDetails = {
@@ -186,7 +95,7 @@ export const methods = {
         this.levels = this.levels.map((level, levelIndex) => levelIndex === index ? detail : level);
         return detail;
       } finally {
-        this.isLevelPageLoading = false;
+        this.isLevelDetailLoading = false;
       }
     },
 
@@ -252,9 +161,6 @@ export const methods = {
      */
     toggleLevelPicker() {
       this.isLevelPickerOpen = !this.isLevelPickerOpen;
-      if (this.isLevelPickerOpen) {
-        this.$nextTick(() => this.loadLevelsUntilPickerHasVisibleItems());
-      }
     },
 
     /**
@@ -275,18 +181,6 @@ export const methods = {
     handleLevelPickerScroll(event) {
       const list = event?.currentTarget;
       this.levelPickerScrollTop = list?.scrollTop ?? 0;
-      this.loadNextLevelPageIfPickerNeedsMore(list);
-    },
-
-    /**
-     * 获取下一批尚未加载关卡的起点。
-     *
-     * @returns {number} 下一页 offset。
-     */
-    getNextLevelPageOffset() {
-      const firstMissingIndex = this.levels.findIndex((level) => !level);
-      if (firstMissingIndex >= 0) return Math.floor(firstMissingIndex / LEVEL_PAGE_SIZE) * LEVEL_PAGE_SIZE;
-      return this.levels.length;
     },
 
     /**
@@ -380,7 +274,6 @@ export const methods = {
         const currentIndex = this.levels.findIndex((level) => this.getLevelCacheKey(level) === currentKey);
         if (currentIndex >= 0) this.currentLevelIndex = currentIndex;
       }
-      await this.loadLevelsUntilPickerHasVisibleItems();
       if (this.canUseLevelEditor) {
         this.writeLevelTemplate(false);
       }
@@ -605,8 +498,7 @@ export const methods = {
         if (movedIndex >= 0) {
           await this.loadLevel(movedIndex);
         }
-        await this.loadLevelsUntilPickerHasVisibleItems();
-        this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删版";
+          this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删版";
       } catch (error) {
         this.developerStatusText = error.message;
       }

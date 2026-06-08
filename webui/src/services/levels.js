@@ -1,18 +1,7 @@
 import { pointDefinitions } from "../config/index.js";
-import { fetchLevelDetail, fetchLevelFiles, fetchLevelIndex, saveLevelRequest } from "../router/levels.js";
+import { fetchLevelDetail, fetchLevelIndex, saveLevelRequest } from "../router/levels.js";
 import { cloneLevel } from "../utils/object.js";
 import { normalizeGridType } from "../utils/geometry.js";
-
-/**
- * 加载并水合所有关卡文件。
- *
- * @returns {Promise<Array<object>>} 带默认样式和默认字段的关卡列表。
- */
-export async function loadLevelFiles() {
-  return (await fetchLevelFiles())
-    .filter(isValidRawLevel)
-    .map((level) => hydrateLevel(level));
-}
 
 /**
  * 加载关卡目录，目录不包含完整 pairs/answers。
@@ -33,26 +22,6 @@ export async function loadLevelIndex() {
  */
 export async function loadLevelDetail(levelId, sourcePath = "") {
   return hydrateLevel(await fetchLevelDetail(levelId, sourcePath));
-}
-
-/**
- * 分页加载关卡文件，避免一次传输全部关卡。
- *
- * @param {{ offset?: number, limit?: number, id?: string }} [options] 分页或目标关卡选项。
- * @returns {Promise<{ levels: Array<object>, total: number, offset: number, limit: number }>} 分页关卡数据。
- */
-export async function loadLevelPage(options = {}) {
-  const page = await fetchLevelFiles({ ...options, page: true });
-  const rawLevels = Array.isArray(page) ? page : page.levels;
-  const levels = (rawLevels ?? [])
-    .filter(isValidRawLevel)
-    .map((level) => hydrateLevel(level));
-  return {
-    levels,
-    total: Number.isInteger(page.total) ? page.total : levels.length,
-    offset: Number.isInteger(page.offset) ? page.offset : Number(options.offset ?? 0),
-    limit: Number.isInteger(page.limit) ? page.limit : Number(options.limit ?? levels.length)
-  };
 }
 
 /**

@@ -597,7 +597,6 @@ export const editorMethods = {
       if (savedLevel.sourceCategory === "tests") {
         this.levelCategoryFilter = "tests";
       }
-      await this.loadLevelsUntilPickerHasVisibleItems();
       this.levelOutput = JSON.stringify(savedLevel, null, 2);
       this.isLevelOutputVisible = true;
       this.previewHint = this.editorEditingLevelId

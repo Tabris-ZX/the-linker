@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Request
 
 from server.security import authorize_developer_request, get_bearer_token
 from server.services.levels import (
-    get_level_page_offset,
-    get_level_page_options,
     get_level_save_rate_limit,
     mark_level_save_started,
     read_level_by_id,
     read_level_by_source_path,
     read_level_index,
-    read_levels,
     reset_level_save_marker,
     review_test_level,
     save_level,
@@ -64,39 +59,6 @@ async def get_level_detail_by_source_path(path: str, request: Request) -> dict[s
     if level.get("sourceCategory") != "official":
         authorize_developer_request(request)
     return level
-
-
-@router.get("/levels", summary="List levels")
-async def get_levels(request: Request) -> Any:
-    """读取关卡列表。
-
-    查询参数：
-    - offset：分页起点，从 0 开始。
-    - limit：每页关卡数；服务端会限制在配置的最大页大小内，默认每次只返回少量关卡。
-    - id：目标关卡 id；传入后返回包含该关卡的一页，方便前端恢复上次游玩进度。
-
-    权限：
-    - 不带 Bearer Token 时只返回 official 关卡。
-    - 带有效 Bearer Token 时返回 official、tests、deleted 全部关卡。
-
-    返回：
-    - 不带分页参数时返回关卡数组，兼容旧客户端。
-    - 带 offset、limit 或 id 时返回 { levels, total, offset, limit } 分页对象。
-    """
-    visible_levels = get_visible_levels(request, read_levels())
-
-    page_options = get_level_page_options(request, len(visible_levels))
-    if not page_options["isPaged"]:
-        return visible_levels
-
-    offset = get_level_page_offset(visible_levels, page_options)
-    limit = page_options["limit"]
-    return {
-        "levels": visible_levels[offset:offset + limit],
-        "total": len(visible_levels),
-        "offset": offset,
-        "limit": limit,
-    }
 
 
 @router.post("/levels", summary="Create or update a level")
