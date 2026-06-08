@@ -14,19 +14,23 @@ the looker
 
 ## 功能
 
-- 通过本地开发服务器运行
-- 本地开发服务器下启用关卡编辑器和关卡文件管理
+- 前端内容由 `webui` 构建
+- Python FastAPI 后端提供接口、静态前端、背景资源和关卡文件管理
 - 关卡使用 `data/levels` 下的 JSON 文件
 - 支持配置主题、点对颜色和背景图片
 
 ## 本地运行
 
 ```bash
+cd webui
 npm install
-npm run dev
+npm run build
+cd ..
+uv sync
+uv run python -m server.main
 ```
 
-只有通过本地 Vite 服务器运行，并且 `/api/levels` 可用时，才会显示关卡编辑入口。
+FastAPI 会按 `config/config.yaml` 中的 `server.backendPort` 启动，并直接服务 `webui/dist`、`/api/levels`、`/api/levels/review`、`/api/developer/verify` 和 `/background/*`。Vite 只用于前端开发和构建，不再注册或响应后端接口。
 
 ## 配置
 
@@ -44,7 +48,7 @@ npm run dev
 - 关卡编辑器和算法生成的新关卡默认放在 `data/levels/tests`
 - 测试后不收录的关卡放在 `data/levels/deleted`
 
-普通用户只看到正式关卡，但可以打开关卡编辑器新建关卡并生成 JSON；生成后可复制 JSON 并通过右上角 GitHub 链接提交 issue 投稿。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `server.dev-token` 后，可以看到测试版和待删版，并保存或审核关卡；测试版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入 token。
+普通用户只看到正式关卡，但可以打开关卡编辑器新建关卡并生成 JSON；生成后可复制 JSON 并通过右上角 GitHub 链接提交 issue 投稿。点击左上角“开发者模式”并输入 `config/config.yaml` 里的 `server.su-token` 后，可以看到测试版和待删版，并保存或审核关卡；测试版关卡可在关卡选择窗口中“收录”到正式版，或“不收录”移动到待删版。开发者模式只在当前页面会话内生效，刷新或重新打开页面后需要重新输入 token。
 
 ## 关卡去重哈希
 

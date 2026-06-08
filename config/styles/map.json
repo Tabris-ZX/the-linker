@@ -1,9 +1,9 @@
 {
   "mapStyle": {
-    "dotScale": 0.5,
+    "dotScale": 0.6,
     "nodeScale": 0.3,
-    "lineScale": 0.4,
-    "gridLineScale": 0.07,
+    "lineScale": 0.5,
+    "gridLineScale": 0.08,
     "snapPointRadius": 0.3
   }
 }

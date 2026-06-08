@@ -41,6 +41,15 @@
   font-size: 0.95rem;
 }
 
+.editor-level-select {
+  display: grid;
+  gap: 6px;
+}
+
+.editor-level-select label {
+  min-width: 0;
+}
+
 .editor-form button,
 .editor-import-button {
   width: 100%;
@@ -238,7 +247,7 @@ textarea:focus {
   overflow: visible;
 }
 
-.preview-grid line {
+.preview-grid path {
   stroke: var(--grid-line);
   stroke-linecap: square;
   stroke-width: max(1px, calc(var(--preview-cell-size) * var(--map-grid-line-scale)));
@@ -269,7 +278,7 @@ textarea:focus {
   pointer-events: auto;
 }
 
-.preview-blocked-layer line {
+.preview-blocked-layer path {
   stroke: var(--danger);
   stroke-linecap: round;
   stroke-width: clamp(8px, calc(var(--preview-cell-size) * 0.16), 16px);
@@ -277,7 +286,7 @@ textarea:focus {
   opacity: 0.82;
 }
 
-.preview-answer-layer line {
+.preview-answer-layer path {
   stroke: var(--answer-color);
   stroke-linecap: round;
   stroke-width: max(1px, calc(var(--preview-cell-size) * var(--map-line-scale)));

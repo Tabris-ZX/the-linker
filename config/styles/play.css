@@ -47,6 +47,12 @@
   font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
+.level-directory-status {
+  color: var(--muted);
+  font: 800 0.78rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  white-space: nowrap;
+}
+
 .level-picker-filters label {
   display: inline-grid;
   grid-template-columns: auto minmax(92px, 1fr);
@@ -229,6 +235,22 @@
   overflow: visible;
 }
 
+.board-wrap.is-loading .board {
+  background:
+    linear-gradient(90deg, var(--grid-line) 0 2px, transparent 2px) 0 0 / 25% 25%,
+    linear-gradient(0deg, var(--grid-line) 0 2px, transparent 2px) 0 0 / 25% 25%;
+  opacity: 0.32;
+}
+
+.board-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
 .edge-grid {
   position: absolute;
   inset: 0;
@@ -239,7 +261,7 @@
   pointer-events: none;
 }
 
-.edge-grid line {
+.edge-grid path {
   stroke: var(--grid-line);
   stroke-linecap: square;
   stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
@@ -256,18 +278,13 @@
   pointer-events: none;
 }
 
-.edge-lines line {
+.edge-lines path {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
   vector-effect: non-scaling-stroke;
   opacity: 0.96;
-  transition:
-    x1 80ms linear,
-    y1 80ms linear,
-    x2 80ms linear,
-    y2 80ms linear,
-    opacity 80ms ease;
+  transition: opacity 80ms ease;
 }
 
 .edge-lines .preview-line {
@@ -322,6 +339,17 @@
   color: var(--ink);
   background: var(--paper);
   font: 800 0.92rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.captcha-field {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.captcha-field span {
+  color: var(--accent-strong);
 }
 
 .victory-main {
@@ -479,8 +507,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .edge-lines line,
-  .edge-grid line,
+  .edge-lines path,
+  .edge-grid path,
   .node,
   .dot {
     animation: none;

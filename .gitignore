@@ -1,6 +1,10 @@
+.venv
+__pycache__
+
 dist/
 node_modules/
 prompts/
+temp/
 
 # 安全性忽略
 data/

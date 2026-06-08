@@ -266,11 +266,11 @@
     margin: auto;
   }
 
-  .edge-grid line {
+  .edge-grid path {
     stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
   }
 
-  .edge-lines line {
+  .edge-lines path {
     stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
   }
 

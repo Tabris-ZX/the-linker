@@ -1,15 +1,41 @@
 server:
-  port: 5174
-  dev-token: ""
+  # backendPort: 后端服务端口
+  # su-token: 超级用户 token；用于解锁开发者模式、保存关卡、审核测试关卡
+  # maxRequestBodyBytes: 单个 JSON 请求体最大字节数
+  # levelSaveIntervalSeconds: 保存关卡的最小间隔秒数，防止连续提交
+  # developerAuthMaxFailedAttempts: 超级用户 token 连续输错多少次后锁定
+  # developerAuthLockSeconds: 输错锁定时间，单位秒
+  backendPort: 5174
+  su-token: ""
+  maxRequestBodyBytes: 131072
+  levelSaveIntervalSeconds: 30
+  developerAuthMaxFailedAttempts: 3
+  developerAuthLockSeconds: 7200
+
+path:
+  # levels: 关卡目录，按 official/tests/deleted 子目录组织
+  # levelsHash: 关卡结构哈希索引文件，用于重复关卡检测
+  # levelsIndex: 关卡轻量目录索引文件，由后端自动生成，可删除后重建
+  # styles: 样式配置目录
+  # background: 背景图片目录
+  # webuiDist: 前端构建输出目录，FastAPI 会直接服务这里的静态文件
+  levels: data/levels
+  levelsHash: data/levels-hash.json
+  levelsIndex: data/levels-index.json
+  styles: config/styles
+  background: config/background
+  webuiDist: webui/dist
 
 level:
-  path: data/levels
-
-styles:
-  path: config/styles
+  # defaultPageSize: 旧分页接口默认每次返回数量；新前端优先使用关卡目录接口
+  # maxPageSize: 旧分页接口允许的最大返回数量
+  defaultPageSize: 8
+  maxPageSize: 10
 
 background:
-  path: config/background
+  # image: 背景图片名；不写扩展名时会按 webp/png 查找，填 no 可关闭背景
+  # opacity: 背景透明度，范围 0-1
+  # blur: 背景模糊，数字会按 px 处理
   image: "default"
   opacity: 0.2
   blur: 0px
