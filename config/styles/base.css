@@ -97,7 +97,8 @@ textarea {
   font: inherit;
 }
 
-button {
+button,
+.editor-form .editor-import-button {
   border: 2px solid var(--ink);
   border-radius: 6px;
   padding: 10px 14px;
@@ -120,7 +121,8 @@ button:disabled:hover {
   background: var(--accent);
 }
 
-button:active {
+button:active,
+.editor-form .editor-import-button:active {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 var(--shadow-color);
 }
@@ -627,4 +629,249 @@ h2 {
   margin-left: auto;
   color: var(--success);
   font: 900 0.84rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+
+/* Preserve redesign layer */
+:root {
+  --radius-control: 7px;
+  --radius-panel: 10px;
+  --focus-ring: color-mix(in srgb, var(--accent) 30%, transparent);
+  --surface-glass: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  --line-soft: color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+html {
+  color-scheme: light;
+}
+
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --surface-glass: color-mix(in srgb, var(--surface-soft) 84%, transparent);
+  --line-soft: color-mix(in srgb, var(--line) 78%, transparent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button,
+.github-link,
+.editor-import-button {
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  filter: grayscale(0.18);
+}
+
+.app-topbar {
+  border-bottom-width: 1px;
+  box-shadow: 0 10px 28px -24px var(--shadow-color);
+}
+
+.brand-icon {
+  filter: drop-shadow(1px 1px 0 var(--line-soft));
+}
+
+.github-link,
+.game-timer,
+.play-actions,
+.view-tabs,
+.app-card,
+.play-status,
+.victory-mark,
+.level-output-panel,
+.rule-content,
+.personalization-json {
+  border-color: var(--ink);
+}
+
+.app-card {
+  border-radius: var(--radius-panel);
+  background: var(--surface-glass);
+  box-shadow: 6px 6px 0 var(--shadow-color-soft);
+  backdrop-filter: blur(12px);
+}
+
+button,
+.github-link,
+input,
+select,
+textarea,
+.rule-content,
+.personalization-json,
+.level-output-panel {
+  border-radius: var(--radius-control);
+}
+
+.app-topbar button,
+.developer-button,
+.personalize-button,
+.rule-button,
+.play-actions button,
+.level-picker-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.app-topbar button span[aria-hidden="true"] {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45em;
+  height: 1.45em;
+  border: 1px solid color-mix(in srgb, currentColor 34%, transparent);
+  border-radius: 999px;
+  font-size: 0.72em;
+  line-height: 1;
+}
+
+.developer-button span[aria-hidden="true"] {
+  font-size: 0.66em;
+}
+
+.view-tab {
+  border-radius: calc(var(--radius-control) - 2px);
+}
+
+.view-tab.is-active {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 24%, transparent);
+}
+
+.current-level-label {
+  color: color-mix(in srgb, var(--ink) 88%, var(--accent) 12%);
+}
+
+.personalization-data-actions span,
+.level-picker-status,
+.victory-status {
+  line-height: 1.35;
+}
+
+/* Visible redesign pass */
+:root {
+  --control-shadow: 0 10px 26px -20px var(--shadow-color), 2px 2px 0 var(--shadow-color-soft);
+  --panel-shadow: 0 22px 54px -36px var(--shadow-color), 5px 5px 0 var(--shadow-color-soft);
+}
+
+body {
+  background:
+    linear-gradient(90deg, var(--body-grid-color) 1px, transparent 1px),
+    linear-gradient(var(--body-grid-color) 1px, transparent 1px),
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 31%),
+    radial-gradient(circle at 82% 12%, var(--body-glow-warm), transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--paper) 88%, var(--surface) 12%), var(--paper));
+}
+
+button,
+.editor-form .editor-import-button {
+  border-width: 1px;
+  box-shadow: var(--control-shadow);
+}
+
+button:active,
+.editor-form .editor-import-button:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--shadow-color-soft);
+}
+
+.app-topbar {
+  min-height: 66px;
+  padding: 9px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 72%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--topbar-surface) 96%, var(--surface) 4%), var(--topbar-surface));
+  box-shadow: 0 18px 48px -34px var(--shadow-color), 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent) inset;
+}
+
+.brand {
+  padding: 5px 8px 5px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: 1px 1px 0 var(--shadow-color-soft);
+}
+
+.brand-icon {
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.view-tabs,
+.play-actions {
+  border-width: 1px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), 3px 3px 0 var(--shadow-color-soft);
+}
+
+.view-tab,
+.app-topbar button {
+  min-height: 34px;
+}
+
+.view-tab.is-active,
+.view-tab:hover {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 28%, transparent), 2px 2px 0 var(--shadow-color-soft);
+}
+
+.online-count {
+  min-height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
+  font: 900 0.82rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  white-space: nowrap;
+}
+
+.game-timer {
+  border-width: 1px;
+  min-width: 82px;
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface) 92%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 80%, transparent), 2px 2px 0 var(--shadow-color-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.current-level-label {
+  max-width: 168px;
+  padding-inline: 9px;
+  border-left: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+}
+
+.app-card,
+.victory-mark,
+.play-status {
+  box-shadow: var(--panel-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
 }

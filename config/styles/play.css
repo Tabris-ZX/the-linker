@@ -506,6 +506,127 @@
   }
 }
 
+/* Play surface refinement */
+.level-picker-panel {
+  gap: 12px;
+}
+
+.level-picker-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.level-picker-header strong {
+}
+
+.level-picker-filters {
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+}
+
+.level-picker-filters label {
+  align-items: start;
+}
+
+.level-card-grid {
+  gap: 10px;
+}
+
+.level-card {
+  border-width: 1px;
+  border-radius: var(--radius-control);
+  box-shadow: 3px 3px 0 var(--shadow-color-soft);
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 120ms ease;
+}
+
+.level-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 5px 0 var(--shadow-color-soft);
+}
+
+.level-card-main {
+  gap: 5px;
+}
+
+.level-card strong {
+}
+
+.board-loading {
+  padding: 10px 14px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: 4px 4px 0 var(--shadow-color-soft);
+}
+
+.victory-mark {
+  border-width: 2px;
+  border-radius: var(--radius-panel);
+  box-shadow: 8px 8px 0 var(--shadow-color-soft);
+}
+
+.victory-actions {
+  flex-wrap: wrap;
+}
+
+/* Visible board pass */
+.game-panel::before {
+  content: "";
+  position: absolute;
+  inset: max(18px, 3vh) max(20px, 4vw);
+  z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--line) 54%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 24% 18%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 32%),
+    color-mix(in srgb, var(--surface-soft) 18%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 38%, transparent), 0 26px 70px -52px var(--shadow-color);
+  pointer-events: none;
+}
+
+.board-wrap {
+  position: relative;
+  padding: clamp(12px, 2.5vw, 28px);
+  border-radius: 16px;
+}
+
+.board-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--line) 58%, transparent);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--surface) 14%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 34%, transparent), 0 18px 44px -34px var(--shadow-color);
+}
+
+.board {
+  filter: drop-shadow(0 14px 18px color-mix(in srgb, var(--shadow-color) 42%, transparent));
+}
+
+.edge-grid path {
+  opacity: 0.88;
+}
+
+.dot {
+  box-shadow:
+    0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink),
+    0 clamp(4px, calc(var(--cell-size) * 0.07), 9px) clamp(1px, calc(var(--cell-size) * 0.025), 4px) color-mix(in srgb, var(--dot-color) 22%, transparent),
+    0 clamp(3px, calc(var(--cell-size) * 0.055), 7px) 0 rgba(0, 0, 0, 0.16);
+}
+
+.level-picker-panel {
+  border-width: 1px;
+}
+
+.level-card.is-active,
+.level-card:hover {
+  border-color: color-mix(in srgb, var(--ink) 80%, var(--accent) 20%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .edge-lines path,
   .edge-grid path,

@@ -6,6 +6,7 @@
     :current-level-label="currentLevelLabel"
     :can-reset-level="Boolean(currentLevel) && !isLevelsLoading"
     :is-developer-mode="isDeveloperMode"
+    :online-count-text="onlineCountText"
     :favicon-url="faviconUrl"
     @toggle-level-picker="toggleLevelPicker"
     @reset-paths="resetPaths"

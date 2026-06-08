@@ -1,6 +1,6 @@
 import { appConfig } from "../config/index.js";
 import { areAllNodesExclusive, areAllPathsStructurallyValid, getAnswerEdges, getFilledEdges, getFilledNodes, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
-import { reviewLevelRequest, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
+import { fetchPresenceStats, reviewLevelRequest, sendPresenceHeartbeat, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
 import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
 
@@ -12,7 +12,51 @@ const GAME_STORAGE_KEY_PREFIX = "the-linker-";
 const DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS = 3;
 const DEVELOPER_TOKEN_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
+const PRESENCE_CLIENT_STORAGE_KEY = "the-linker-presence-session-id";
+
+function createPresenceClientId() {
+  return window.crypto?.randomUUID?.() ?? String(Date.now()) + "-" + Math.random().toString(16).slice(2);
+}
+
 export const methods = {
+    getPresenceClientId() {
+      if (this.presenceClientId) return this.presenceClientId;
+      try {
+        const storedClientId = window.sessionStorage.getItem(PRESENCE_CLIENT_STORAGE_KEY);
+        this.presenceClientId = storedClientId || createPresenceClientId();
+        window.sessionStorage.setItem(PRESENCE_CLIENT_STORAGE_KEY, this.presenceClientId);
+      } catch {
+        this.presenceClientId = createPresenceClientId();
+      }
+      return this.presenceClientId;
+    },
+    async refreshPresence() {
+      try {
+        const heartbeat = await sendPresenceHeartbeat(this.getPresenceClientId());
+        if (heartbeat?.clientId) this.presenceClientId = heartbeat.clientId;
+        if (this.isDeveloperMode) {
+          const stats = await fetchPresenceStats();
+          this.onlineCount = Number(stats.onlineCount);
+        }
+      } catch (error) {
+        if (this.isDeveloperMode) this.onlineCount = null;
+      }
+    },
+
+    startPresencePolling() {
+      if (this.presenceIntervalId) {
+        this.refreshPresence();
+        return;
+      }
+      this.refreshPresence();
+      this.presenceIntervalId = window.setInterval(this.refreshPresence, 15000);
+    },
+
+    stopPresencePolling() {
+      if (!this.presenceIntervalId) return;
+      window.clearInterval(this.presenceIntervalId);
+      this.presenceIntervalId = null;
+    },
     /**
      * 检测当前会话是否允许使用关卡编辑器。
      *
@@ -292,6 +336,7 @@ export const methods = {
         this.writeLevelTemplate(false);
       }
       this.levelCategoryFilter = "all";
+      this.startPresencePolling();
       this.developerStatusText = "开发者模式已开启";
     },
 

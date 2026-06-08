@@ -89,6 +89,9 @@ export default {
       timerIntervalId: null,
       dialogTick: 0,
       dialogIntervalId: null,
+      presenceClientId: "",
+      onlineCount: null,
+      presenceIntervalId: null,
       isWon: false,
       isPersonalBest: false,
       isVictoryDismissed: false,
@@ -134,6 +137,7 @@ export default {
     this.loadCompletedLevels();
     this.loadDeveloperTokenCooldown();
     this.initializeLevels();
+    this.startPresencePolling();
     this.dialogIntervalId = window.setInterval(() => {
       this.dialogTick += 1;
       if (this.appDialog.type === "developer-token" && this.developerTokenCooldownUntil > 0) {
@@ -152,6 +156,7 @@ export default {
     if (this.dialogIntervalId) {
       window.clearInterval(this.dialogIntervalId);
     }
+    this.stopPresencePolling();
   },
 
   watch: {

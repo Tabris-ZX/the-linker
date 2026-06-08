@@ -31,6 +31,10 @@ export const computed = {
       return this.viewTabs.filter((tab) => tab.id !== "editor" || this.canUseLevelEditor);
     },
 
+    onlineCountText() {
+      return Number.isFinite(this.onlineCount) ? "在线 " + this.onlineCount : "在线 --";
+    },
+
     /**
      * 获取开发者 token 弹窗的冷却提示。
      *

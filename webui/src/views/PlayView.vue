@@ -1,5 +1,6 @@
 <template>
   <section class="view view-play" :class="{ 'is-active': app.activeView === 'play' }" :hidden="app.activeView !== 'play'" aria-labelledby="game-title">
+    <h1 id="game-title" class="sr-only">The Linker 关卡游玩</h1>
     <section class="game-panel">
       <section v-if="app.isLevelPickerOpen" class="level-picker-panel app-card" aria-label="关卡选择">
         <div class="level-picker-header">

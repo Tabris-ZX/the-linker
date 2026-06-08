@@ -62,11 +62,11 @@
 .editor-form .editor-import-button {
   display: grid;
   place-items: center;
-  border: 2px solid var(--ink);
+  border: 1px solid var(--ink);
   border-radius: 6px;
   color: var(--button-ink);
   background: var(--accent);
-  box-shadow: 4px 4px 0 var(--shadow-color);
+  box-shadow: var(--control-shadow);
   cursor: pointer;
 }
 
@@ -75,8 +75,8 @@
 }
 
 .editor-form .editor-import-button:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--shadow-color);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--shadow-color-soft);
 }
 
 .editor-form .editor-import-button input {
@@ -127,7 +127,7 @@ textarea:focus {
 
 .level-output-panel {
   margin-top: 10px;
-  border: 2px solid var(--ink);
+  border: 1px solid var(--ink);
   border-radius: 8px;
   background: var(--surface-raised);
   overflow: hidden;
@@ -196,7 +196,7 @@ textarea:focus {
   min-height: 42px;
   display: inline-grid;
   place-items: center;
-  border: 2px solid var(--ink);
+  border: 1px solid var(--ink);
   border-radius: 999px;
   color: var(--button-ink);
   background: var(--pair-color);
@@ -381,6 +381,62 @@ textarea:focus {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Editor refinement */
+.editor-panel {
+  border-width: 1px;
+}
+
+.editor-panel h2 {
+  margin-bottom: 14px;
+  font-size: 1.35rem;
+}
+
+.editor-form {
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+}
+
+.editor-form label,
+.editor-level-select label {
+  min-width: 0;
+}
+
+.editor-form input,
+.editor-form select {
+  min-height: 38px;
+}
+
+.editor-form-actions {
+  padding-top: 4px;
+}
+
+.preview-hint {
+  max-width: 78ch;
+  padding-left: 2px;
+}
+
+.preview-board-wrap {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
+}
+
+.pair-chip {
+  border-width: 1px;
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
+}
+
+.level-output-panel {
+  border-width: 1px;
+}
+
+.level-output-header {
+  border-bottom-width: 1px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
