@@ -18,15 +18,15 @@
         "id": "night",
         "label": "夜间",
         "tokens": {
-            "paper": "#10161c",
-            "ink": "#dbe7ee",
-            "muted": "#8fa1ad",
-            "line": "#2b3742",
-            "gridLine": "#50626f",
-            "accent": "#2dd4bf",
-            "accentStrong": "#14b8a6",
-            "danger": "#fb7185",
-            "success": "#4ade80"
+            "paper": "#0e1419",
+            "ink": "#e7eef3",
+            "muted": "#9aabb7",
+            "line": "#2b3842",
+            "gridLine": "#687884",
+            "accent": "#38b7a4",
+            "accentStrong": "#2f9b8d",
+            "danger": "#f07178",
+            "success": "#62c997"
         }
     },
     {

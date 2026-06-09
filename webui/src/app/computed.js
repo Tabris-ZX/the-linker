@@ -287,27 +287,20 @@ export const computed = {
       if (!this.currentLevel) return [];
       const lines = [];
       const renderedEdges = new Set();
-      Object.entries(this.paths).forEach(([pairId, path]) => {
-        const pair = this.getPair(pairId);
-        if (!pair) return;
-
-        path.forEach((point, index) => {
-          const next = path[index + 1];
-          if (!next) return;
-          const edge = edgeKey(point, next);
-          if (renderedEdges.has(edge)) return;
-          renderedEdges.add(edge);
-          lines.push({
-            key: `${pairId}-${edge}`,
-            attrs: lineAttrs(toRenderPoint(point, this.currentLevel.gridType), toRenderPoint(next, this.currentLevel.gridType)),
-            color: pair.color,
-            className: ""
-          });
+      this.getPathSegments().forEach((segment) => {
+        const pair = this.getPair(segment.pairId);
+        if (!pair || renderedEdges.has(segment.edge)) return;
+        renderedEdges.add(segment.edge);
+        lines.push({
+          key: `${segment.pairId}-${segment.edge}`,
+          attrs: lineAttrs(toRenderPoint(segment.from, this.currentLevel.gridType), toRenderPoint(segment.to, this.currentLevel.gridType)),
+          color: pair.color,
+          className: ""
         });
       });
 
       if (this.activePair) {
-        const path = this.paths[this.activePair] ?? [];
+        const path = this.getActiveBranch();
         const last = path[path.length - 1];
         const pair = this.getPair(this.activePair);
         if (last && pair && this.pointerPreview) {
@@ -417,8 +410,9 @@ export const computed = {
     editorPreviewStyle() {
       const bounds = getGridBounds(this.editorState);
       return {
-        "--preview-cols": bounds.cols,
-        "--preview-rows": bounds.rows,
+        "--cols": bounds.cols,
+        "--rows": bounds.rows,
+        "--cell-size": `min(calc((var(--preview-width-limit) - 48px) / ${bounds.cols}), calc((var(--preview-height-limit) - 48px) / ${bounds.rows}))`,
         "--map-dot-scale": this.mapStyle.dotScale,
         "--map-node-scale": this.mapStyle.nodeScale,
         "--map-line-scale": this.mapStyle.lineScale,

@@ -14,7 +14,7 @@
         </select>
       </label>
       <label>
-        点对配色
+        配色
         <select :value="app.selectedPalette" aria-label="点对配色" @change="app.selectedPalette = $event.target.value">
           <option v-for="palette in app.pointPaletteOptions" :key="palette.id" :value="palette.id">{{ palette.label }}</option>
         </select>

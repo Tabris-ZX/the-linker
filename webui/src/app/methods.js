@@ -1,5 +1,5 @@
 import { appConfig } from "../config/index.js";
-import { areAllNodesExclusive, areAllPathsStructurallyValid, getAnswerEdges, getFilledEdges, getFilledNodes, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
+import { areAllPathsStructurallyValid, getAnswerEdges, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
 import { fetchPresenceStats, reviewLevelRequest, sendPresenceHeartbeat, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
 import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
@@ -102,7 +102,6 @@ export const methods = {
       this.isLevelsLoading = true;
       try {
         const indexLevels = await loadLevelIndex();
-        this.migrateLegacyLevelStorage(indexLevels);
         const existingDetails = this.levelDetails ?? {};
         this.levels = indexLevels.map((item) => {
           const detail = existingDetails[this.getLevelCacheKey(item)];
@@ -215,7 +214,7 @@ export const methods = {
       const lastLevelKey = this.loadLastLevelId();
       if (lastLevelKey) {
         const lastLevelIndex = this.levels.findIndex((level) => (
-          this.getLevelCacheKey(level) === lastLevelKey || level?.id === lastLevelKey
+          this.getLevelCacheKey(level) === lastLevelKey
         ) && this.isLevelCategoryVisible(level));
         if (lastLevelIndex >= 0) return lastLevelIndex;
       }
@@ -602,39 +601,6 @@ export const methods = {
     },
 
     /**
-     * 将旧关卡 id/sourcePath 的本地记录迁移到新 sourcePath。
-     *
-     * @param {Array<object>} levels 关卡目录。
-     * @returns {void}
-     */
-    migrateLegacyLevelStorage(levels) {
-      if (!Array.isArray(levels) || levels.length === 0) return;
-      const mappings = levels
-        .filter((level) => level?.sourcePath && (level.legacySourcePath || level.legacyId))
-        .flatMap((level) => [level.legacySourcePath, level.legacyId].filter(Boolean).map((legacyKey) => [legacyKey, level.sourcePath]));
-      if (mappings.length === 0) return;
-
-      let didChangeCompleted = false;
-      const nextCompletedLevels = { ...this.completedLevels };
-      mappings.forEach(([legacyKey, nextKey]) => {
-        if (!nextCompletedLevels[nextKey] && nextCompletedLevels[legacyKey]) {
-          nextCompletedLevels[nextKey] = nextCompletedLevels[legacyKey];
-          didChangeCompleted = true;
-        }
-      });
-      if (didChangeCompleted) {
-        this.completedLevels = nextCompletedLevels;
-        this.saveCompletedLevels();
-      }
-
-      const lastLevelKey = this.loadLastLevelId();
-      const lastLevelMapping = mappings.find(([legacyKey]) => legacyKey === lastLevelKey);
-      if (lastLevelMapping) {
-        this.saveLastLevelId(lastLevelMapping[1]);
-      }
-    },
-
-    /**
      * 显示清空游戏数据确认操作。
      *
      * @returns {void}
@@ -770,7 +736,7 @@ export const methods = {
     markCurrentLevelCompleted() {
       if (!this.currentLevel?.id) return;
       const levelKey = this.getLevelCacheKey(this.currentLevel);
-      const previousRecord = this.completedLevels[levelKey] ?? this.completedLevels[this.currentLevel.id] ?? {};
+      const previousRecord = this.completedLevels[levelKey] ?? {};
       const elapsedMs = this.normalizeTimerElapsedMs(this.timerElapsedMs);
       const previousBestMs = Number(previousRecord.bestMs);
       const hasPreviousBest = Number.isFinite(previousBestMs);
@@ -947,7 +913,7 @@ export const methods = {
      */
     applyPointPalette(paletteId) {
       const firstPaletteId = Object.keys(this.pointPalettes)[0];
-      const nextDefinitions = this.pointPalettes[paletteId] ?? this.pointPalettes.default ?? this.pointPalettes[firstPaletteId] ?? {};
+      const nextDefinitions = this.pointPalettes[paletteId] ?? this.pointPalettes["默认"] ?? this.pointPalettes.default ?? this.pointPalettes[firstPaletteId] ?? {};
       this.pointDefinitions = nextDefinitions;
       this.levels = this.levels.map((level) => {
         if (!level) return level;
@@ -965,6 +931,36 @@ export const methods = {
         return;
       }
       this.writeLevelTemplate(false);
+    },
+
+    /**
+     * 判断点位是否还有可用贴图候选。
+     *
+     * @param {object} point 点位定义。
+     * @returns {boolean} 是否使用贴图。
+     */
+    hasPointTexture(point) {
+      return Boolean(point?.texture?.src);
+    },
+
+    /**
+     * 生成点位圆点样式，贴图缺失时仍保留颜色回退。
+     *
+     * @param {object} point 点位定义。
+     * @returns {Record<string, string>} 样式变量。
+     */
+    getPointDotStyle(point) {
+      return { "--dot-color": point?.color ?? "var(--accent)" };
+    },
+
+    /**
+     * 单个 webp 贴图加载失败后回退为纯色点。
+     *
+     * @param {object} point 点位定义。
+     * @returns {void}
+     */
+    handlePointTextureError(point) {
+      if (point?.texture) point.texture.src = "";
     },
 
     /**
@@ -1035,6 +1031,7 @@ export const methods = {
       });
       this.paths = paths;
       this.activePair = null;
+      this.activeBranchIndex = null;
       this.isDrawing = false;
       this.pointerMoved = false;
       this.pointerPreview = null;
@@ -1059,6 +1056,7 @@ export const methods = {
       });
       this.paths = paths;
       this.activePair = null;
+      this.activeBranchIndex = null;
       this.isDrawing = false;
       this.pointerMoved = false;
       this.pointerPreview = null;
@@ -1140,7 +1138,7 @@ export const methods = {
     },
 
     /**
-     * 处理棋盘双击事件，清空被双击端点所属路径。
+     * 处理棋盘双击事件：端点清空整条同色路径，未完成路径节点回退到该点。
      *
      * @param {MouseEvent} event 鼠标事件。
      * @returns {void}
@@ -1150,9 +1148,14 @@ export const methods = {
       const position = this.positionFromEvent(event);
       if (!position) return;
 
+      const point = positionToArray(position);
       const pairId = this.endpoints[keyOf(position.x, position.y)];
-      if (!pairId) return;
-      this.clearPairPath(pairId);
+      if (pairId) {
+        this.clearPairPath(pairId);
+        return;
+      }
+
+      this.rollbackIncompletePathAtPoint(point);
     },
 
     /**
@@ -1165,6 +1168,7 @@ export const methods = {
      */
     startPath(pairId, position, mode = "endpoint") {
       this.activePair = pairId;
+      this.activeBranchIndex = null;
       this.isDrawing = true;
       this.pointerPreview = null;
       this.isWon = false;
@@ -1172,20 +1176,46 @@ export const methods = {
       this.isVictoryDismissed = false;
       this.nextLevelStatusText = "";
 
-      const currentPath = this.paths[pairId] ?? [];
-      if (mode === "path-end") {
-        this.paths[pairId] = this.orientPathForEnd(currentPath, position);
-      } else {
-        const pair = this.getPair(pairId);
-        const endpointIndex = pair.points.findIndex(([x, y]) => x === position.x && y === position.y);
-        if (endpointIndex === -1) return;
-
-        if (currentPath.some(([x, y]) => x === position.x && y === position.y)) {
-          this.paths[pairId] = this.trimPathForEndpointStart(currentPath, position);
-        } else {
-          this.paths[pairId] = [positionToArray(position)];
-        }
+      const point = positionToArray(position);
+      const currentState = this.normalizePairPathState(pairId, this.paths[pairId]);
+      if (currentState.completed) {
+        this.isDrawing = false;
+        this.activePair = null;
+        return;
       }
+
+      if (mode === "path-end") {
+        const branchIndex = currentState.branches.findIndex((branch) => samePoint(branch[branch.length - 1], point));
+        if (branchIndex < 0) {
+          this.isDrawing = false;
+          this.activePair = null;
+          return;
+        }
+        this.paths[pairId] = currentState;
+        this.activeBranchIndex = branchIndex;
+        return;
+      }
+
+      const endpointIndex = this.getPairEndpointIndex(pairId, point);
+      if (endpointIndex < 0) {
+        this.isDrawing = false;
+        this.activePair = null;
+        return;
+      }
+
+      const existingBranchIndex = currentState.branches.findIndex((branch) => samePoint(branch[0], point));
+      if (existingBranchIndex >= 0) {
+        currentState.branches[existingBranchIndex] = [point];
+        this.activeBranchIndex = existingBranchIndex;
+      } else if (currentState.branches.length < 2) {
+        currentState.branches.push([point]);
+        this.activeBranchIndex = currentState.branches.length - 1;
+      } else {
+        currentState.branches[endpointIndex] = [point];
+        this.activeBranchIndex = endpointIndex;
+      }
+
+      this.paths[pairId] = currentState;
     },
 
     /**
@@ -1195,28 +1225,27 @@ export const methods = {
      * @returns {boolean} 是否成功追加或保持有效。
      */
     addStep(position) {
-      // Commit one snapped grid point into the active path after validating collisions.
-      const path = this.paths[this.activePair] ?? [];
-      const last = path[path.length - 1];
+      const state = this.normalizePairPathState(this.activePair, this.paths[this.activePair]);
+      const branchIndex = this.activeBranchIndex;
+      if (!this.activePair || branchIndex === null || branchIndex < 0 || state.completed) return false;
+
+      const branch = state.branches[branchIndex] ?? [];
+      const last = branch[branch.length - 1];
+      const next = positionToArray(position);
       if (!last) {
-        this.paths[this.activePair] = [positionToArray(position)];
+        state.branches[branchIndex] = [next];
+        this.paths[this.activePair] = state;
         return true;
       }
-
-      const next = positionToArray(position);
       if (samePoint(last, next)) return true;
 
-      const previousIndex = path.findIndex((point) => samePoint(point, next));
+      const previousIndex = branch.findIndex((point) => samePoint(point, next));
       if (previousIndex >= 0) {
-        if (previousIndex === path.length - 2) {
-          this.paths[this.activePair] = path.slice(0, previousIndex + 1);
+        if (previousIndex === branch.length - 2) {
+          state.branches[branchIndex] = branch.slice(0, previousIndex + 1);
+          this.paths[this.activePair] = state;
           return true;
         }
-
-        return false;
-      }
-
-      if (this.hasPairReachedBothEndpoints(this.activePair, path)) {
         return false;
       }
 
@@ -1226,41 +1255,50 @@ export const methods = {
         return false;
       }
 
-      if (!this.availableEdgeSet.has(edgeKey(last, next))) {
-        return false;
-      }
+      if (!this.availableEdgeSet.has(edgeKey(last, next))) return false;
 
-      if (this.getEdgeOccupant(last, next)) {
-        return false;
-      }
+      const edgeOccupant = this.getEdgeOccupant(last, next);
+      if (edgeOccupant && edgeOccupant !== this.activePair) return false;
+      if (edgeOccupant === this.activePair) return false;
 
       const endpointOwner = this.endpoints[keyOf(next[0], next[1])];
-      if (endpointOwner && endpointOwner !== this.activePair) {
-        return false;
-      }
+      if (endpointOwner && endpointOwner !== this.activePair) return false;
+
+      const mergeIndex = state.branches.findIndex((otherBranch, otherIndex) => (
+        otherIndex !== branchIndex && otherBranch.some((point) => samePoint(point, next))
+      ));
 
       const nodeOccupant = this.getNodeOccupant(next);
-      if (nodeOccupant && nodeOccupant !== this.activePair) {
-        return false;
-      }
+      if (nodeOccupant && nodeOccupant !== this.activePair) return false;
+      if (nodeOccupant === this.activePair && mergeIndex < 0) return false;
 
-      if (endpointOwner === this.activePair && this.isEndpointAlreadyLinked(this.activePair, next)) {
-        return false;
+      if (mergeIndex >= 0) {
+        const merged = this.mergeBranchesAtPoint(state.branches[branchIndex], state.branches[mergeIndex], next);
+        if (!merged || !this.pathTouchesBothEndpoints(this.activePair, merged)) return false;
+        this.paths[this.activePair] = merged;
+        this.evaluateBoard();
+        this.isDrawing = false;
+        this.activePair = null;
+        this.activeBranchIndex = null;
+        return true;
       }
 
       const pair = this.getPair(this.activePair);
       const isOwnEndpoint = pair.points.some((point) => samePoint(point, next));
-      const alreadyReachedEnd = path.some((point) => pair.points.some((endpoint) => samePoint(endpoint, point))) && path.length > 1;
-
-      this.paths[this.activePair] = [...path, next];
-      if (isOwnEndpoint && alreadyReachedEnd && !samePoint(path[0], next)) {
+      const isStartingEndpoint = samePoint(branch[0], next);
+      if (isOwnEndpoint && !isStartingEndpoint) {
+        const completed = [...branch, next];
+        if (!this.pathTouchesBothEndpoints(this.activePair, completed)) return false;
+        this.paths[this.activePair] = completed;
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
+        this.activeBranchIndex = null;
         return true;
       }
 
-      this.evaluateBoard();
+      state.branches[branchIndex] = [...branch, next];
+      this.paths[this.activePair] = this.compactPairPathState(state);
       return true;
     },
 
@@ -1271,7 +1309,7 @@ export const methods = {
      * @returns {boolean} 是否至少移动了一步。
      */
     addStepsToward(target) {
-      const path = this.paths[this.activePair] ?? [];
+      const path = this.getActiveBranch();
       let current = path[path.length - 1];
       if (!current) return false;
 
@@ -1290,12 +1328,204 @@ export const methods = {
         const next = [current[0] + stepX, current[1] + stepY];
         if (!this.addStep({ x: next[0], y: next[1] })) return moved;
         moved = true;
-        const updatedPath = this.paths[this.activePair] ?? [];
+        const updatedPath = this.getActiveBranch();
         current = updatedPath[updatedPath.length - 1];
         if (!this.activePair || !current) return moved;
       }
 
       return moved;
+    },
+
+    /**
+     * 将点对路径状态规整为统一结构，兼容旧的单数组路径。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {Array|object} value 原始路径状态。
+     * @returns {{ branches: Array<Array<[number, number]>>, completed: boolean }} 规整后的状态。
+     */
+    readPairPathState(pairId, value = this.paths[pairId]) {
+      const pair = this.getPair(pairId);
+      if (!pair) return { branches: [], completed: false };
+      if (Array.isArray(value)) {
+        return this.pathTouchesBothEndpoints(pairId, value)
+          ? { branches: [value], completed: true }
+          : { branches: value.length ? [value] : [], completed: false };
+      }
+      const branches = Array.isArray(value?.branches)
+        ? value.branches.filter((branch) => Array.isArray(branch) && branch.length > 0)
+        : [];
+      const completed = Boolean(value?.completed) || branches.some((branch) => this.pathTouchesBothEndpoints(pairId, branch));
+      return { branches, completed };
+    },
+
+    /**
+     * 将点对路径状态规整为统一结构，兼容旧的单数组路径。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {Array|object} value 原始路径状态。
+     * @returns {{ branches: Array<Array<[number, number]>>, completed: boolean }} 规整后的状态。
+     */
+    normalizePairPathState(pairId, value) {
+      const state = this.readPairPathState(pairId, value);
+      return {
+        branches: state.branches.map((branch) => this.clonePath(branch)),
+        completed: state.completed
+      };
+    },
+
+    /**
+     * 返回可存回 this.paths 的紧凑路径状态。
+     *
+     * @param {{ branches: Array<Array<[number, number]>>, completed: boolean }} state 路径状态。
+     * @returns {Array|object} 紧凑路径状态。
+     */
+    compactPairPathState(state) {
+      const branches = state.branches.filter((branch) => Array.isArray(branch) && branch.length > 0);
+      if (state.completed && branches.length === 1) return branches[0];
+      if (!state.completed && branches.length === 0) return [];
+      return { branches, completed: false };
+    },
+
+    /**
+     * 克隆路径坐标。
+     *
+     * @param {Array<[number, number]>} path 路径。
+     * @returns {Array<[number, number]>} 克隆路径。
+     */
+    clonePath(path) {
+      return Array.isArray(path) ? path.map((point) => [point[0], point[1]]) : [];
+    },
+
+    /**
+     * 获取指定点对所有分支。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {Array<Array<[number, number]>>} 分支列表。
+     */
+    getPairBranches(pairId) {
+      return this.readPairPathState(pairId).branches;
+    },
+
+    /**
+     * 获取当前活跃分支。
+     *
+     * @returns {Array<[number, number]>} 活跃分支。
+     */
+    getActiveBranch() {
+      if (!this.activePair || this.activeBranchIndex === null) return [];
+      const state = this.readPairPathState(this.activePair);
+      return state.branches[this.activeBranchIndex] ?? [];
+    },
+
+    /**
+     * 获取点对端点索引。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {[number, number]} point 节点。
+     * @returns {number} 端点索引。
+     */
+    getPairEndpointIndex(pairId, point) {
+      const pair = this.getPair(pairId);
+      return pair?.points.findIndex((endpoint) => samePoint(endpoint, point)) ?? -1;
+    },
+
+    /**
+     * 判断路径是否触达点对两个端点。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {Array<[number, number]>} path 路径。
+     * @returns {boolean} 是否触达两个端点。
+     */
+    pathTouchesBothEndpoints(pairId, path) {
+      const pair = this.getPair(pairId);
+      return Boolean(pair && pair.points.every((endpoint) => path.some((point) => samePoint(point, endpoint))));
+    },
+
+    /**
+     * 将两条同色分支在交点处合并成一条完整路径。
+     *
+     * @param {Array<[number, number]>} activeBranch 当前分支。
+     * @param {Array<[number, number]>} otherBranch 另一条分支。
+     * @param {[number, number]} mergePoint 合并点。
+     * @returns {Array<[number, number]>|null} 合并路径。
+     */
+    mergeBranchesAtPoint(activeBranch, otherBranch, mergePoint) {
+      const activeIndex = activeBranch.findIndex((point) => samePoint(point, mergePoint));
+      const otherIndex = otherBranch.findIndex((point) => samePoint(point, mergePoint));
+      const nextActive = activeIndex >= 0 ? activeBranch.slice(0, activeIndex + 1) : [...activeBranch, mergePoint];
+      if (otherIndex < 0) return null;
+      const nextOther = otherBranch.slice(0, otherIndex + 1);
+      const merged = nextActive.concat(nextOther.slice(0, -1).reverse());
+      const keys = new Set();
+      for (const point of merged) {
+        const key = keyOf(point[0], point[1]);
+        if (keys.has(key)) return null;
+        keys.add(key);
+      }
+      return merged;
+    },
+
+    /**
+     * 获取所有已绘制路径线段。
+     *
+     * @returns {Array<{ pairId: string, from: [number, number], to: [number, number], edge: string }>} 线段列表。
+     */
+    getPathSegments() {
+      const segments = [];
+      Object.entries(this.paths).forEach(([pairId]) => {
+        this.getPairBranches(pairId).forEach((branch) => {
+          for (let index = 1; index < branch.length; index += 1) {
+            const from = branch[index - 1];
+            const to = branch[index];
+            segments.push({ pairId, from, to, edge: edgeKey(from, to) });
+          }
+        });
+      });
+      return segments;
+    },
+
+    /**
+     * 获取给校验器使用的完成路径视图。
+     *
+     * @returns {Record<string, Array<[number, number]>>} 单路径视图。
+     */
+    getCompletedPathView() {
+      return Object.fromEntries(
+        Object.entries(this.paths).map(([pairId]) => {
+          const state = this.readPairPathState(pairId);
+          const completed = state.branches.find((branch) => this.pathTouchesBothEndpoints(pairId, branch));
+          return [pairId, completed ?? []];
+        })
+      );
+    },
+
+    /**
+     * 双击未完成路径节点时回退到该节点。
+     *
+     * @param {[number, number]} point 节点。
+     * @returns {boolean} 是否回退。
+     */
+    rollbackIncompletePathAtPoint(point) {
+      const nodeKey = keyOf(point[0], point[1]);
+      for (const [pairId] of Object.entries(this.paths)) {
+        const state = this.normalizePairPathState(pairId, this.paths[pairId]);
+        if (state.completed) continue;
+        const branchIndex = state.branches.findIndex((branch) => branch.some((item) => keyOf(item[0], item[1]) === nodeKey));
+        if (branchIndex < 0) continue;
+        const pointIndex = state.branches[branchIndex].findIndex((item) => keyOf(item[0], item[1]) === nodeKey);
+        if (pointIndex <= 0) continue;
+        state.branches[branchIndex] = state.branches[branchIndex].slice(0, pointIndex + 1);
+        this.paths[pairId] = this.compactPairPathState(state);
+        this.activePair = null;
+        this.activeBranchIndex = null;
+        this.isDrawing = false;
+        this.isWon = false;
+        this.isVictoryDismissed = false;
+        this.shareStatusText = "分享";
+        this.nextLevelStatusText = "";
+        return true;
+      }
+      return false;
     },
 
     /**
@@ -1403,44 +1633,16 @@ export const methods = {
         return { pairId: endpointPairId, mode: "endpoint" };
       }
 
-      for (const [pairId, path] of Object.entries(this.paths)) {
-        if (path.length === 0 || this.hasPairReachedBothEndpoints(pairId, path)) continue;
-        const last = path[path.length - 1];
-        if (samePoint(last, positionToArray(position))) {
+      for (const [pairId] of Object.entries(this.paths)) {
+        const state = this.readPairPathState(pairId);
+        if (state.completed) continue;
+        const branchIndex = state.branches.findIndex((branch) => samePoint(branch[branch.length - 1], positionToArray(position)));
+        if (branchIndex >= 0) {
           return { pairId, mode: "path-end" };
         }
       }
 
       return null;
-    },
-
-    /**
-     * 将路径调整为可从末端继续绘制的方向。
-     *
-     * @param {Array<[number, number]>} path 当前路径。
-     * @param {{ x: number, y: number }} position 起始位置。
-     * @returns {Array<[number, number]>} 调整后的路径。
-     */
-    orientPathForEnd(path, position) {
-      const point = positionToArray(position);
-      if (path.length === 0) return [point];
-      if (samePoint(path[path.length - 1], point)) return path;
-      return [point];
-    },
-
-    /**
-     * 从端点重新开始绘制时裁剪已有路径。
-     *
-     * @param {Array<[number, number]>} path 当前路径。
-     * @param {{ x: number, y: number }} position 端点位置。
-     * @returns {Array<[number, number]>} 裁剪后的路径。
-     */
-    trimPathForEndpointStart(path, position) {
-      const point = positionToArray(position);
-      const index = path.findIndex((item) => samePoint(item, point));
-      if (index <= 0) return [point];
-      if (index === path.length - 1) return path;
-      return path.slice(0, index + 1);
     },
 
     /**
@@ -1451,13 +1653,14 @@ export const methods = {
      * @returns {boolean} 是否可开始绘制。
      */
     canStartFromEndpoint(pairId, position) {
-      const path = this.paths[pairId] ?? [];
-      if (path.length === 0) return true;
+      const state = this.readPairPathState(pairId);
+      if (state.completed) return false;
 
       const point = positionToArray(position);
-      if (!path.some((item) => samePoint(item, point))) return true;
+      const branch = state.branches.find((item) => samePoint(item[0], point));
+      if (!branch) return state.branches.length < 2;
 
-      return samePoint(path[path.length - 1], point) && this.getPathDegree(path, point) <= 1;
+      return samePoint(branch[branch.length - 1], point) && this.getPathDegree(branch, point) <= 1;
     },
 
     /**
@@ -1467,13 +1670,14 @@ export const methods = {
      * @returns {void}
      */
     clearPairPath(pairId) {
-      const path = this.paths[pairId] ?? [];
-      if (path.length === 0) {
+      const state = this.normalizePairPathState(pairId, this.paths[pairId]);
+      if (state.branches.length === 0) {
         return;
       }
 
       this.paths[pairId] = [];
       this.activePair = null;
+      this.activeBranchIndex = null;
       this.isDrawing = false;
       this.isWon = false;
       this.isVictoryDismissed = false;
@@ -1489,11 +1693,12 @@ export const methods = {
      * @returns {void}
      */
     pausePath(pairId, hasMoved) {
-      const path = this.paths[pairId] ?? [];
+      const state = this.readPairPathState(pairId);
       this.isDrawing = false;
       this.activePair = null;
+      this.activeBranchIndex = null;
 
-      if (this.hasPairReachedBothEndpoints(pairId, path)) {
+      if (state.completed) {
         this.evaluateBoard();
         return;
       }
@@ -1511,6 +1716,7 @@ export const methods = {
     stopDrawing() {
       this.isDrawing = false;
       this.activePair = null;
+      this.activeBranchIndex = null;
       this.pointerMoved = false;
       this.pointerPreview = null;
     },
@@ -1607,9 +1813,11 @@ export const methods = {
      */
     getEdgeOccupant(from, to) {
       const edge = edgeKey(from, to);
-      for (const [pairId, path] of Object.entries(this.paths)) {
-        for (let index = 1; index < path.length; index += 1) {
-          if (edgeKey(path[index - 1], path[index]) === edge) return pairId;
+      for (const [pairId] of Object.entries(this.paths)) {
+        for (const branch of this.getPairBranches(pairId)) {
+          for (let index = 1; index < branch.length; index += 1) {
+            if (edgeKey(branch[index - 1], branch[index]) === edge) return pairId;
+          }
         }
       }
       return null;
@@ -1623,8 +1831,8 @@ export const methods = {
      */
     getNodeOccupant(point) {
       const nodeKey = keyOf(point[0], point[1]);
-      for (const [pairId, path] of Object.entries(this.paths)) {
-        if (path.some(([x, y]) => keyOf(x, y) === nodeKey)) return pairId;
+      for (const [pairId] of Object.entries(this.paths)) {
+        if (this.getPairBranches(pairId).some((branch) => branch.some(([x, y]) => keyOf(x, y) === nodeKey))) return pairId;
       }
       return null;
     },
@@ -1647,8 +1855,7 @@ export const methods = {
      * @returns {boolean} 是否已连接。
      */
     isEndpointAlreadyLinked(pairId, point) {
-      const path = this.paths[pairId] ?? [];
-      return this.getPathDegree(path, point) > 0;
+      return this.getPairBranches(pairId).some((branch) => this.getPathDegree(branch, point) > 0);
     },
 
     /**
@@ -1672,8 +1879,7 @@ export const methods = {
      * @returns {boolean} 是否到达两个端点。
      */
     hasPairReachedBothEndpoints(pairId, path) {
-      const pair = this.getPair(pairId);
-      return pair.points.every((endpoint) => path.some((point) => samePoint(point, endpoint)));
+      return this.pathTouchesBothEndpoints(pairId, path);
     },
 
     /**
@@ -1683,14 +1889,16 @@ export const methods = {
      * @returns {boolean} 是否完成连接。
      */
     isPairConnected(pair) {
-      const path = this.paths[pair.id] ?? [];
-      if (path.length < 2) return false;
-      const first = path[0];
-      const last = path[path.length - 1];
-      return (
-        (samePoint(first, pair.points[0]) && samePoint(last, pair.points[1])) ||
-        (samePoint(first, pair.points[1]) && samePoint(last, pair.points[0]))
-      );
+      const state = this.readPairPathState(pair.id);
+      return state.branches.some((path) => {
+        if (path.length < 2) return false;
+        const first = path[0];
+        const last = path[path.length - 1];
+        return (
+          (samePoint(first, pair.points[0]) && samePoint(last, pair.points[1])) ||
+          (samePoint(first, pair.points[1]) && samePoint(last, pair.points[0]))
+        );
+      });
     },
 
     /**
@@ -1699,7 +1907,7 @@ export const methods = {
      * @returns {boolean} 是否全部有效。
      */
     areAllPathsStructurallyValid() {
-      return areAllPathsStructurallyValid(this.currentLevel, this.paths, this.endpoints);
+      return areAllPathsStructurallyValid(this.currentLevel, this.getCompletedPathView(), this.endpoints);
     },
 
     /**
@@ -1708,7 +1916,18 @@ export const methods = {
      * @returns {boolean} 是否无跨点对重叠。
      */
     areAllNodesExclusive() {
-      return areAllNodesExclusive(this.paths);
+      const nodes = new Map();
+      for (const [pairId] of Object.entries(this.paths)) {
+        for (const branch of this.getPairBranches(pairId)) {
+          for (const point of branch) {
+            const nodeKey = keyOf(point[0], point[1]);
+            const occupant = nodes.get(nodeKey);
+            if (occupant && occupant !== pairId) return false;
+            nodes.set(nodeKey, pairId);
+          }
+        }
+      }
+      return true;
     },
 
     /**
@@ -1728,7 +1947,7 @@ export const methods = {
      * @returns {boolean} 是否满足填充条件。
      */
     isBoardFilled() {
-      return isLevelAnswerFilled(this.currentLevel, this.paths);
+      return isLevelAnswerFilled(this.currentLevel, this.getCompletedPathView());
     },
 
     /**
@@ -1746,7 +1965,7 @@ export const methods = {
      * @returns {Set<string>} 已绘制边集合。
      */
     getFilledEdges() {
-      return getFilledEdges(this.paths);
+      return new Set(this.getPathSegments().map((segment) => segment.edge));
     },
 
     /**
@@ -1755,7 +1974,13 @@ export const methods = {
      * @returns {Set<string>} 已占用节点集合。
      */
     getFilledNodes() {
-      return getFilledNodes(this.paths);
+      const nodes = new Set();
+      Object.keys(this.paths).forEach((pairId) => {
+        this.getPairBranches(pairId).forEach((branch) => {
+          branch.forEach(([x, y]) => nodes.add(keyOf(x, y)));
+        });
+      });
+      return nodes;
     },
 
     /**
@@ -1774,10 +1999,13 @@ export const methods = {
      */
     getExtendableEnds() {
       const ends = new Set();
-      Object.entries(this.paths).forEach(([pairId, path]) => {
-        if (path.length === 0 || this.hasPairReachedBothEndpoints(pairId, path)) return;
-        const [x, y] = path[path.length - 1];
-        ends.add(keyOf(x, y));
+      Object.entries(this.paths).forEach(([pairId]) => {
+        const state = this.readPairPathState(pairId);
+        if (state.completed) return;
+        state.branches.forEach((branch) => {
+          const last = branch[branch.length - 1];
+          if (last) ends.add(keyOf(last[0], last[1]));
+        });
       });
       return ends;
     },
@@ -1791,8 +2019,7 @@ export const methods = {
      */
     isActiveNode(x, y) {
       if (!this.activePair) return false;
-      const path = this.paths[this.activePair] ?? [];
-      const last = path[path.length - 1];
+      const last = this.getActiveBranch().at(-1);
       return Boolean(last && last[0] === x && last[1] === y);
     },
 
@@ -1804,7 +2031,7 @@ export const methods = {
     getActiveTargetKey() {
       if (!this.activePair) return "";
       const pair = this.getPair(this.activePair);
-      const path = this.paths[this.activePair] ?? [];
+      const path = this.getActiveBranch();
       const start = path[0];
       if (!pair || !start) return "";
 

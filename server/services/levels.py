@@ -261,11 +261,10 @@ def is_valid_level_index_cache(payload: dict[str, Any] | None) -> bool:
     return isinstance(payload.get("levels"), list)
 
 
-def write_level_index_file(index_file: Path, levels: list[dict[str, Any]], signature: list[list[Any]]) -> None:
+def write_level_index_file(index_file: Path, levels: list[dict[str, Any]]) -> None:
     payload = {
         "version": LEVEL_INDEX_VERSION,
         "updatedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "signature": signature,
         "levels": levels,
     }
     write_json_file(index_file, payload)
@@ -275,15 +274,10 @@ def refresh_level_index() -> list[dict[str, Any]]:
     global level_index_cache
 
     files = get_sorted_level_files()
-    signature = [list(item) for item in create_levels_signature(files)]
     levels = [create_level_index_item(read_level_file(file_path)) for file_path in files]
-    write_level_index_file(get_settings().levels_index_file, levels, signature)
+    write_level_index_file(get_settings().levels_index_file, levels)
     level_index_cache = levels
     return levels
-
-
-def create_levels_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
-    return tuple(create_level_file_signature(file_path) for file_path in files)
 
 
 def invalidate_levels_cache() -> None:
@@ -342,10 +336,6 @@ def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
         "sourcePath": level.get("sourcePath", ""),
         "sourceCategory": normalize_level_category(level.get("sourceCategory", "stable")),
     }
-    if level.get("legacyId"):
-        item["legacyId"] = level.get("legacyId")
-    if level.get("legacySourcePath"):
-        item["legacySourcePath"] = level.get("legacySourcePath")
     return item
 
 

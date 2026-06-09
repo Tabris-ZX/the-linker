@@ -1,10 +1,12 @@
 server:
+  # frontendDebugPort: Vite 前端调试端口
   # backendPort: 后端服务端口
   # su-token: 超级用户 token；用于解锁开发者模式、保存关卡、审核测试关卡
   # maxRequestBodyBytes: 单个 JSON 请求体最大字节数
   # levelSaveIntervalSeconds: 保存关卡的最小间隔秒数，防止连续提交
   # developerAuthMaxFailedAttempts: 超级用户 token 连续输错多少次后锁定
   # developerAuthLockSeconds: 输错锁定时间，单位秒
+  frontendDebugPort: 5173
   backendPort: 5174
   su-token: ""
   maxRequestBodyBytes: 131072
@@ -18,7 +20,7 @@ path:
   # levelsIndex: 关卡轻量目录索引文件，由后端自动生成，可删除后重建
   # answers: 编辑器答案目录，按 stable/alpha/removed 子目录组织
   # styles: 样式配置目录
-  # background: 背景图片目录
+  # background: 旧版背景图片目录；前端开发资源放在 webui/public
   # webuiDist: 前端构建输出目录，FastAPI 会直接服务这里的静态文件
   levels: data/levels
   levelsHash: data/levels-hash.json
@@ -30,9 +32,9 @@ path:
 
 
 background:
-  # image: 背景图片名；不写扩展名时会按 webp/png 查找，填 no 可关闭背景
+  # image: webui/public 下的背景图片名；不写扩展名时会按 webp/png 查找，填 no 可关闭背景
   # opacity: 背景透明度，范围 0-1
   # blur: 背景模糊，数字会按 px 处理
-  image: "default"
+  image: "background"
   opacity: 0.2
   blur: 0px

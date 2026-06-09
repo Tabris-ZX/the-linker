@@ -1,12 +1,13 @@
-import stylesColors from "../../../config/styles/colors.json";
+import stylesPoints from "../../../config/styles/points.json";
 import stylesMapRaw from "../../../config/styles/map.json?raw";
 import stylesThemes from "../../../config/styles/themes.json";
 
 const rawConfig = globalThis.__THE_LINKER_CONFIG__ ?? {};
 const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
-const BACKGROUND_ASSET_PATH = "/assets/background";
+const PUBLIC_BACKGROUND_PATH = "/";
+const POINT_TEXTURE_PATH = "/points";
 const mapStyleConfig = parseJsonConfig(stylesMapRaw);
-const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "default");
+const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?? "background");
 
 export const appConfig = {
   level: {
@@ -17,7 +18,7 @@ export const appConfig = {
     styles: rawConfig.theme?.styles ?? {}
   },
   colors: {
-    palette: rawConfig.colors?.palette ?? rawConfig.colors?.default ?? "default"
+    palette: rawConfig.colors?.palette ?? rawConfig.colors?.default ?? "默认"
   },
   mapStyle: normalizeMapStyle(mapStyleConfig.mapStyle ?? mapStyleConfig.levelMapStyle ?? mapStyleConfig),
   background: {
@@ -54,22 +55,40 @@ function loadThemes() {
  * @returns {Record<string, object>} 点位调色板映射。
  */
 function loadPointPalettes() {
-  return Object.entries(stylesColors ?? {})
+  return Object.entries(stylesPoints ?? {})
     .filter(([, palette]) => palette && typeof palette === "object")
     .reduce((palettes, [id, palette]) => {
-      palettes[id] = normalizePointPalette(palette);
+      palettes[id] = normalizePointPalette(id, palette);
       return palettes;
     }, {});
 }
 
-function normalizePointPalette(palette) {
-  return Object.entries(palette).reduce((definitions, [id, color]) => {
+function normalizePointPalette(paletteId, palette) {
+  const type = normalizePointPaletteType(palette?.type);
+  const style = palette?.style && typeof palette.style === "object" ? palette.style : palette;
+  return Object.entries(style ?? {}).reduce((definitions, [id, color]) => {
     const pairId = String(id);
     if (/^\d+$/.test(pairId) && typeof color === "string") {
-      definitions[pairId] = { label: pairId, color };
+      definitions[pairId] = {
+        label: pairId,
+        color,
+        type,
+        texture: type === "image" ? buildPointTextureDefinition(paletteId, pairId) : null
+      };
     }
     return definitions;
   }, {});
+}
+
+function normalizePointPaletteType(type) {
+  return String(type ?? "color").toLowerCase() === "image" ? "image" : "color";
+}
+
+function buildPointTextureDefinition(paletteId, pairId) {
+  const folder = encodeURIComponent(String(paletteId));
+  return {
+    src: `${POINT_TEXTURE_PATH}/${folder}/${pairId}.webp`
+  };
 }
 
 /**
@@ -80,7 +99,7 @@ function normalizePointPalette(palette) {
  */
 function getDefaultPointPaletteId(palettes) {
   const paletteIds = Object.keys(palettes);
-  return paletteIds.includes("default") ? "default" : paletteIds[0] ?? "";
+  return paletteIds.includes("默认") ? "默认" : paletteIds.includes("default") ? "default" : paletteIds[0] ?? "";
 }
 
 /**
@@ -139,26 +158,27 @@ function normalizeBackgroundImages(value) {
   const image = normalizePath(normalizedValue)
     .replace(/^assets\/background\//, "")
     .replace(/^background\//, "")
+    .replace(/^public\//, "")
     .replace(/^config\/background\//, "");
   if (!image) return [];
 
   const extension = getPathExtension(image);
   if (!extension) {
     return BACKGROUND_IMAGE_EXTENSIONS.map(
-      (candidateExtension) => `${BACKGROUND_ASSET_PATH}/${image}${candidateExtension}`
+      (candidateExtension) => `${PUBLIC_BACKGROUND_PATH}${image}${candidateExtension}`
     );
   }
 
   if (!BACKGROUND_IMAGE_EXTENSIONS.includes(extension)) {
-    return [`${BACKGROUND_ASSET_PATH}/${image}`];
+    return [`${PUBLIC_BACKGROUND_PATH}${image}`];
   }
 
   const baseName = image.slice(0, -extension.length);
   return uniqueValues([
-    `${BACKGROUND_ASSET_PATH}/${image}`,
+    `${PUBLIC_BACKGROUND_PATH}${image}`,
     ...BACKGROUND_IMAGE_EXTENSIONS
       .filter((candidateExtension) => candidateExtension !== extension)
-      .map((candidateExtension) => `${BACKGROUND_ASSET_PATH}/${baseName}${candidateExtension}`)
+      .map((candidateExtension) => `${PUBLIC_BACKGROUND_PATH}${baseName}${candidateExtension}`)
   ]);
 }
 

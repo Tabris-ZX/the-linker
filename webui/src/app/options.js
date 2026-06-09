@@ -1,4 +1,4 @@
-﻿import { appConfig, defaultPointPaletteId, pointDefinitions, pointPalettes, themes } from "../config/index.js";
+import { appConfig, defaultPointPaletteId, pointDefinitions, pointPalettes, themes } from "../config/index.js";
 import { computed } from "./computed.js";
 import { editorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
@@ -7,13 +7,12 @@ import PlayView from "../views/PlayView.vue";
 import EditorView from "../views/EditorView.vue";
 import PersonalizationView from "../views/PersonalizationView.vue";
 import RuleView from "../views/RuleView.vue";
-import faviconUrl from "../../favicon.ico";
 
 export const EDITOR_PAIR_LIMIT = 16;
 
 const viewTabs = [
-  { id: "play", label: "关卡游玩" },
-  { id: "editor", label: "关卡编辑器" }
+  { id: "play", label: "游玩" },
+  { id: "editor", label: "编辑器" }
 ];
 
 export default {
@@ -47,7 +46,7 @@ export default {
     return {
       pointDefinitions,
       pointPalettes,
-      faviconUrl,
+      faviconUrl: "/icon.webp",
       activeView: "play",
       viewTabs,
       canUseLevelEditor: false,
@@ -81,6 +80,7 @@ export default {
       completedLevels: {},
       paths: {},
       activePair: null,
+      activeBranchIndex: null,
       isDrawing: false,
       pointerMoved: false,
       pointerPreview: null,

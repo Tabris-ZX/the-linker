@@ -53,10 +53,10 @@
 
 <script>
 import appOptions from "./app/options.js";
-import "../../config/styles/base.css";
-import "../../config/styles/play.css";
-import "../../config/styles/editor.css";
-import "../../config/styles/mobile.css";
+import "./asserts/styles/base.css";
+import "./asserts/styles/play.css";
+import "./asserts/styles/editor.css";
+import "./asserts/styles/mobile.css";
 
 export default appOptions;
 </script>

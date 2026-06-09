@@ -1,20 +1,19 @@
 import vue from "@vitejs/plugin-vue";
-import { cpSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const configPath = resolve(currentDir, "../config/config.yaml");
-const backgroundSourceDir = resolve(currentDir, "../config/background");
-const backgroundOutputDir = resolve(currentDir, "dist/assets/background");
-const devBackendPort = process.env.VITE_BACKEND_PORT || readConfiguredBackendPort() || "5174";
+const devFrontendPort = normalizePort(process.env.VITE_FRONTEND_PORT || readConfiguredFrontendDebugPort(), 5173);
+const devBackendPort = normalizePort(process.env.VITE_BACKEND_PORT || readConfiguredBackendPort(), 5174);
 const devBackendTarget = process.env.VITE_BACKEND_TARGET || `http://127.0.0.1:${devBackendPort}`;
 
 export default defineConfig({
   server: {
     host: "0.0.0.0",
-    port: 5173,
+    port: devFrontendPort,
     strictPort: false,
     hmr: false,
     proxy: {
@@ -26,7 +25,6 @@ export default defineConfig({
   },
   plugins: [
     stripViteClientPlugin(),
-    copyBackgroundAssetsPlugin(),
     vue()
   ],
   build: {
@@ -34,16 +32,6 @@ export default defineConfig({
     emptyOutDir: true
   }
 });
-
-function copyBackgroundAssetsPlugin() {
-  return {
-    name: "the-linker-copy-background-assets",
-    closeBundle() {
-      if (!existsSync(backgroundSourceDir)) return;
-      cpSync(backgroundSourceDir, backgroundOutputDir, { recursive: true });
-    }
-  };
-}
 
 function stripViteClientPlugin() {
   return {
@@ -59,10 +47,24 @@ function stripViteClientPlugin() {
 }
 
 function readConfiguredBackendPort() {
+  return readConfiguredServerPort("backendPort");
+}
+
+function readConfiguredFrontendDebugPort() {
+  return readConfiguredServerPort("frontendDebugPort") || readConfiguredServerPort("frontendPort") || readConfiguredServerPort("debugPort");
+}
+
+function readConfiguredServerPort(key) {
   if (!existsSync(configPath)) return "";
   const source = readFileSync(configPath, "utf-8");
   const serverBlock = source.match(/^server:\s*$/m)
     ? source.match(/^server:\s*$([\s\S]*?)(?=^[^\s#][^:\n]*:\s*$|\Z)/m)?.[1] ?? ""
     : "";
-  return serverBlock.match(/^\s*backendPort:\s*["']?(\d+)["']?\s*$/m)?.[1] ?? "";
+  return serverBlock.match(new RegExp(`^\\s*${key}:\\s*["']?(\\d+)["']?\\s*$`, "m"))?.[1] ?? "";
+}
+
+function normalizePort(value, fallback) {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return fallback;
+  return port;
 }

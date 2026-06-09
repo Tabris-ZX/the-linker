@@ -109,9 +109,18 @@
               <span
                 v-if="node.endpoint"
                 class="dot"
-                :style="{ '--dot-color': node.endpoint.color }"
+                :class="{ 'has-texture': app.hasPointTexture(node.endpoint) }"
+                :style="app.getPointDotStyle(node.endpoint)"
               >
-                {{ node.endpoint.label }}
+                <img
+                  v-if="app.hasPointTexture(node.endpoint)"
+                  class="dot-texture"
+                  :src="node.endpoint.texture.src"
+                  alt=""
+                  draggable="false"
+                  @error="app.handlePointTextureError(node.endpoint)"
+                >
+                <span class="dot-label">{{ node.endpoint.label }}</span>
               </span>
             </button>
           </template>

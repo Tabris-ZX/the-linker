@@ -35,19 +35,19 @@
 }
 
 :root[data-theme="night"] {
-  --surface: #182027;
-  --surface-soft: #151b21;
-  --surface-raised: rgba(24, 32, 39, 0.92);
-  --topbar-surface: rgba(17, 22, 27, 0.94);
-  --button-ink: #f8fafc;
-  --shadow-color: rgba(0, 0, 0, 0.32);
-  --shadow-color-soft: rgba(0, 0, 0, 0.24);
-  --body-grid-color: rgba(45, 212, 191, 0.045);
-  --body-glow-danger: rgba(248, 113, 113, 0.055);
-  --body-glow-warm: rgba(251, 191, 36, 0.05);
-  --completed-surface: #143626;
-  --completed-ink: #86efac;
-  --dot-border: #e5edf5;
+  --surface: #151d23;
+  --surface-soft: #11181e;
+  --surface-raised: rgba(17, 24, 30, 0.94);
+  --topbar-surface: rgba(12, 18, 23, 0.94);
+  --button-ink: #f5fbff;
+  --shadow-color: rgba(0, 0, 0, 0.44);
+  --shadow-color-soft: rgba(0, 0, 0, 0.28);
+  --body-grid-color: rgba(104, 120, 132, 0.055);
+  --body-glow-danger: rgba(240, 113, 120, 0.04);
+  --body-glow-warm: rgba(56, 183, 164, 0.055);
+  --completed-surface: #142b24;
+  --completed-ink: #8fdcb5;
+  --dot-border: #0b1116;
 }
 
 * {
@@ -647,8 +647,9 @@ html {
 
 :root[data-theme="night"] {
   color-scheme: dark;
-  --surface-glass: color-mix(in srgb, var(--surface-soft) 84%, transparent);
-  --line-soft: color-mix(in srgb, var(--line) 78%, transparent);
+  --focus-ring: color-mix(in srgb, var(--accent) 42%, transparent);
+  --surface-glass: color-mix(in srgb, var(--surface-soft) 90%, transparent);
+  --line-soft: color-mix(in srgb, var(--line) 66%, transparent);
 }
 
 .sr-only {
@@ -866,6 +867,64 @@ button:active,
 .victory-mark,
 .play-status {
   box-shadow: var(--panel-shadow);
+}
+
+:root[data-theme="night"] body {
+  font-family: "Trebuchet MS", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  background:
+    linear-gradient(90deg, var(--body-grid-color) 1px, transparent 1px),
+    linear-gradient(var(--body-grid-color) 1px, transparent 1px),
+    radial-gradient(circle at 22% 14%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 30%),
+    radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--line) 28%, transparent), transparent 25%),
+    linear-gradient(135deg, #0c1217, var(--paper));
+}
+
+:root[data-theme="night"] body::after {
+  opacity: min(var(--background-opacity), 0.26);
+  mix-blend-mode: soft-light;
+}
+
+:root[data-theme="night"] .app-topbar {
+  border-bottom-color: color-mix(in srgb, var(--line) 78%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--topbar-surface) 94%, var(--surface) 6%), var(--topbar-surface));
+  box-shadow: 0 18px 48px -34px var(--shadow-color), 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent) inset;
+}
+
+:root[data-theme="night"] .brand,
+:root[data-theme="night"] .view-tabs,
+:root[data-theme="night"] .play-actions,
+:root[data-theme="night"] .game-timer,
+:root[data-theme="night"] .github-link,
+:root[data-theme="night"] .online-count {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent), 2px 2px 0 var(--shadow-color-soft);
+}
+
+:root[data-theme="night"] .developer-button {
+  color: var(--ink);
+  background: #26333d;
+}
+
+:root[data-theme="night"] .developer-button:hover {
+  background: #30404b;
+}
+
+:root[data-theme="night"] .app-card,
+:root[data-theme="night"] .victory-mark,
+:root[data-theme="night"] .play-status,
+:root[data-theme="night"] .level-picker-panel,
+:root[data-theme="night"] .rule-panel,
+:root[data-theme="night"] .personalization-panel {
+  border-color: color-mix(in srgb, var(--line) 82%, var(--ink) 18%);
+  background: var(--surface-glass);
+  box-shadow: 0 22px 58px -38px var(--shadow-color), 4px 4px 0 var(--shadow-color-soft);
+}
+
+:root[data-theme="night"] .current-level-label,
+:root[data-theme="night"] .level-directory-status,
+:root[data-theme="night"] .level-picker-status {
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

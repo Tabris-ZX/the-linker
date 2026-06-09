@@ -224,13 +224,9 @@ textarea:focus {
 }
 
 .preview-board {
-  --preview-cell-size: min(
-    calc((var(--preview-width-limit) - 48px) / var(--preview-cols)),
-    calc((var(--preview-height-limit) - 48px) / var(--preview-rows))
-  );
   position: relative;
-  width: calc(var(--preview-cols) * var(--preview-cell-size));
-  height: calc(var(--preview-rows) * var(--preview-cell-size));
+  width: calc(var(--cols) * var(--cell-size));
+  height: calc(var(--rows) * var(--cell-size));
   border: 0;
   background: var(--surface);
   touch-action: none;
@@ -250,7 +246,7 @@ textarea:focus {
 .preview-grid path {
   stroke: var(--grid-line);
   stroke-linecap: square;
-  stroke-width: max(1px, calc(var(--preview-cell-size) * var(--map-grid-line-scale)));
+  stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
   vector-effect: non-scaling-stroke;
 }
 
@@ -281,23 +277,23 @@ textarea:focus {
 .preview-blocked-layer path {
   stroke: var(--danger);
   stroke-linecap: round;
-  stroke-width: clamp(8px, calc(var(--preview-cell-size) * 0.16), 16px);
+  stroke-width: clamp(8px, calc(var(--cell-size) * 0.16), 16px);
   vector-effect: non-scaling-stroke;
-  opacity: 0.82;
+  opacity: 0.99;
 }
 
 .preview-answer-layer path {
   stroke: var(--answer-color);
   stroke-linecap: round;
-  stroke-width: max(1px, calc(var(--preview-cell-size) * var(--map-line-scale)));
+  stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
   vector-effect: non-scaling-stroke;
-  opacity: 0.82;
+  opacity: 0.99;
 }
 
 .preview-hit-layer line {
   stroke: transparent;
   stroke-linecap: round;
-  stroke-width: clamp(26px, calc(var(--preview-cell-size) * 0.58), 58px);
+  stroke-width: clamp(26px, calc(var(--cell-size) * 0.58), 58px);
   vector-effect: non-scaling-stroke;
   cursor: pointer;
   pointer-events: stroke;
@@ -310,16 +306,16 @@ textarea:focus {
 .preview-node {
   position: absolute;
   z-index: 4;
-  left: calc((100% / var(--preview-cols)) * var(--node-x));
-  top: calc((100% / var(--preview-rows)) * var(--node-y));
-  width: max(30px, calc(var(--preview-cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
-  height: max(30px, calc(var(--preview-cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
+  left: calc((100% / var(--cols)) * var(--node-x));
+  top: calc((100% / var(--rows)) * var(--node-y));
+  width: max(18px, calc(var(--cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
+  height: max(18px, calc(var(--cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
   border-radius: 999px;
-  color: var(--ink);
+  color: inherit;
   background: transparent;
   box-shadow: none;
   transform: translate3d(-50%, -50%, 0);
@@ -330,8 +326,7 @@ textarea:focus {
 }
 
 .preview-node:hover {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  transform: translate3d(-50%, -50%, 0) scale(1.04);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .preview-node:active {
@@ -343,31 +338,36 @@ textarea:focus {
   content: "";
   position: absolute;
   z-index: 1;
-  width: max(6px, calc(var(--preview-cell-size) * var(--map-node-scale)));
-  height: max(6px, calc(var(--preview-cell-size) * var(--map-node-scale)));
+  width: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
+  height: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
   border-radius: 999px;
   background: var(--grid-line);
   opacity: 1;
+  transition: transform 140ms ease, opacity 140ms ease;
 }
 
 .preview-dot {
   position: relative;
   z-index: 3;
-  width: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
-  height: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
-  min-width: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
-  min-height: max(28px, calc(var(--preview-cell-size) * var(--map-dot-scale)));
+  width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  height: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  min-width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
+  min-height: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
   flex: 0 0 auto;
   box-sizing: border-box;
   display: grid;
   place-items: center;
-  border: clamp(2px, calc(var(--preview-cell-size) * 0.04), 5px) solid var(--dot-border);
+  border: clamp(2px, calc(var(--cell-size) * 0.04), 5px) solid var(--dot-border);
   border-radius: 999px;
   color: var(--button-ink);
   background: var(--dot-color);
-  box-shadow: 0 0 0 clamp(1px, calc(var(--preview-cell-size) * 0.03), 4px) var(--ink), 0 clamp(2px, calc(var(--preview-cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
-  font: 900 clamp(1.44rem, calc(var(--preview-cell-size) * 0.4), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink), 0 clamp(3px, calc(var(--cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
+  font: 900 clamp(1.16rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.72), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   white-space: nowrap;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
   animation: pop-dot 150ms ease-out;
 }
 

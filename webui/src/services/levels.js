@@ -53,11 +53,13 @@ export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
   const pairs = Array.isArray(rawLevel?.pairs) ? rawLevel.pairs : [];
   const hydratedPairs = pairs.map((pair, index) => {
     const pairId = String(pair?.id ?? "");
+    const definition = definitions[pairId] ?? {};
     return {
       ...pair,
       id: pairId,
-      label: definitions[pairId]?.label ?? pairId,
-      color: definitions[pairId]?.color ?? palette[index % palette.length],
+      label: definition.label ?? pairId,
+      color: definition.color ?? palette[index % palette.length],
+      texture: definition.texture ?? null,
       points: Array.isArray(pair?.points) ? pair.points : []
     };
   });
