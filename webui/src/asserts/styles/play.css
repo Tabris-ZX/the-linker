@@ -283,7 +283,7 @@
   stroke-linejoin: round;
   stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
   vector-effect: non-scaling-stroke;
-  opacity: 0.99;
+  opacity: 1;
   transition: opacity 80ms ease;
 }
 

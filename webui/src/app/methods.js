@@ -504,17 +504,50 @@ export const methods = {
      */
     async reviewTestLevel(level, action) {
       try {
-        const movedLevel = await reviewLevelRequest(level, action);
+        const nextLevelKey = this.getNextReviewLevelKey(level);
+        await reviewLevelRequest(level, action);
         await this.loadLevels();
-        const movedKey = this.getLevelCacheKey(movedLevel);
-        const movedIndex = this.levels.findIndex((item) => this.getLevelCacheKey(item) === movedKey || (item?.id === movedLevel.id && this.getLevelCategory(item) === movedLevel.sourceCategory));
-        if (movedIndex >= 0) {
-          await this.loadLevel(movedIndex);
+        const nextIndex = this.findReviewFallbackLevelIndex(nextLevelKey);
+        if (nextIndex >= 0) {
+          await this.loadLevel(nextIndex);
         }
         this.developerStatusText = action === "include" ? "已收录为正式版" : "已移入待删版";
       } catch (error) {
         this.developerStatusText = error.message;
       }
+    },
+
+    /**
+     * 审核当前测试关卡后，预先计算应该跳到的下一关。
+     *
+     * @param {object} level 当前关卡。
+     * @returns {string} 下一关缓存键；没有时为空字符串。
+     */
+    getNextReviewLevelKey(level) {
+      const currentKey = this.getLevelCacheKey(level);
+      const alphaItems = this.levels
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item && this.getLevelCategory(item) === "alpha")
+        .sort((left, right) => this.compareLevelItems({ level: left.item }, { level: right.item }));
+      if (alphaItems.length <= 1) return "";
+      const currentAlphaIndex = alphaItems.findIndex(({ item }) => this.getLevelCacheKey(item) === currentKey);
+      if (currentAlphaIndex < 0) return "";
+      const nextAlpha = alphaItems[(currentAlphaIndex + 1) % alphaItems.length];
+      return this.getLevelCacheKey(nextAlpha.item);
+    },
+
+    /**
+     * 审核后按预先记录的 key 找下一关；失败时回到第一关。
+     *
+     * @param {string} nextLevelKey 下一关 key。
+     * @returns {number} 关卡列表索引。
+     */
+    findReviewFallbackLevelIndex(nextLevelKey) {
+      if (nextLevelKey) {
+        const nextIndex = this.levels.findIndex((item) => this.getLevelCacheKey(item) === nextLevelKey && this.isLevelCategoryVisible(item));
+        if (nextIndex >= 0) return nextIndex;
+      }
+      return this.getInitialLevelIndex();
     },
 
     /**
@@ -1155,7 +1188,9 @@ export const methods = {
         return;
       }
 
-      this.rollbackIncompletePathAtPoint(point);
+      if (!this.rollbackIncompletePathAtPoint(point)) {
+        this.breakCompletedPathAtPoint(point);
+      }
     },
 
     /**
@@ -1516,6 +1551,43 @@ export const methods = {
         if (pointIndex <= 0) continue;
         state.branches[branchIndex] = state.branches[branchIndex].slice(0, pointIndex + 1);
         this.paths[pairId] = this.compactPairPathState(state);
+        this.activePair = null;
+        this.activeBranchIndex = null;
+        this.isDrawing = false;
+        this.isWon = false;
+        this.isVictoryDismissed = false;
+        this.shareStatusText = "分享";
+        this.nextLevelStatusText = "";
+        return true;
+      }
+      return false;
+    },
+
+    /**
+     * 双击已完成路径的中间节点时，断开离该节点更近的一端。
+     *
+     * @param {[number, number]} point 节点。
+     * @returns {boolean} 是否断开。
+     */
+    breakCompletedPathAtPoint(point) {
+      const nodeKey = keyOf(point[0], point[1]);
+      for (const [pairId] of Object.entries(this.paths)) {
+        const state = this.normalizePairPathState(pairId, this.paths[pairId]);
+        const branchIndex = state.branches.findIndex((branch) => this.pathTouchesBothEndpoints(pairId, branch));
+        if (branchIndex < 0) continue;
+
+        const branch = state.branches[branchIndex];
+        const pointIndex = branch.findIndex((item) => keyOf(item[0], item[1]) === nodeKey);
+        if (pointIndex <= 0 || pointIndex >= branch.length - 1) continue;
+
+        const distanceToStart = pointIndex;
+        const distanceToEnd = branch.length - 1 - pointIndex;
+        // Unfinished branches must start at an endpoint, so reverse when keeping the end side.
+        const nextBranch = distanceToStart <= distanceToEnd
+          ? branch.slice(pointIndex).reverse()
+          : branch.slice(0, pointIndex + 1);
+
+        this.paths[pairId] = this.compactPairPathState({ branches: [nextBranch], completed: false });
         this.activePair = null;
         this.activeBranchIndex = null;
         this.isDrawing = false;
