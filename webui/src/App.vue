@@ -8,6 +8,7 @@
     :is-developer-mode="isDeveloperMode"
     :online-count-text="onlineCountText"
     :favicon-url="faviconUrl"
+    :nav-layout="navLayout"
     @toggle-level-picker="toggleLevelPicker"
     @reset-paths="resetPaths"
     @unlock-developer-mode="unlockDeveloperMode"
@@ -15,7 +16,7 @@
     @toggle-personalization="togglePersonalization"
   />
 
-  <main class="app-shell">
+  <main class="app-shell" :class="{ 'has-sidebar-nav': navLayout === 'sidebar' }">
     <RuleView v-if="isRulePanelOpen" />
     <PersonalizationView v-if="isPersonalizationOpen" />
     <PlayView />

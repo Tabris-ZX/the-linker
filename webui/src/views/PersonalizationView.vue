@@ -20,8 +20,24 @@
         </select>
       </label>
     </div>
+    <section class="layout-controls" aria-label="布局设置">
+      <h3>布局</h3>
+      <label>
+        导航位置
+        <select v-model="app.navLayout" aria-label="导航位置">
+          <option value="top">顶部导航栏</option>
+          <option value="sidebar">左侧边栏</option>
+        </select>
+      </label>
+    </section>
     <section class="map-style-controls" aria-label="地图样式">
       <h3>地图样式</h3>
+      <label>
+        地图缩放
+        <span>{{ app.mapStyle.boardScale.toFixed(2) }}</span>
+        <input v-model.number="app.mapStyle.boardScale" type="range" min="0.6" max="1.4" step="0.01">
+        <input v-model.number="app.mapStyle.boardScale" type="number" min="0.6" max="1.4" step="0.01">
+      </label>
       <label>
         点对大小
         <span>{{ app.mapStyle.dotScale.toFixed(2) }}</span>
@@ -60,6 +76,9 @@
     <div class="personalization-data-actions">
       <button type="button" class="personalization-clear-data-button" @click="app.requestClearGameData">
         清空数据
+      </button>
+      <button type="button" class="personalization-reset-settings-button" v-on:click="app.restoreDefaultPersonalization">
+        恢复默认设置
       </button>
       <div v-if="app.isClearDataConfirming" class="personalization-confirm-actions">
         <button type="button" class="personalization-confirm-button" @click="app.clearGameData">

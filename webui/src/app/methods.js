@@ -1,4 +1,4 @@
-import { appConfig } from "../config/index.js";
+import { appConfig, defaultPointPaletteId } from "../config/index.js";
 import { areAllPathsStructurallyValid, getAnswerEdges, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
 import { fetchPresenceStats, reviewLevelRequest, sendPresenceHeartbeat, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
@@ -8,9 +8,12 @@ const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 const LAST_LEVEL_STORAGE_KEY = "the-linker-last-level-id";
 const DEVELOPER_TOKEN_COOLDOWN_STORAGE_KEY = "the-linker-developer-token-cooldown-until";
 const DEVELOPER_TOKEN_ATTEMPTS_STORAGE_KEY = "the-linker-developer-token-failed-attempts";
+const PERSONALIZATION_STORAGE_KEY = "the-linker-personalization";
 const GAME_STORAGE_KEY_PREFIX = "the-linker-";
 const DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS = 3;
 const DEVELOPER_TOKEN_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+const TOUCH_DOUBLE_TAP_MS = 320;
+const TOUCH_DOUBLE_TAP_DISTANCE = 18;
 
 const PRESENCE_CLIENT_STORAGE_KEY = "the-linker-presence-session-id";
 
@@ -612,6 +615,95 @@ export const methods = {
     },
 
     /**
+     * 将地图样式限制到当前设置面板允许的范围。
+     *
+     * @param {object} style 地图样式状态。
+     * @returns {object} 归一化后的地图样式。
+     */
+    normalizeUserMapStyle(style) {
+      const rawStyle = style && typeof style === "object" ? style : {};
+      const defaults = appConfig.mapStyle;
+      const clamp = (value, min, max, fallback) => {
+        const numberValue = Number(value);
+        if (!Number.isFinite(numberValue)) return fallback;
+        return Math.min(max, Math.max(min, numberValue));
+      };
+
+      return {
+        boardScale: clamp(rawStyle.boardScale, 0.6, 1.4, defaults.boardScale),
+        dotScale: clamp(rawStyle.dotScale, 0.3, 0.8, defaults.dotScale),
+        nodeScale: clamp(rawStyle.nodeScale, 0.04, 0.5, defaults.nodeScale),
+        lineScale: clamp(rawStyle.lineScale, 0.1, 0.8, defaults.lineScale),
+        gridLineScale: clamp(rawStyle.gridLineScale, 0.02, 0.2, defaults.gridLineScale),
+        snapPointRadius: clamp(rawStyle.snapPointRadius, 0.1, 0.5, defaults.snapPointRadius)
+      };
+    },
+
+    /**
+     * 从本地存储读取用户个性化设置。
+     *
+     * @returns {void}
+     */
+    loadPersonalizationSettings() {
+      let storedSettings = null;
+      try {
+        storedSettings = JSON.parse(window.localStorage.getItem(PERSONALIZATION_STORAGE_KEY) || "null");
+      } catch {
+        storedSettings = null;
+      }
+      if (!storedSettings || typeof storedSettings !== "object") return;
+
+      if (this.themes[storedSettings.theme]) {
+        this.selectedTheme = storedSettings.theme;
+      }
+      if (this.pointPalettes[storedSettings.palette]) {
+        this.selectedPalette = storedSettings.palette;
+        this.pointDefinitions = this.pointPalettes[storedSettings.palette];
+      }
+      if (storedSettings.mapStyle && typeof storedSettings.mapStyle === "object") {
+        this.mapStyle = this.normalizeUserMapStyle(storedSettings.mapStyle);
+      }
+      if (["top", "sidebar"].includes(storedSettings.navLayout)) {
+        this.navLayout = storedSettings.navLayout;
+      }
+    },
+
+    /**
+     * 保存用户个性化设置。
+     *
+     * @returns {void}
+     */
+    savePersonalizationSettings() {
+      try {
+        window.localStorage.setItem(PERSONALIZATION_STORAGE_KEY, JSON.stringify({
+          theme: this.selectedTheme,
+          palette: this.selectedPalette,
+          navLayout: this.navLayout,
+          mapStyle: this.serializeMapStyle(this.mapStyle)
+        }));
+      } catch {
+        // Ignore unavailable storage.
+      }
+    },
+
+    /**
+     * 将主题、点位和地图样式恢复到配置默认值。
+     *
+     * @returns {void}
+     */
+    restoreDefaultPersonalization() {
+      this.selectedTheme = this.themes[appConfig.theme.default] ? appConfig.theme.default : Object.keys(this.themes)[0] ?? "default";
+      this.selectedPalette = this.pointPalettes[appConfig.colors.palette] ? appConfig.colors.palette : defaultPointPaletteId;
+      this.navLayout = "top";
+      this.mapStyle = { ...appConfig.mapStyle };
+      this.applyTheme(this.selectedTheme);
+      this.applyPointPalette(this.selectedPalette);
+      this.savePersonalizationSettings();
+      this.isClearDataConfirming = false;
+      this.clearDataStatusText = "设置已恢复默认";
+    },
+
+    /**
      * 从本地存储读取已完成关卡记录。
      *
      * @returns {void}
@@ -660,7 +752,7 @@ export const methods = {
     clearGameData() {
       try {
         Object.keys(window.localStorage)
-          .filter((key) => key.startsWith(GAME_STORAGE_KEY_PREFIX))
+          .filter((key) => key.startsWith(GAME_STORAGE_KEY_PREFIX) && key !== PERSONALIZATION_STORAGE_KEY)
           .forEach((key) => window.localStorage.removeItem(key));
       } catch {
         // Ignore storage errors so the in-memory reset can still happen.
@@ -867,6 +959,7 @@ export const methods = {
      */
     serializeMapStyle(style) {
       return {
+        boardScale: style.boardScale,
         dotScale: style.dotScale,
         nodeScale: style.nodeScale,
         lineScale: style.lineScale,
@@ -1064,10 +1157,14 @@ export const methods = {
       });
       this.paths = paths;
       this.activePair = null;
+      this.activePathMode = "";
       this.activeBranchIndex = null;
+      this.activeRetractBranch = null;
       this.isDrawing = false;
       this.pointerMoved = false;
-      this.pointerPreview = null;
+      this.clearPointerPreview();
+      this.lastPointerNodeKey = "";
+      this.boardPointerGeometry = null;
       this.resetGameTimer();
       this.isWon = false;
       this.isPersonalBest = false;
@@ -1089,10 +1186,14 @@ export const methods = {
       });
       this.paths = paths;
       this.activePair = null;
+      this.activePathMode = "";
       this.activeBranchIndex = null;
+      this.activeRetractBranch = null;
       this.isDrawing = false;
       this.pointerMoved = false;
-      this.pointerPreview = null;
+      this.clearPointerPreview();
+      this.lastPointerNodeKey = "";
+      this.boardPointerGeometry = null;
       this.isWon = false;
       this.isPersonalBest = false;
       this.isVictoryDismissed = false;
@@ -1109,6 +1210,7 @@ export const methods = {
     handleBoardPointerDown(event) {
       if (!this.currentLevel) return;
       this.startGameTimer();
+      this.cacheBoardPointerGeometry(event.currentTarget);
       const position = this.positionFromEvent(event);
       if (!position) return;
 
@@ -1116,6 +1218,15 @@ export const methods = {
         this.stopDrawing();
         return;
       }
+
+      if (this.isTouchDoubleTap(event, position)) {
+        this.lastBoardTap = null;
+        this.stopDrawing();
+        this.handleBoardDoubleClick(event);
+        event.preventDefault();
+        return;
+      }
+      this.rememberBoardTap(event, position);
 
       const startInfo = this.getPathStartInfo(position);
       if (!startInfo) {
@@ -1126,6 +1237,7 @@ export const methods = {
       if (!this.isDrawing) return;
       event.currentTarget?.setPointerCapture?.(event.pointerId);
       this.pointerMoved = false;
+      this.lastPointerNodeKey = keyOf(position.x, position.y);
       event.preventDefault();
     },
 
@@ -1137,12 +1249,16 @@ export const methods = {
      */
     handleBoardPointerMove(event) {
       if (!this.isDrawing || !this.activePair) return;
-      this.pointerPreview = this.pointerPositionFromEvent(event);
+      const pointerPosition = this.pointerPositionFromEvent(event);
+      this.queuePointerPreview(pointerPosition);
 
       const position = this.nearestPositionFromEvent(event);
       if (!position) return;
       event.preventDefault();
       this.pointerMoved = true;
+      const nodeKey = keyOf(position.x, position.y);
+      if (nodeKey === this.lastPointerNodeKey) return;
+      this.lastPointerNodeKey = nodeKey;
       this.addStep(position);
     },
 
@@ -1165,8 +1281,23 @@ export const methods = {
       }
 
       this.pointerMoved = false;
-      this.pointerPreview = null;
+      this.clearPointerPreview();
+      this.lastPointerNodeKey = "";
+      this.boardPointerGeometry = null;
       event.preventDefault();
+      this.releasePointer(event);
+    },
+
+    /**
+     * 处理指针取消事件，清理绘制过程中的临时状态。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
+    handleBoardPointerCancel(event) {
+      this.stopDrawing();
+      this.lastPointerNodeKey = "";
+      this.boardPointerGeometry = null;
       this.releasePointer(event);
     },
 
@@ -1198,14 +1329,15 @@ export const methods = {
      *
      * @param {string} pairId 点对 id。
      * @param {{ x: number, y: number }} position 起始位置。
-     * @param {"endpoint"|"path-end"} [mode="endpoint"] 起点模式。
+     * @param {"endpoint"|"path-end"|"completed-endpoint"} [mode="endpoint"] 起点模式。
      * @returns {void}
      */
     startPath(pairId, position, mode = "endpoint") {
       this.activePair = pairId;
+      this.activePathMode = mode;
       this.activeBranchIndex = null;
       this.isDrawing = true;
-      this.pointerPreview = null;
+      this.clearPointerPreview();
       this.isWon = false;
       this.isPersonalBest = false;
       this.isVictoryDismissed = false;
@@ -1213,9 +1345,26 @@ export const methods = {
 
       const point = positionToArray(position);
       const currentState = this.normalizePairPathState(pairId, this.paths[pairId]);
+      if (mode === "completed-endpoint") {
+        const completedBranch = currentState.branches.find((branch) => this.pathTouchesBothEndpoints(pairId, branch));
+        const retractableBranch = this.orientBranchToEndAtPoint(completedBranch, point);
+        if (!retractableBranch) {
+          this.isDrawing = false;
+          this.activePair = null;
+          this.activePathMode = "";
+          this.activeRetractBranch = null;
+          return;
+        }
+        this.activeRetractBranch = retractableBranch;
+        this.activeBranchIndex = 0;
+        return;
+      }
+
       if (currentState.completed) {
         this.isDrawing = false;
         this.activePair = null;
+        this.activePathMode = "";
+        this.activeRetractBranch = null;
         return;
       }
 
@@ -1224,6 +1373,8 @@ export const methods = {
         if (branchIndex < 0) {
           this.isDrawing = false;
           this.activePair = null;
+          this.activePathMode = "";
+          this.activeRetractBranch = null;
           return;
         }
         this.paths[pairId] = currentState;
@@ -1235,6 +1386,8 @@ export const methods = {
       if (endpointIndex < 0) {
         this.isDrawing = false;
         this.activePair = null;
+        this.activePathMode = "";
+        this.activeRetractBranch = null;
         return;
       }
 
@@ -1260,16 +1413,21 @@ export const methods = {
      * @returns {boolean} 是否成功追加或保持有效。
      */
     addStep(position) {
+      if (this.activePathMode === "completed-endpoint") {
+        return this.retractCompletedPathStep(position);
+      }
+
       const state = this.normalizePairPathState(this.activePair, this.paths[this.activePair]);
       const branchIndex = this.activeBranchIndex;
-      if (!this.activePair || branchIndex === null || branchIndex < 0 || state.completed) return false;
+      if (!this.activePair || branchIndex === null || branchIndex < 0) return false;
+      if (state.completed) return false;
 
       const branch = state.branches[branchIndex] ?? [];
       const last = branch[branch.length - 1];
       const next = positionToArray(position);
       if (!last) {
         state.branches[branchIndex] = [next];
-        this.paths[this.activePair] = state;
+        this.paths[this.activePair] = this.compactPairPathState(state);
         return true;
       }
       if (samePoint(last, next)) return true;
@@ -1278,7 +1436,7 @@ export const methods = {
       if (previousIndex >= 0) {
         if (previousIndex === branch.length - 2) {
           state.branches[branchIndex] = branch.slice(0, previousIndex + 1);
-          this.paths[this.activePair] = state;
+          this.paths[this.activePair] = this.compactPairPathState(state);
           return true;
         }
         return false;
@@ -1314,7 +1472,9 @@ export const methods = {
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
+        this.activePathMode = "";
         this.activeBranchIndex = null;
+        this.activeRetractBranch = null;
         return true;
       }
 
@@ -1328,7 +1488,9 @@ export const methods = {
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
+        this.activePathMode = "";
         this.activeBranchIndex = null;
+        this.activeRetractBranch = null;
         return true;
       }
 
@@ -1447,9 +1609,40 @@ export const methods = {
      * @returns {Array<[number, number]>} 活跃分支。
      */
     getActiveBranch() {
+      if (this.activePathMode === "completed-endpoint" && this.activeRetractBranch) {
+        return this.activeRetractBranch;
+      }
       if (!this.activePair || this.activeBranchIndex === null) return [];
       const state = this.readPairPathState(this.activePair);
       return state.branches[this.activeBranchIndex] ?? [];
+    },
+
+    /**
+     * 从已完成端点向路径内部拖动时，按拖到的上一节点回拉路径。
+     *
+     * @param {{ x: number, y: number }} position 目标节点位置。
+     * @returns {boolean} 是否完成回拉。
+     */
+    retractCompletedPathStep(position) {
+      if (!this.activePair || !this.activeRetractBranch) return false;
+      const branch = this.activeRetractBranch;
+      const next = positionToArray(position);
+      const last = branch[branch.length - 1];
+      if (!last || samePoint(last, next)) return true;
+
+      const previousIndex = branch.findIndex((point) => samePoint(point, next));
+      if (previousIndex < 0 || previousIndex >= branch.length - 1) return false;
+
+      const nextBranch = branch.slice(0, previousIndex + 1);
+      this.paths[this.activePair] = this.compactPairPathState({ branches: [nextBranch], completed: false });
+      this.activeRetractBranch = null;
+      this.activePathMode = "path-end";
+      this.activeBranchIndex = 0;
+      this.isWon = false;
+      this.isVictoryDismissed = false;
+      this.shareStatusText = "分享";
+      this.nextLevelStatusText = "";
+      return true;
     },
 
     /**
@@ -1552,7 +1745,9 @@ export const methods = {
         state.branches[branchIndex] = state.branches[branchIndex].slice(0, pointIndex + 1);
         this.paths[pairId] = this.compactPairPathState(state);
         this.activePair = null;
+        this.activePathMode = "";
         this.activeBranchIndex = null;
+        this.activeRetractBranch = null;
         this.isDrawing = false;
         this.isWon = false;
         this.isVictoryDismissed = false;
@@ -1589,7 +1784,9 @@ export const methods = {
 
         this.paths[pairId] = this.compactPairPathState({ branches: [nextBranch], completed: false });
         this.activePair = null;
+        this.activePathMode = "";
         this.activeBranchIndex = null;
+        this.activeRetractBranch = null;
         this.isDrawing = false;
         this.isWon = false;
         this.isVictoryDismissed = false;
@@ -1683,11 +1880,15 @@ export const methods = {
      */
     pointerPositionFromEvent(event) {
       const boardElement = this.$refs.boardRef ?? event.currentTarget;
-      if (!boardElement) return null;
-      const rect = boardElement.getBoundingClientRect();
-      const bounds = getGridBounds(this.currentLevel);
-      const renderX = bounds.minX + ((event.clientX - rect.left) / rect.width) * bounds.width;
-      const renderY = bounds.minY + ((event.clientY - rect.top) / rect.height) * bounds.height;
+      if (!boardElement && !this.boardPointerGeometry) return null;
+      if (!this.boardPointerGeometry) {
+        this.cacheBoardPointerGeometry(boardElement);
+      }
+      const geometry = this.boardPointerGeometry;
+      if (!geometry) return null;
+      const bounds = geometry.bounds;
+      const renderX = bounds.minX + ((event.clientX - geometry.left) / geometry.width) * bounds.width;
+      const renderY = bounds.minY + ((event.clientY - geometry.top) / geometry.height) * bounds.height;
       const [x, y] = fromRenderPoint([renderX, renderY], this.currentLevel.gridType);
       if (Number.isNaN(x) || Number.isNaN(y)) return null;
       return { x, y, renderX, renderY };
@@ -1701,8 +1902,11 @@ export const methods = {
      */
     getPathStartInfo(position) {
       const endpointPairId = this.endpoints[keyOf(position.x, position.y)];
-      if (endpointPairId && this.canStartFromEndpoint(endpointPairId, position)) {
-        return { pairId: endpointPairId, mode: "endpoint" };
+      if (endpointPairId) {
+        const endpointMode = this.getEndpointStartMode(endpointPairId, position);
+        if (endpointMode) {
+          return { pairId: endpointPairId, mode: endpointMode };
+        }
       }
 
       for (const [pairId] of Object.entries(this.paths)) {
@@ -1722,17 +1926,32 @@ export const methods = {
      *
      * @param {string} pairId 点对 id。
      * @param {{ x: number, y: number }} position 端点位置。
+     * @returns {"endpoint"|"completed-endpoint"|""} 起点模式；不可开始时返回空字符串。
+     */
+    getEndpointStartMode(pairId, position) {
+      const state = this.readPairPathState(pairId);
+      const point = positionToArray(position);
+      if (state.completed) {
+        const completedBranch = state.branches.find((branch) => this.pathTouchesBothEndpoints(pairId, branch));
+        if (!completedBranch) return "";
+        const isCompletedEnd = samePoint(completedBranch[0], point) || samePoint(completedBranch[completedBranch.length - 1], point);
+        return isCompletedEnd ? "completed-endpoint" : "";
+      }
+
+      const branch = state.branches.find((item) => samePoint(item[0], point));
+      if (!branch) return state.branches.length < 2 ? "endpoint" : "";
+      return samePoint(branch[branch.length - 1], point) && this.getPathDegree(branch, point) <= 1 ? "endpoint" : "";
+    },
+
+    /**
+     * 判断指定端点是否允许作为路径起点。
+     *
+     * @param {string} pairId 点对 id。
+     * @param {{ x: number, y: number }} position 端点位置。
      * @returns {boolean} 是否可开始绘制。
      */
     canStartFromEndpoint(pairId, position) {
-      const state = this.readPairPathState(pairId);
-      if (state.completed) return false;
-
-      const point = positionToArray(position);
-      const branch = state.branches.find((item) => samePoint(item[0], point));
-      if (!branch) return state.branches.length < 2;
-
-      return samePoint(branch[branch.length - 1], point) && this.getPathDegree(branch, point) <= 1;
+      return Boolean(this.getEndpointStartMode(pairId, position));
     },
 
     /**
@@ -1749,7 +1968,9 @@ export const methods = {
 
       this.paths[pairId] = [];
       this.activePair = null;
+      this.activePathMode = "";
       this.activeBranchIndex = null;
+      this.activeRetractBranch = null;
       this.isDrawing = false;
       this.isWon = false;
       this.isVictoryDismissed = false;
@@ -1768,7 +1989,9 @@ export const methods = {
       const state = this.readPairPathState(pairId);
       this.isDrawing = false;
       this.activePair = null;
+      this.activePathMode = "";
       this.activeBranchIndex = null;
+      this.activeRetractBranch = null;
 
       if (state.completed) {
         this.evaluateBoard();
@@ -1788,9 +2011,13 @@ export const methods = {
     stopDrawing() {
       this.isDrawing = false;
       this.activePair = null;
+      this.activePathMode = "";
       this.activeBranchIndex = null;
+      this.activeRetractBranch = null;
       this.pointerMoved = false;
-      this.pointerPreview = null;
+      this.clearPointerPreview();
+      this.lastPointerNodeKey = "";
+      this.boardPointerGeometry = null;
     },
 
     /**
@@ -1845,6 +2072,99 @@ export const methods = {
     },
 
     /**
+     * 缓存棋盘尺寸和网格边界，避免绘制过程中每帧读取 DOM 布局。
+     *
+     * @param {HTMLElement|null} boardElement 棋盘元素。
+     * @returns {void}
+     */
+    cacheBoardPointerGeometry(boardElement) {
+      if (!boardElement || !this.currentLevel) {
+        this.boardPointerGeometry = null;
+        return;
+      }
+      const rect = boardElement.getBoundingClientRect();
+      this.boardPointerGeometry = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width || 1,
+        height: rect.height || 1,
+        bounds: getGridBounds(this.currentLevel)
+      };
+    },
+
+    /**
+     * 判断触屏上的两次点击是否构成双击。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @param {{ x: number, y: number }} position 吸附节点。
+     * @returns {boolean} 是否双击。
+     */
+    isTouchDoubleTap(event, position) {
+      if (event.pointerType !== "touch") return false;
+      const lastTap = this.lastBoardTap;
+      if (!lastTap) return false;
+      const elapsed = event.timeStamp - lastTap.timeStamp;
+      if (elapsed < 0 || elapsed > TOUCH_DOUBLE_TAP_MS) return false;
+      if (lastTap.nodeKey !== keyOf(position.x, position.y)) return false;
+      const distance = Math.hypot(event.clientX - lastTap.clientX, event.clientY - lastTap.clientY);
+      return distance <= TOUCH_DOUBLE_TAP_DISTANCE;
+    },
+
+    /**
+     * 记录触屏点击，用于自行识别移动端双击。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @param {{ x: number, y: number }} position 吸附节点。
+     * @returns {void}
+     */
+    rememberBoardTap(event, position) {
+      if (event.pointerType !== "touch") return;
+      this.lastBoardTap = {
+        timeStamp: event.timeStamp,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        nodeKey: keyOf(position.x, position.y)
+      };
+    },
+
+    /**
+     * 合并预览线更新到下一帧，降低移动端响应式更新频率。
+     *
+     * @param {{ x: number, y: number }|null} preview 指针预览位置。
+     * @returns {void}
+     */
+    queuePointerPreview(preview) {
+      this.pendingPointerPreview = preview;
+      if (this.pointerPreviewFrameId) return;
+      this.pointerPreviewFrameId = window.requestAnimationFrame(() => {
+        this.pointerPreviewFrameId = 0;
+        this.pointerPreview = this.pendingPointerPreview;
+      });
+    },
+
+    /**
+     * 取消挂起的预览线帧。
+     *
+     * @returns {void}
+     */
+    cancelPointerPreviewFrame() {
+      if (!this.pointerPreviewFrameId) return;
+      window.cancelAnimationFrame(this.pointerPreviewFrameId);
+      this.pointerPreviewFrameId = 0;
+    },
+
+    /**
+     * 清理预览线状态。
+     *
+     * @returns {void}
+     */
+    clearPointerPreview() {
+      this.cancelPointerPreviewFrame();
+      this.pendingPointerPreview = null;
+      this.pointerPreview = null;
+    },
+
+    /**
      * 将用时规整到 10 毫秒精度。
      *
      * @param {number} milliseconds 原始毫秒数。
@@ -1864,6 +2184,20 @@ export const methods = {
       if (event.currentTarget?.hasPointerCapture?.(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
+    },
+
+    /**
+     * 将一条路径按指定端点重排，使该端点位于分支末尾，便于回拉撤线。
+     *
+     * @param {Array<[number, number]>} branch 路径分支。
+     * @param {[number, number]} point 选中的端点。
+     * @returns {Array<[number, number]>|null} 重排后的分支；不是端点时返回 null。
+     */
+    orientBranchToEndAtPoint(branch, point) {
+      if (!Array.isArray(branch) || branch.length === 0) return null;
+      if (samePoint(branch[branch.length - 1], point)) return this.clonePath(branch);
+      if (samePoint(branch[0], point)) return this.clonePath(branch).reverse();
+      return null;
     },
 
     /**

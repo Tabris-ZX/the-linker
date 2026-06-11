@@ -80,6 +80,7 @@
           @pointerdown="app.handleBoardPointerDown"
           @pointermove="app.handleBoardPointerMove"
           @pointerup="app.handleBoardPointerUp"
+          @pointercancel="app.handleBoardPointerCancel"
           @click.prevent
           @dblclick.prevent="app.handleBoardDoubleClick"
         >
@@ -94,6 +95,12 @@
               :d="group.d"
               :stroke="group.color"
               :class="group.className"
+            ></path>
+            <path
+              v-if="app.pointerPreviewLine"
+              :d="app.pointerPreviewLine.d"
+              :stroke="app.pointerPreviewLine.color"
+              class="preview-line"
             ></path>
           </svg>
           <template v-if="app.currentLevel">
@@ -126,6 +133,7 @@
           </template>
         </div>
       </div>
+      <div class="game-watermark" aria-hidden="true">@Tabris_ZX</div>
 
       <div v-if="app.isWon && !app.isVictoryDismissed" class="victory-mark" role="status" aria-live="polite" aria-label="胜利">
         <div class="victory-main">

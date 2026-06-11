@@ -80,7 +80,9 @@ export default {
       completedLevels: {},
       paths: {},
       activePair: null,
+      activePathMode: "",
       activeBranchIndex: null,
+      activeRetractBranch: null,
       isDrawing: false,
       pointerMoved: false,
       pointerPreview: null,
@@ -101,7 +103,13 @@ export default {
       isClearDataConfirming: false,
       isRulePanelOpen: false,
       isPersonalizationOpen: false,
+      navLayout: "top",
       mapStyle: { ...appConfig.mapStyle },
+      boardPointerGeometry: null,
+      pendingPointerPreview: null,
+      pointerPreviewFrameId: 0,
+      lastPointerNodeKey: "",
+      lastBoardTap: null,
       editorPairLimit: EDITOR_PAIR_LIMIT,
       editorPairCount: 5,
       editorState: {
@@ -132,6 +140,7 @@ export default {
    * @returns {void}
    */
   mounted() {
+    this.loadPersonalizationSettings();
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
     this.loadCompletedLevels();
@@ -152,6 +161,7 @@ export default {
    * @returns {void}
    */
   beforeUnmount() {
+    this.cancelPointerPreviewFrame();
     this.stopGameTimer();
     if (this.dialogIntervalId) {
       window.clearInterval(this.dialogIntervalId);
@@ -180,6 +190,7 @@ export default {
      */
     selectedTheme(themeId) {
       this.applyTheme(themeId);
+      this.savePersonalizationSettings();
     },
     /**
      * 点位调色板变化时立即应用调色板。
@@ -189,6 +200,26 @@ export default {
      */
     selectedPalette(paletteId) {
       this.applyPointPalette(paletteId);
+      this.savePersonalizationSettings();
+    },
+    /**
+     * 导航布局变化时保存用户设置。
+     *
+     * @returns {void}
+     */
+    navLayout() {
+      this.savePersonalizationSettings();
+    },
+    /**
+     * 地图样式变化时保存用户设置。
+     *
+     * @returns {void}
+     */
+    mapStyle: {
+      deep: true,
+      handler() {
+        this.savePersonalizationSettings();
+      }
     },
   },
 

@@ -1,5 +1,5 @@
 <template>
-  <header class="app-topbar" :class="`is-${activeView}`">
+  <header class="app-topbar" :class="[`is-${activeView}`, `layout-${navLayout}`]">
     <div class="topbar-left">
       <a class="brand" href="#" aria-label="The Linker home">
         <img class="brand-icon" :src="faviconUrl" alt="">
@@ -95,6 +95,10 @@ export default {
     faviconUrl: {
       type: String,
       required: true
+    },
+    navLayout: {
+      type: String,
+      default: "top"
     }
   },
   emits: ["update:activeView", "toggleLevelPicker", "resetPaths", "unlockDeveloperMode", "toggleRulePanel", "togglePersonalization"]

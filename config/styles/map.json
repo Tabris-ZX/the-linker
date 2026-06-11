@@ -1,5 +1,6 @@
 {
   "mapStyle": {
+    "boardScale": 1,
     "dotScale": 0.6,
     "nodeScale": 0.3,
     "lineScale": 0.5,

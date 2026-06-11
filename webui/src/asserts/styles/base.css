@@ -27,8 +27,9 @@
   --topbar-height: 60px;
   --page-height: 810px;
   --cell-size: 88px;
-  --board-max-width: 1280px;
-  --board-max-height: 640px;
+  --map-board-scale: 1;
+  --board-max-width: 1200px;
+  --board-max-height: 600px;
   --background-image: none;
   --background-opacity: 0;
   --background-blur: 0px;
@@ -367,11 +368,11 @@ h2 {
 
 .app-shell {
   width: 100%;
-  height: calc(var(--page-height) - var(--topbar-height));
+  height: auto;
   min-height: calc(var(--page-height) - var(--topbar-height));
   margin: 0 auto;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .view {
@@ -523,12 +524,19 @@ h2 {
   gap: 10px;
 }
 
+.layout-controls {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
 .map-style-controls {
   display: grid;
   gap: 8px;
   padding-top: 4px;
 }
 
+.layout-controls h3,
 .map-style-controls h3 {
   margin: 0;
   color: var(--accent-strong);
@@ -602,7 +610,8 @@ h2 {
 }
 
 .personalization-confirm-button,
-.personalization-cancel-button {
+.personalization-cancel-button,
+.personalization-reset-settings-button {
   padding: 7px 10px;
   font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
@@ -615,12 +624,14 @@ h2 {
   background: #991b1b;
 }
 
-.personalization-cancel-button {
+.personalization-cancel-button,
+.personalization-reset-settings-button {
   color: var(--ink);
   background: var(--surface);
 }
 
-.personalization-cancel-button:hover {
+.personalization-cancel-button:hover,
+.personalization-reset-settings-button:hover {
   color: var(--button-ink);
   background: var(--accent);
 }
@@ -867,6 +878,107 @@ button:active,
 .victory-mark,
 .play-status {
   box-shadow: var(--panel-shadow);
+}
+
+@media (min-width: 641px) {
+  .app-topbar.layout-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: 108px;
+    height: 100dvh;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 10px;
+    border-right: 1px solid color-mix(in srgb, var(--ink) 72%, transparent);
+    border-bottom: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .app-topbar.layout-sidebar .topbar-left,
+  .app-topbar.layout-sidebar .topbar-center,
+  .app-topbar.layout-sidebar .topbar-right {
+    width: 100%;
+    display: grid;
+    gap: 8px;
+    justify-content: stretch;
+  }
+
+  .app-topbar.layout-sidebar .brand,
+  .app-topbar.layout-sidebar .view-tabs,
+  .app-topbar.layout-sidebar .play-toolbar,
+  .app-topbar.layout-sidebar .play-actions {
+    width: 100%;
+  }
+
+  .app-topbar.layout-sidebar .brand {
+    justify-content: center;
+    border-radius: var(--radius-control);
+    padding: 5px;
+    font-size: 1rem;
+  }
+
+  .app-topbar.layout-sidebar .brand span {
+    display: none;
+  }
+
+  .app-topbar.layout-sidebar .view-tabs,
+  .app-topbar.layout-sidebar .play-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar.layout-sidebar .play-toolbar {
+    display: grid;
+    gap: 8px;
+  }
+
+  .app-topbar.layout-sidebar .topbar-right {
+    align-content: start;
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar.layout-sidebar .github-link,
+  .app-topbar.layout-sidebar .rule-button,
+  .app-topbar.layout-sidebar .personalize-button,
+  .app-topbar.layout-sidebar .developer-button,
+  .app-topbar.layout-sidebar .online-count,
+  .app-topbar.layout-sidebar .game-timer,
+  .app-topbar.layout-sidebar .current-level-label,
+  .app-topbar.layout-sidebar .play-actions button {
+    width: 100%;
+  }
+
+  .app-topbar.layout-sidebar .github-link {
+    min-height: 34px;
+  }
+
+  .app-topbar.layout-sidebar .rule-button,
+  .app-topbar.layout-sidebar .personalize-button,
+  .app-topbar.layout-sidebar .view-tab,
+  .app-topbar.layout-sidebar .play-actions button {
+    padding-inline: 6px;
+  }
+
+  .app-topbar.layout-sidebar .current-level-label {
+    max-width: none;
+    text-align: center;
+  }
+
+  .app-shell.has-sidebar-nav {
+    width: calc(100% - 108px);
+    margin-left: 108px;
+    min-height: var(--page-height);
+  }
+
+  .app-shell.has-sidebar-nav .personalization-panel,
+  .app-shell.has-sidebar-nav .rule-panel {
+    right: 14px;
+  }
 }
 
 :root[data-theme="night"] body {

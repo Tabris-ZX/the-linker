@@ -180,6 +180,7 @@ export const computed = {
      */
     boardStyle() {
       const mapStyleVariables = {
+        "--map-board-scale": this.mapStyle.boardScale,
         "--map-dot-scale": this.mapStyle.dotScale,
         "--map-node-scale": this.mapStyle.nodeScale,
         "--map-line-scale": this.mapStyle.lineScale,
@@ -191,7 +192,7 @@ export const computed = {
           ...mapStyleVariables,
           "--cols": 1,
           "--rows": 1,
-          "--cell-size": "min(var(--board-max-width), var(--board-max-height))"
+          "--cell-size": "calc(min(var(--board-max-width), var(--board-max-height)) * var(--map-board-scale))"
         };
       }
 
@@ -200,7 +201,7 @@ export const computed = {
         ...mapStyleVariables,
         "--cols": bounds.cols,
         "--rows": bounds.rows,
-        "--cell-size": `min(calc(var(--board-max-width) / ${bounds.cols}), calc(var(--board-max-height) / ${bounds.rows}))`
+        "--cell-size": `calc(min(calc(var(--board-max-width) / ${bounds.cols}), calc(var(--board-max-height) / ${bounds.rows})) * var(--map-board-scale))`
       };
     },
 
@@ -299,31 +300,28 @@ export const computed = {
         });
       });
 
-      if (this.activePair) {
-        const path = this.getActiveBranch();
-        const last = path[path.length - 1];
-        const pair = this.getPair(this.activePair);
-        if (last && pair && this.pointerPreview) {
-          const preview = this.pointerPreview;
-          if (preview.x !== last[0] || preview.y !== last[1]) {
-            const [x1, y1] = toRenderPoint(last, this.currentLevel.gridType);
-            const [x2, y2] = toRenderPoint([preview.x, preview.y], this.currentLevel.gridType);
-            lines.push({
-              key: "pointer-preview",
-              attrs: {
-                x1,
-                y1,
-                x2,
-                y2
-              },
-              color: pair.color,
-              className: "preview-line"
-            });
-          }
-        }
-      }
-
       return lines;
+    },
+
+    /**
+     * 获取当前指针预览线，单独渲染避免拖动时重算全部路径分组。
+     *
+     * @returns {{ d: string, color: string }|null} 预览线渲染数据。
+     */
+    pointerPreviewLine() {
+      if (!this.currentLevel || !this.activePair || !this.pointerPreview) return null;
+      const path = this.getActiveBranch();
+      const last = path[path.length - 1];
+      const pair = this.getPair(this.activePair);
+      if (!last || !pair) return null;
+      const preview = this.pointerPreview;
+      if (preview.x === last[0] && preview.y === last[1]) return null;
+      const [x1, y1] = toRenderPoint(last, this.currentLevel.gridType);
+      const [x2, y2] = toRenderPoint([preview.x, preview.y], this.currentLevel.gridType);
+      return {
+        d: linePathD([{ attrs: { x1, y1, x2, y2 } }]),
+        color: pair.color
+      };
     },
 
     /**
@@ -412,7 +410,8 @@ export const computed = {
       return {
         "--cols": bounds.cols,
         "--rows": bounds.rows,
-        "--cell-size": `min(calc((var(--preview-width-limit) - 48px) / ${bounds.cols}), calc((var(--preview-height-limit) - 48px) / ${bounds.rows}))`,
+        "--cell-size": `calc(min(calc((var(--preview-width-limit) - 48px) / ${bounds.cols}), calc((var(--preview-height-limit) - 48px) / ${bounds.rows})) * var(--map-board-scale))`,
+        "--map-board-scale": this.mapStyle.boardScale,
         "--map-dot-scale": this.mapStyle.dotScale,
         "--map-node-scale": this.mapStyle.nodeScale,
         "--map-line-scale": this.mapStyle.lineScale,

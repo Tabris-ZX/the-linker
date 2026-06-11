@@ -2,7 +2,11 @@
 .view-editor {
   grid-template-columns: minmax(0, 1280px);
   justify-content: center;
+  align-content: start;
+  height: auto;
   min-height: calc(var(--page-height) - var(--topbar-height));
+  padding-top: 28px;
+  padding-bottom: 56px;
   overflow: visible;
 }
 
@@ -16,7 +20,7 @@
   min-height: calc(var(--page-height) - var(--topbar-height) - 20px);
   padding: 16px 22px;
   overflow: visible;
-  transform: translateY(5px);
+  transform: none;
 }
 
 .editor-workspace {
@@ -122,6 +126,7 @@ textarea:focus {
   justify-content: center;
   position: relative;
   z-index: 2;
+  margin-top: 24px;
   min-width: 0;
 }
 
@@ -214,7 +219,8 @@ textarea:focus {
   --preview-width-limit: min(1140px, calc(100vw - 128px));
   --preview-height-limit: min(570px, calc(var(--page-height) - var(--topbar-height) - 220px));
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-items: start;
   width: var(--preview-width-limit);
   height: var(--preview-height-limit);
   max-width: 1200px;
@@ -227,9 +233,10 @@ textarea:focus {
   position: relative;
   width: calc(var(--cols) * var(--cell-size));
   height: calc(var(--rows) * var(--cell-size));
+  margin: 0 auto;
   border: 0;
   background: var(--surface);
-  touch-action: none;
+  touch-action: auto;
   overflow: visible;
 }
 
