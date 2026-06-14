@@ -84,6 +84,34 @@ export async function saveLevelRequest(level, options = {}) {
   throw new Error(lastError.message ?? "保存失败，请确认后端服务正在运行");
 }
 
+export async function generateLevelRequest(payload) {
+  const response = await fetch("/api/levels/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getDeveloperAuthHeaders()
+    },
+    body: JSON.stringify(payload)
+  });
+  if (response.ok) return response.json();
+  const errorPayload = await response.json().catch(() => ({}));
+  throw new Error(errorPayload.message ?? "生成失败，请确认后端服务正在运行");
+}
+
+export async function checkLevelGoodRequest(payload) {
+  const response = await fetch("/api/levels/check-good", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getDeveloperAuthHeaders()
+    },
+    body: JSON.stringify(payload)
+  });
+  if (response.ok) return response.json();
+  const errorPayload = await response.json().catch(() => ({}));
+  throw new Error(errorPayload.message ?? "好解检查失败，请确认后端服务正在运行");
+}
+
 /**
  * 将测试关卡移动到正式版或待删版目录。
  *

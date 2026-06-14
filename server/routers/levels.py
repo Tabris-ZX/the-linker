@@ -3,6 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 
 from server.security import authorize_developer_request, get_bearer_token
+from server.services.generator import generate_editor_level
+from server.services.good_checker import check_level_good
 from server.services.levels import (
     get_level_save_rate_limit,
     mark_level_save_started,
@@ -46,6 +48,32 @@ async def rebuild_levels_index(request: Request) -> list[dict[str, Any]]:
     """
     authorize_developer_request(request)
     return refresh_level_index()
+
+
+@router.post("/levels/generate", summary="Generate an editor level")
+async def generate_level(request: Request) -> dict[str, Any]:
+    """调用完整生成器生成一张可载入编辑器的临时关卡。
+
+    需要开发者 Bearer Token。该接口只返回 map/answers，不写入 alpha 目录。
+    """
+    authorize_developer_request(request)
+    payload = await read_json_body(request)
+    return generate_editor_level(payload)
+
+
+@router.post("/levels/check-good", summary="Check whether a square level has good authored paths")
+async def check_good_level(request: Request) -> dict[str, Any]:
+    """检查方格关卡答案是否为好解。
+
+    需要开发者 Bearer Token。请求体为 { map, answers, options }。
+    """
+    authorize_developer_request(request)
+    payload = await read_json_body(request)
+    level = payload.get("map") if isinstance(payload.get("map"), dict) else payload
+    answer_payload = payload.get("answers")
+    answers = answer_payload.get("answers") if isinstance(answer_payload, dict) else payload.get("answers")
+    options = payload.get("options") if isinstance(payload.get("options"), dict) else {}
+    return check_level_good(level, answers, options)
 
 
 @router.get("/levels/{level_id}", summary="Get level detail")

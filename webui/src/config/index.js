@@ -1,6 +1,6 @@
-import stylesPoints from "../../../config/styles/points.json";
-import stylesMapRaw from "../../../config/styles/map.json?raw";
-import stylesThemes from "../../../config/styles/themes.json";
+import stylesPoints from "../../../config/settings/styles/points.json";
+import stylesMapRaw from "../../../config/settings/styles/map.json?raw";
+import stylesThemes from "../../../config/settings/styles/themes.json";
 
 const rawConfig = globalThis.__THE_LINKER_CONFIG__ ?? {};
 const BACKGROUND_IMAGE_EXTENSIONS = [".webp", ".png"];
@@ -11,7 +11,7 @@ const backgroundImages = normalizeBackgroundImages(rawConfig.background?.image ?
 
 export const appConfig = {
   level: {
-    path: normalizePath(rawConfig.path?.levels ?? rawConfig.level?.path ?? "data/levels")
+    path: normalizePath(rawConfig.path?.levels ?? "data/levels")
   },
   theme: {
     default: rawConfig.theme?.default ?? "default",
@@ -20,7 +20,7 @@ export const appConfig = {
   colors: {
     palette: rawConfig.colors?.palette ?? rawConfig.colors?.default ?? "默认"
   },
-  mapStyle: normalizeMapStyle(mapStyleConfig.mapStyle ?? mapStyleConfig.levelMapStyle ?? mapStyleConfig),
+  mapStyle: normalizeMapStyle(mapStyleConfig.mapStyle ?? mapStyleConfig),
   background: {
     path: normalizePath(rawConfig.path?.background ?? rawConfig.background?.path ?? "background"),
     image: backgroundImages[0] ?? "",
@@ -157,10 +157,8 @@ function normalizeBackgroundImages(value) {
   if (!normalizedValue || normalizedValue.toLowerCase() === "no") return [];
 
   const image = normalizePath(normalizedValue)
-    .replace(/^assets\/background\//, "")
     .replace(/^background\//, "")
-    .replace(/^public\//, "")
-    .replace(/^config\/background\//, "");
+    .replace(/^public\//, "");
   if (!image) return [];
 
   const extension = getPathExtension(image);

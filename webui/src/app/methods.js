@@ -2,7 +2,7 @@ import { appConfig, defaultPointPaletteId } from "../config/index.js";
 import { areAllPathsStructurallyValid, getAnswerEdges, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
 import { fetchPresenceStats, reviewLevelRequest, sendPresenceHeartbeat, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
 import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
-import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
+import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, lineAttrs, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 const LAST_LEVEL_STORAGE_KEY = "the-linker-last-level-id";
@@ -22,6 +22,67 @@ function createPresenceClientId() {
 }
 
 export const methods = {
+    setupBoardOrientationWatcher() {
+      if (!window.matchMedia) {
+        this.prefersPortraitBoard = window.innerWidth < window.innerHeight;
+        return;
+      }
+      const query = window.matchMedia("(max-width: 640px) and (orientation: portrait)");
+      const update = () => {
+        this.prefersPortraitBoard = Boolean(query.matches);
+        this.boardPointerGeometry = null;
+      };
+      update();
+      query.addEventListener?.("change", update);
+      if (!query.addEventListener) query.addListener?.(update);
+      this.boardOrientationQuery = query;
+      this.boardOrientationQueryListener = update;
+    },
+
+    stopBoardOrientationWatcher() {
+      const query = this.boardOrientationQuery;
+      const listener = this.boardOrientationQueryListener;
+      if (query && listener) {
+        query.removeEventListener?.("change", listener);
+        if (!query.removeEventListener) query.removeListener?.(listener);
+      }
+      this.boardOrientationQuery = null;
+      this.boardOrientationQueryListener = null;
+    },
+
+    toBoardDisplayPoint(point) {
+      if (!this.currentLevel) return point;
+      const renderPoint = toRenderPoint(point, this.currentLevel.gridType);
+      if (!this.shouldRotateBoardDisplay) return renderPoint;
+      const bounds = getGridBounds(this.currentLevel);
+      return [
+        renderPoint[1] - bounds.minY,
+        bounds.minX + bounds.width - renderPoint[0]
+      ];
+    },
+
+    fromBoardDisplayPoint(point, bounds = getGridBounds(this.currentLevel)) {
+      if (!this.currentLevel) return point;
+      const renderPoint = this.shouldRotateBoardDisplay
+        ? [
+            bounds.minX + bounds.width - point[1],
+            bounds.minY + point[0]
+          ]
+        : point;
+      return fromRenderPoint(renderPoint, this.currentLevel.gridType);
+    },
+
+    edgeDisplayRenderData(edge) {
+      const points = edge.split("|").map((key) => key.split(",").map(Number));
+      if (points.length !== 2 || points.some((point) => point.some(Number.isNaN))) return null;
+      const from = this.toBoardDisplayPoint(points[0]);
+      const to = this.toBoardDisplayPoint(points[1]);
+      return {
+        key: edge,
+        attrs: lineAttrs(from, to)
+      };
+    },
+
     getPresenceClientId() {
       if (this.presenceClientId) return this.presenceClientId;
       try {
@@ -66,7 +127,7 @@ export const methods = {
      * @returns {Promise<void>}
      */
     async detectLevelEditorAvailability() {
-      this.canUseLevelEditor = true;
+      this.canUseLevelEditor = this.isDeveloperMode;
 
       if (!this.canUseLevelEditor && this.activeView === "editor") {
         this.activeView = "play";
@@ -977,32 +1038,8 @@ export const methods = {
       await this.copyTextToClipboard(this.mapStyleJson);
     },
 
-    /**
-     * 复制文本到剪贴板，必要时使用旧版 execCommand 回退。
-     *
-     * @param {string} text 要复制的文本。
-     * @returns {Promise<void>}
-     */
     async copyTextToClipboard(text) {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
-      }
-
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "fixed";
-      textarea.style.top = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.select();
-
-      try {
-        const copied = document.execCommand("copy");
-        if (!copied) throw new Error("Copy command failed");
-      } finally {
-        document.body.removeChild(textarea);
-      }
+      await navigator.clipboard.writeText(text);
     },
 
     /**
@@ -1051,12 +1088,9 @@ export const methods = {
       if (this.currentLevel) {
         this.currentLevel = cloneLevel(hydrateLevel(this.currentLevel, nextDefinitions));
       }
-      if (this.canUseLevelEditor) {
-        this.editorPairCount = Math.min(this.editorPairCount, this.getEditorPairLimit());
-        this.syncEditorPairCount();
-        return;
-      }
-      this.writeLevelTemplate(false);
+      if (!this.canUseLevelEditor) return;
+      this.editorPairCount = Math.min(this.editorPairCount, this.getEditorPairLimit());
+      this.syncEditorPairCount();
     },
 
     /**
@@ -1153,7 +1187,7 @@ export const methods = {
       // Reset each pair to its first endpoint, matching the normal puzzle start state.
       const paths = {};
       this.currentLevel.pairs.forEach((pair) => {
-        paths[pair.id] = [pair.points[0]];
+        paths[pair.id] = { branches: [[pair.points[0]]], completed: false };
       });
       this.paths = paths;
       this.activePair = null;
@@ -1182,7 +1216,7 @@ export const methods = {
       if (!this.currentLevel) return;
       const paths = {};
       this.currentLevel.pairs.forEach((pair) => {
-        paths[pair.id] = [];
+        paths[pair.id] = { branches: [], completed: false };
       });
       this.paths = paths;
       this.activePair = null;
@@ -1468,7 +1502,7 @@ export const methods = {
       if (mergeIndex >= 0) {
         const merged = this.mergeBranchesAtPoint(state.branches[branchIndex], state.branches[mergeIndex], next);
         if (!merged || !this.pathTouchesBothEndpoints(this.activePair, merged)) return false;
-        this.paths[this.activePair] = merged;
+        this.paths[this.activePair] = { branches: [merged], completed: true };
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
@@ -1484,7 +1518,7 @@ export const methods = {
       if (isOwnEndpoint && !isStartingEndpoint) {
         const completed = [...branch, next];
         if (!this.pathTouchesBothEndpoints(this.activePair, completed)) return false;
-        this.paths[this.activePair] = completed;
+        this.paths[this.activePair] = { branches: [completed], completed: true };
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
@@ -1533,21 +1567,9 @@ export const methods = {
       return moved;
     },
 
-    /**
-     * 将点对路径状态规整为统一结构，兼容旧的单数组路径。
-     *
-     * @param {string} pairId 点对 id。
-     * @param {Array|object} value 原始路径状态。
-     * @returns {{ branches: Array<Array<[number, number]>>, completed: boolean }} 规整后的状态。
-     */
     readPairPathState(pairId, value = this.paths[pairId]) {
       const pair = this.getPair(pairId);
       if (!pair) return { branches: [], completed: false };
-      if (Array.isArray(value)) {
-        return this.pathTouchesBothEndpoints(pairId, value)
-          ? { branches: [value], completed: true }
-          : { branches: value.length ? [value] : [], completed: false };
-      }
       const branches = Array.isArray(value?.branches)
         ? value.branches.filter((branch) => Array.isArray(branch) && branch.length > 0)
         : [];
@@ -1555,13 +1577,6 @@ export const methods = {
       return { branches, completed };
     },
 
-    /**
-     * 将点对路径状态规整为统一结构，兼容旧的单数组路径。
-     *
-     * @param {string} pairId 点对 id。
-     * @param {Array|object} value 原始路径状态。
-     * @returns {{ branches: Array<Array<[number, number]>>, completed: boolean }} 规整后的状态。
-     */
     normalizePairPathState(pairId, value) {
       const state = this.readPairPathState(pairId, value);
       return {
@@ -1578,9 +1593,8 @@ export const methods = {
      */
     compactPairPathState(state) {
       const branches = state.branches.filter((branch) => Array.isArray(branch) && branch.length > 0);
-      if (state.completed && branches.length === 1) return branches[0];
       if (!state.completed && branches.length === 0) return [];
-      return { branches, completed: false };
+      return { branches, completed: Boolean(state.completed) };
     },
 
     /**
@@ -1889,7 +1903,7 @@ export const methods = {
       const bounds = geometry.bounds;
       const renderX = bounds.minX + ((event.clientX - geometry.left) / geometry.width) * bounds.width;
       const renderY = bounds.minY + ((event.clientY - geometry.top) / geometry.height) * bounds.height;
-      const [x, y] = fromRenderPoint([renderX, renderY], this.currentLevel.gridType);
+      const [x, y] = this.fromBoardDisplayPoint([renderX, renderY], geometry.sourceBounds);
       if (Number.isNaN(x) || Number.isNaN(y)) return null;
       return { x, y, renderX, renderY };
     },
@@ -1966,7 +1980,7 @@ export const methods = {
         return;
       }
 
-      this.paths[pairId] = [];
+      this.paths[pairId] = { branches: [], completed: false };
       this.activePair = null;
       this.activePathMode = "";
       this.activeBranchIndex = null;
@@ -2088,7 +2102,8 @@ export const methods = {
         top: rect.top,
         width: rect.width || 1,
         height: rect.height || 1,
-        bounds: getGridBounds(this.currentLevel)
+        bounds: this.boardDisplayBounds,
+        sourceBounds: getGridBounds(this.currentLevel)
       };
     },
 

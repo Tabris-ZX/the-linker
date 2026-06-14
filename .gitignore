@@ -5,6 +5,8 @@ dist/
 node_modules/
 prompts/
 temp/
+files/
+.playwright-cli
 
 # 安全性忽略
 data/

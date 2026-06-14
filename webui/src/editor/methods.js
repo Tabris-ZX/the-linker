@@ -1,9 +1,29 @@
 import { isEditorEdgeInBounds, validateEditorLevelAnswer } from "./checker.js";
+import { checkLevelGoodRequest, generateLevelRequest } from "../router/levels.js";
 import { hydrateLevel, loadLevelAnswers, saveLevelFile } from "../services/levels.js";
-import { getGridNodes, getGridRadius, keyOf, normalizeGridType, pointFromKey, pointsFromEdgeKey } from "../utils/geometry.js";
+import { getGridBounds, getGridNodes, getGridRadius, keyOf, lineAttrs, normalizeGridType, pointFromKey, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
 export const editorMethods = {
+    toEditorDisplayPoint(point) {
+      const renderPoint = toRenderPoint(point, this.editorState.gridType);
+      if (!this.editorShouldRotateDisplay) return renderPoint;
+      const bounds = getGridBounds(this.editorState);
+      return [
+        renderPoint[1] - bounds.minY,
+        bounds.minX + bounds.width - renderPoint[0]
+      ];
+    },
+
+    editorEdgeDisplayRenderData(edge) {
+      const points = pointsFromEdgeKey(edge);
+      if (!points) return null;
+      return {
+        key: edge,
+        attrs: lineAttrs(this.toEditorDisplayPoint(points[0]), this.toEditorDisplayPoint(points[1]))
+      };
+    },
+
     /**
      * 用鼠标滚轮调整编辑器数字输入。
      *
@@ -44,8 +64,8 @@ export const editorMethods = {
      */
     syncEditorBounds() {
       this.editorState.gridType = normalizeGridType(this.editorState.gridType);
-      this.editorState.width = clampNumber(this.editorState.width, 2, 10);
-      this.editorState.height = clampNumber(this.editorState.height, 2, 10);
+      this.editorState.width = clampNumber(this.editorState.width, 1, 17);
+      this.editorState.height = clampNumber(this.editorState.height, 1, 17);
       this.editorState.radius = clampNumber(this.editorState.radius ?? 3, 1, 6);
       const validNodes = new Set(getGridNodes(this.editorState).map(([x, y]) => keyOf(x, y)));
       this.editorState.points = Object.fromEntries(
@@ -92,6 +112,79 @@ export const editorMethods = {
     syncEditorDifficulty() {
       this.editorState.difficulty = clampNumber(this.editorState.difficulty, 1, 5);
       this.writeLevelTemplate(false);
+    },
+
+    async generateEditorPuzzle() {
+      if (this.isEditorGenerating) return;
+      const difficulty = clampNumber(this.editorGeneratorState.difficulty, 1, 5);
+      const gridType = normalizeGridType(this.editorGeneratorState.gridType);
+
+      if (!this.isDeveloperMode) {
+        this.previewHint = "完整生成器需要后端开发者权限";
+        return;
+      }
+
+      this.previewHint = "正在调用完整生成器...";
+      this.isEditorGenerating = true;
+      try {
+        const generated = await generateLevelRequest({
+          difficulty,
+          gridType
+        });
+        this.loadEditorLevel(hydrateLevel({
+          ...generated.map,
+          id: "",
+          name: "",
+          answers: generated.answers?.answers ?? []
+        }, this.pointDefinitions));
+        this.editorEditingLevelId = "";
+        this.editorGeneratorState.difficulty = difficulty;
+        this.editorGeneratorState.gridType = gridType;
+        this.previewHint = `已用完整生成器生成 ${this.getGridTypeLabel(gridType)} 难度 ${difficulty}，${this.editorPairCount} 组色点`;
+      } catch (error) {
+        this.previewHint = error.message || "生成失败";
+      } finally {
+        this.isEditorGenerating = false;
+      }
+    },
+
+    async checkEditorGoodSolution() {
+      if (this.isEditorCheckingGood) return;
+      if (!this.isDeveloperMode) {
+        this.previewHint = "好解检查需要后端开发者权限";
+        return;
+      }
+      const validationMessage = this.validateEditorLevel();
+      if (validationMessage) {
+        this.previewHint = validationMessage;
+        return;
+      }
+
+      this.isEditorCheckingGood = true;
+      this.previewHint = "正在检查好解...";
+      try {
+        const payload = this.buildEditorLevelExport();
+        const result = await checkLevelGoodRequest({
+          map: payload.map,
+          answers: payload.answers,
+          options: {
+            solveMs: 5000
+          }
+        });
+        this.previewHint = `${result.message}，耗时 ${result.checkedMs ?? 0}ms`;
+      } catch (error) {
+        this.previewHint = error.message || "好解检查失败";
+      } finally {
+        this.isEditorCheckingGood = false;
+      }
+    },
+
+    getGridTypeLabel(gridType) {
+      return {
+        square: "方形",
+        "right-triangle": "直角三角形",
+        "equilateral-triangle": "正三角形"
+      }[gridType] ?? gridType;
     },
 
     /**
@@ -167,7 +260,7 @@ export const editorMethods = {
         name: "",
         gridType: "square",
         difficulty: 1,
-        width: 5,
+        width: 6,
         height: 5,
         radius: 3,
         pairIds,
@@ -240,12 +333,9 @@ export const editorMethods = {
      * @returns {void}
      */
     loadImportedEditorLevel(payload) {
-      const level = payload?.map && typeof payload.map === "object" ? {
-        ...payload.map,
-        answers: Array.isArray(payload.answers?.answers) ? payload.answers.answers : []
-      } : payload;
+      const level = payload;
       if (!level || typeof level !== "object" || !Array.isArray(level.pairs)) {
-        throw new Error("导入失败：JSON 必须包含 pairs 数组，或包含 map/answers 对象");
+        throw new Error("导入失败：JSON 必须包含 pairs 数组");
       }
 
       const invalidPair = level.pairs.find((pair) => !pair?.id || !Array.isArray(pair.points));
@@ -534,8 +624,8 @@ export const editorMethods = {
       if (this.editorState.gridType === "equilateral-triangle") {
         map.radius = clampNumber(this.editorState.radius, 1, 6);
       } else {
-        map.width = clampNumber(this.editorState.width, 2, 10);
-        map.height = clampNumber(this.editorState.height, 2, 10);
+        map.width = clampNumber(this.editorState.width, 1, 17);
+        map.height = clampNumber(this.editorState.height, 1, 17);
       }
       return map;
     },
@@ -644,8 +734,8 @@ export const editorMethods = {
       this.levelOutput = JSON.stringify(this.buildEditorLevelExport(savedLevel.id), null, 2);
       this.isLevelOutputVisible = true;
       this.previewHint = this.editorEditingLevelId
-        ? `已更新 levels/${savedLevel.id}.json`
-        : `已保存到 levels/alpha/${savedLevel.id}.json，并加入测试版`;
+        ? `已更新 levels/${savedLevel.sourcePath || `${savedLevel.sourceCategory}/${savedLevel.id}.json`}`
+        : `已保存到 levels/${savedLevel.sourcePath || `alpha/${savedLevel.id}.json`}，并加入测试版`;
     },
 
     /**

@@ -51,7 +51,7 @@ function readConfiguredBackendPort() {
 }
 
 function readConfiguredFrontendDebugPort() {
-  return readConfiguredServerPort("frontendDebugPort") || readConfiguredServerPort("frontendPort") || readConfiguredServerPort("debugPort");
+  return readConfiguredServerPort("frontendDebugPort");
 }
 
 function readConfiguredServerPort(key) {

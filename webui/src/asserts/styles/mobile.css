@@ -75,7 +75,10 @@
   }
 
   .developer-button {
-    display: none;
+    grid-area: developer;
+    min-width: 52px;
+    padding-inline: 7px;
+    font-size: 0.76rem;
   }
 
   .github-link {
@@ -176,13 +179,27 @@
     gap: 7px;
   }
 
+  .editor-form-group,
+  .editor-form-group-main,
+  .editor-form-group-grid {
+    grid-template-columns: 1fr;
+  }
+
   .editor-form-actions {
+    grid-column: 1;
     grid-template-columns: 1fr;
     gap: 7px;
   }
 
+  .editor-generator-panel {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-columns: 1fr;
+  }
+
   .preview-panel {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .pair-picker {
@@ -192,7 +209,9 @@
     grid-row: 1;
     justify-content: start;
     max-width: calc(100vw - 24px);
+    max-height: none;
     overflow-x: auto;
+    overflow-y: hidden;
     padding-top: 0;
     padding-bottom: 6px;
   }
@@ -208,10 +227,7 @@
   }
 
   .preview-board {
-    --preview-cell-size: min(
-      calc((var(--preview-width-limit) - 36px) / var(--preview-cols)),
-      calc((var(--preview-height-limit) - 36px) / var(--preview-rows))
-    );
+    max-width: 100%;
   }
 
   .level-output-panel {

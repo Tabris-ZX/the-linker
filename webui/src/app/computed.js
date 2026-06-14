@@ -1,4 +1,4 @@
-import { buildGridLines, edgeKey, edgeRenderData, getAllGridEdges, getGridBounds, getGridNodes, keyOf, lineAttrs, linePathD, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
+import { edgeKey, getAllGridEdges, getGridBounds, getGridNodes, keyOf, lineAttrs, linePathD, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
 
 export const computed = {
     /**
@@ -169,8 +169,41 @@ export const computed = {
      */
     boardViewBox() {
       if (!this.currentLevel) return "0 0 1 1";
-      const bounds = getGridBounds(this.currentLevel);
+      const bounds = this.boardDisplayBounds;
       return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
+    },
+
+    /**
+     * 判断当前棋盘显示是否需要旋转以匹配设备方向。
+     *
+     * @returns {boolean} 是否使用旋转后的显示坐标。
+     */
+    shouldRotateBoardDisplay() {
+      if (!this.currentLevel) return false;
+      const bounds = getGridBounds(this.currentLevel);
+      const isWide = bounds.cols > bounds.rows;
+      const isTall = bounds.rows > bounds.cols;
+      if (!isWide && !isTall) return false;
+      return this.prefersPortraitBoard ? isWide : isTall;
+    },
+
+    /**
+     * 获取当前棋盘显示边界，移动端竖屏会交换宽高。
+     *
+     * @returns {{ minX: number, minY: number, width: number, height: number, cols: number, rows: number }}
+     */
+    boardDisplayBounds() {
+      if (!this.currentLevel) return { minX: 0, minY: 0, width: 1, height: 1, cols: 1, rows: 1 };
+      const bounds = getGridBounds(this.currentLevel);
+      if (!this.shouldRotateBoardDisplay) return bounds;
+      return {
+        minX: 0,
+        minY: 0,
+        width: bounds.height,
+        height: bounds.width,
+        cols: bounds.rows,
+        rows: bounds.cols
+      };
     },
 
     /**
@@ -196,7 +229,7 @@ export const computed = {
         };
       }
 
-      const bounds = getGridBounds(this.currentLevel);
+      const bounds = this.boardDisplayBounds;
       return {
         ...mapStyleVariables,
         "--cols": bounds.cols,
@@ -242,7 +275,7 @@ export const computed = {
       const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
       return getAllGridEdges(this.currentLevel)
         .filter((edge) => !removedEdges.has(edge))
-        .map((edge) => edgeRenderData(edge, this.currentLevel.gridType))
+        .map((edge) => this.edgeDisplayRenderData(edge))
         .filter(Boolean);
     },
 
@@ -265,7 +298,7 @@ export const computed = {
     boardSnapNodes() {
       if (!this.currentLevel) return [];
       return getGridNodes(this.currentLevel).map(([x, y]) => {
-        const [renderX, renderY] = toRenderPoint([x, y], this.currentLevel.gridType);
+        const [renderX, renderY] = this.toBoardDisplayPoint([x, y]);
         return { x, y, renderX, renderY };
       });
     },
@@ -294,7 +327,7 @@ export const computed = {
         renderedEdges.add(segment.edge);
         lines.push({
           key: `${segment.pairId}-${segment.edge}`,
-          attrs: lineAttrs(toRenderPoint(segment.from, this.currentLevel.gridType), toRenderPoint(segment.to, this.currentLevel.gridType)),
+          attrs: lineAttrs(this.toBoardDisplayPoint(segment.from), this.toBoardDisplayPoint(segment.to)),
           color: pair.color,
           className: ""
         });
@@ -316,8 +349,8 @@ export const computed = {
       if (!last || !pair) return null;
       const preview = this.pointerPreview;
       if (preview.x === last[0] && preview.y === last[1]) return null;
-      const [x1, y1] = toRenderPoint(last, this.currentLevel.gridType);
-      const [x2, y2] = toRenderPoint([preview.x, preview.y], this.currentLevel.gridType);
+      const [x1, y1] = this.toBoardDisplayPoint(last);
+      const [x2, y2] = this.toBoardDisplayPoint([preview.x, preview.y]);
       return {
         d: linePathD([{ attrs: { x1, y1, x2, y2 } }]),
         color: pair.color
@@ -362,14 +395,14 @@ export const computed = {
       const filledNodes = this.getFilledNodes();
       const activeTargetKey = this.getActiveTargetKey();
       const requiredNodes = new Set(this.getRequiredNodes());
-      const bounds = getGridBounds(this.currentLevel);
+      const bounds = this.boardDisplayBounds;
 
       for (const [x, y] of getGridNodes(this.currentLevel)) {
         const key = keyOf(x, y);
         const pairId = this.endpoints[key];
         const endpoint = pairId ? this.getPair(pairId) : null;
         if (!endpoint && !requiredNodes.has(key)) continue;
-        const [renderX, renderY] = toRenderPoint([x, y], this.currentLevel.gridType);
+        const [renderX, renderY] = this.toBoardDisplayPoint([x, y]);
         nodes.push({
           key,
           x,
@@ -396,8 +429,26 @@ export const computed = {
      * @returns {string} SVG viewBox 字符串。
      */
     editorViewBox() {
-      const bounds = getGridBounds(this.editorState);
+      const bounds = this.editorDisplayBounds;
       return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
+    },
+
+    editorShouldRotateDisplay() {
+      const bounds = getGridBounds(this.editorState);
+      return bounds.rows > bounds.cols;
+    },
+
+    editorDisplayBounds() {
+      const bounds = getGridBounds(this.editorState);
+      if (!this.editorShouldRotateDisplay) return bounds;
+      return {
+        minX: 0,
+        minY: 0,
+        width: bounds.height,
+        height: bounds.width,
+        cols: bounds.rows,
+        rows: bounds.cols
+      };
     },
 
     /**
@@ -406,11 +457,11 @@ export const computed = {
      * @returns {Record<string, string|number>} CSS 变量映射。
      */
     editorPreviewStyle() {
-      const bounds = getGridBounds(this.editorState);
+      const bounds = this.editorDisplayBounds;
       return {
         "--cols": bounds.cols,
         "--rows": bounds.rows,
-        "--cell-size": `calc(min(calc((var(--preview-width-limit) - 48px) / ${bounds.cols}), calc((var(--preview-height-limit) - 48px) / ${bounds.rows})) * var(--map-board-scale))`,
+        "--cell-size": `calc(min(calc((100cqw - 48px) / ${bounds.cols}), calc((var(--preview-height-limit) - 48px) / ${bounds.rows})) * var(--map-board-scale))`,
         "--map-board-scale": this.mapStyle.boardScale,
         "--map-dot-scale": this.mapStyle.dotScale,
         "--map-node-scale": this.mapStyle.nodeScale,
@@ -425,7 +476,9 @@ export const computed = {
      * @returns {Array<object>} 网格线渲染数据。
      */
     editorGridLines() {
-      return buildGridLines(this.editorState);
+      return getAllGridEdges(this.editorState)
+        .map((edge) => this.editorEdgeDisplayRenderData(edge))
+        .filter(Boolean);
     },
 
     /**
@@ -448,7 +501,7 @@ export const computed = {
         if (!points) return null;
         return {
           key: edge,
-          attrs: lineAttrs(toRenderPoint(points[0], this.editorState.gridType), toRenderPoint(points[1], this.editorState.gridType))
+          attrs: lineAttrs(this.toEditorDisplayPoint(points[0]), this.toEditorDisplayPoint(points[1]))
         };
       }).filter(Boolean);
     },
@@ -473,7 +526,7 @@ export const computed = {
         if (!points) return null;
         return {
           key: edge,
-          attrs: lineAttrs(toRenderPoint(points[0], this.editorState.gridType), toRenderPoint(points[1], this.editorState.gridType)),
+          attrs: lineAttrs(this.toEditorDisplayPoint(points[0]), this.toEditorDisplayPoint(points[1])),
           color: this.pointDefinitions[pairId]?.color ?? "var(--accent)"
         };
       }).filter(Boolean);
@@ -509,7 +562,7 @@ export const computed = {
           if (!points) return null;
           return {
             key: edge,
-            attrs: lineAttrs(toRenderPoint(points[0], this.editorState.gridType), toRenderPoint(points[1], this.editorState.gridType))
+            attrs: lineAttrs(this.toEditorDisplayPoint(points[0]), this.toEditorDisplayPoint(points[1]))
           };
         })
         .filter(Boolean);
@@ -523,7 +576,7 @@ export const computed = {
     editorNodes() {
       const nodes = [];
       const connectedNodes = new Set();
-      const bounds = getGridBounds(this.editorState);
+      const bounds = this.editorDisplayBounds;
       getAllGridEdges(this.editorState).forEach((edge) => {
         if (this.editorState.removedEdges.includes(edge)) return;
         const points = pointsFromEdgeKey(edge);
@@ -535,7 +588,7 @@ export const computed = {
         const pointAtNode = this.getEditorPointAt(x, y);
         const point = pointAtNode ? this.pointDefinitions[pointAtNode.pairId] : null;
         if (!point && !connectedNodes.has(keyOf(x, y))) continue;
-        const [renderX, renderY] = toRenderPoint([x, y], this.editorState.gridType);
+        const [renderX, renderY] = this.toEditorDisplayPoint([x, y]);
         nodes.push({
           key: keyOf(x, y),
           x,

@@ -7,7 +7,7 @@ server:
   # developerAuthMaxFailedAttempts: 超级用户 token 连续输错多少次后锁定
   # developerAuthLockSeconds: 输错锁定时间，单位秒
   frontendDebugPort: 5173
-  backendPort: 5174
+  backendPort: 8080
   su-token: ""
   maxRequestBodyBytes: 131072
   levelSaveIntervalSeconds: 30
@@ -20,14 +20,12 @@ path:
   # levelsIndex: 关卡轻量目录索引文件，由后端自动生成，可删除后重建
   # answers: 编辑器答案目录，按 stable/alpha/removed 子目录组织
   # styles: 样式配置目录
-  # background: 旧版背景图片目录；前端开发资源放在 webui/public
   # webuiDist: 前端构建输出目录，FastAPI 会直接服务这里的静态文件
   levels: data/levels
   levelsHash: data/levels-hash.json
   levelsIndex: data/levels-index.json
   answers: data/answers
-  styles: config/styles
-  background: config/background
+  styles: config/settings/styles
   webuiDist: webui/dist
 
 

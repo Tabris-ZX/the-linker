@@ -105,6 +105,9 @@ export default {
       isPersonalizationOpen: false,
       navLayout: "top",
       mapStyle: { ...appConfig.mapStyle },
+      prefersPortraitBoard: false,
+      boardOrientationQuery: null,
+      boardOrientationQueryListener: null,
       boardPointerGeometry: null,
       pendingPointerPreview: null,
       pointerPreviewFrameId: 0,
@@ -112,11 +115,17 @@ export default {
       lastBoardTap: null,
       editorPairLimit: EDITOR_PAIR_LIMIT,
       editorPairCount: 5,
+      editorGeneratorState: {
+        difficulty: 1,
+        gridType: "square"
+      },
+      isEditorCheckingGood: false,
+      isEditorGenerating: false,
       editorState: {
         name: "",
         gridType: "square",
         difficulty: 1,
-        width: 5,
+        width: 6,
         height: 5,
         radius: 3,
         pairIds,
@@ -143,6 +152,7 @@ export default {
     this.loadPersonalizationSettings();
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
+    this.setupBoardOrientationWatcher();
     this.loadCompletedLevels();
     this.loadDeveloperTokenCooldown();
     this.initializeLevels();
@@ -162,6 +172,7 @@ export default {
    */
   beforeUnmount() {
     this.cancelPointerPreviewFrame();
+    this.stopBoardOrientationWatcher();
     this.stopGameTimer();
     if (this.dialogIntervalId) {
       window.clearInterval(this.dialogIntervalId);

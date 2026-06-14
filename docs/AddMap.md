@@ -48,7 +48,7 @@
 - `map.name`：关卡显示名称。为空时应用会自动生成默认名称。
 - `map.difficulty`：难度，整数范围 `1-5`。
 - `map.gridType`：地图类型，可选 `square`、`right-triangle`、`equilateral-triangle`。
-- `map.width`、`map.height`：`square` 和 `right-triangle` 的地图尺寸，编辑器内限制为 `2-10`。
+- `map.width`、`map.height`：`square` 和 `right-triangle` 的地图尺寸，编辑器内限制为 `1-17`。
 - `map.radius`：`equilateral-triangle` 的地图半径，编辑器内限制为 `1-6`。
 - `map.pairs`：色点点对列表。每个点对只需要 `id` 和 `points`；`id` 使用字符串数字，例如 `"1"`、`"2"`。颜色和标签由点对配色配置按 `id` 推导。
 - `map.removedEdges`：被移除的边，挑战时不可通行。边格式为 `"x1,y1|x2,y2"`。
@@ -57,7 +57,7 @@
 
 ## 地图样式配置结构
 
-挑战页和编辑器预览共用同一套地图样式。配置文件是 `config/styles/map.json`：
+挑战页和编辑器预览共用同一套地图样式。配置文件是 `config/settings/styles/map.json`：
 
 ```json
 {

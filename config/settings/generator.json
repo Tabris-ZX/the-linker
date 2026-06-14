@@ -1,0 +1,89 @@
+{
+  "editorGenerator": {
+    "defaults": {
+      "attempts": 120,
+      "qualityCandidates": 2,
+      "loopPasses": 120,
+      "timeout": 20,
+      "radius": 3
+    },
+    "profiles": {
+      "1": {
+        "square": [
+          { "width": 4, "height": 3, "pairs": 4 },
+          { "width": 4, "height": 4, "pairs": 5 },
+          { "width": 5, "height": 4, "pairs": 5 }
+        ],
+        "right-triangle": [
+          { "width": 5, "height": 4, "pairs": 4 },
+          { "width": 6, "height": 5, "pairs": 5 }
+        ],
+        "equilateral-triangle": [
+          { "pairs": 5 },
+          { "pairs": 6 }
+        ]
+      },
+      "2": {
+        "square": [
+          { "width": 6, "height": 6, "pairs": 7 },
+          { "width": 7, "height": 6, "pairs": 7 },
+          { "width": 8, "height": 6, "pairs": 7 }
+        ],
+        "right-triangle": [
+          { "width": 6, "height": 5, "pairs": 5 },
+          { "width": 7, "height": 5, "pairs": 6 }
+        ],
+        "equilateral-triangle": [
+          { "pairs": 6 }
+        ]
+      },
+      "3": {
+        "square": [
+          { "width": 8, "height": 7, "pairs": 8 },
+          { "width": 9, "height": 8, "pairs": 9 },
+          { "width": 10, "height": 8, "pairs": 9 },
+          { "width": 11, "height": 8, "pairs": 9 }
+        ],
+        "right-triangle": [
+          { "width": 5, "height": 4, "pairs": 5 },
+          { "width": 5, "height": 5, "pairs": 5 }
+        ],
+        "equilateral-triangle": [
+          { "pairs": 6, "repeat": 2 }
+        ]
+      },
+      "4": {
+        "square": [
+          { "width": 10, "height": 8, "pairs": 9 },
+          { "width": 11, "height": 9, "pairs": 10 },
+          { "width": 12, "height": 10, "pairs": 11 },
+          { "width": 13, "height": 10, "pairs": 11 },
+          { "width": 14, "height": 10, "pairs": 11 }
+        ],
+        "right-triangle": [
+          { "width": 5, "height": 5, "pairs": 5 },
+          { "width": 6, "height": 5, "pairs": 6 }
+        ],
+        "equilateral-triangle": [
+          { "pairs": 7, "repeat": 2 }
+        ]
+      },
+      "5": {
+        "square": [
+          { "width": 13, "height": 10, "pairs": 11 },
+          { "width": 14, "height": 11, "pairs": 12 },
+          { "width": 15, "height": 12, "pairs": 13 },
+          { "width": 16, "height": 12, "pairs": 13 },
+          { "width": 17, "height": 12, "pairs": 13 }
+        ],
+        "right-triangle": [
+          { "width": 5, "height": 5, "pairs": 5 },
+          { "width": 6, "height": 5, "pairs": 6 }
+        ],
+        "equilateral-triangle": [
+          { "pairs": 7, "repeat": 2 }
+        ]
+      }
+    }
+  }
+}

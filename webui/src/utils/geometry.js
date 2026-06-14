@@ -1,14 +1,7 @@
 const SQRT3 = Math.sqrt(3);
 
-/**
- * 归一化网格类型，兼容旧版 triangle 配置。
- *
- * @param {string} [gridType="square"] 原始网格类型。
- * @returns {string} 标准化后的网格类型。
- */
 export function normalizeGridType(gridType = "square") {
-  if (gridType === "triangle") return "right-triangle";
-  return gridType;
+  return String(gridType ?? "square");
 }
 
 /**
@@ -308,14 +301,6 @@ export function fromRenderPoint(point, gridType = "square") {
   return [x - r / 2, r];
 }
 
-/**
- * 兼容传入关卡对象或宽高参数的网格配置。
- *
- * @param {object|number} widthOrLevel 关卡配置，或矩形网格宽度。
- * @param {number} [height] 矩形网格高度。
- * @param {string} gridType 网格类型。
- * @returns {object} 标准网格配置。
- */
 function normalizeGridArgs(widthOrLevel, height, gridType) {
   if (typeof widthOrLevel === "object") {
     return {

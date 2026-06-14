@@ -18,7 +18,7 @@
 
 .editor-panel {
   min-height: calc(var(--page-height) - var(--topbar-height) - 20px);
-  padding: 16px 22px;
+  padding: 18px 22px 22px;
   overflow: visible;
   transform: none;
 }
@@ -32,10 +32,43 @@
 
 .editor-form {
   display: grid;
-  grid-template-columns: 180px 114px 130px repeat(4, 88px) 180px;
-  gap: 8px;
-  align-items: end;
-  margin-bottom: 8px;
+  grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr) minmax(230px, 0.72fr);
+  gap: 12px;
+  align-items: stretch;
+  margin-bottom: 12px;
+}
+
+.editor-form-group {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.editor-form-group-title {
+  grid-column: 1 / -1;
+  color: var(--accent-strong);
+  font: 900 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.editor-form-group-main {
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.8fr);
+}
+
+.editor-form-group-main .editor-level-select {
+  grid-column: 1 / -1;
+}
+
+.editor-form-group-main .editor-name-field {
+  min-width: 0;
+}
+
+.editor-form-group-grid {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
 }
 
 .editor-form label {
@@ -43,6 +76,7 @@
   gap: 6px;
   color: var(--muted);
   font-size: 0.95rem;
+  min-width: 0;
 }
 
 .editor-level-select {
@@ -57,7 +91,7 @@
 .editor-form button,
 .editor-form .editor-import-button {
   width: 100%;
-  min-height: 42px;
+  min-height: 40px;
   align-self: end;
   justify-self: stretch;
   padding: 8px 12px;
@@ -92,12 +126,51 @@
 }
 
 .editor-form-actions {
-  grid-column: 1 / -1;
+  grid-column: 1 / 3;
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 180px));
+  grid-template-columns: repeat(5, minmax(104px, 1fr));
   gap: 10px;
   justify-content: start;
   align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--surface) 66%, transparent);
+}
+
+.editor-form:not(:has(.editor-generator-panel)) .editor-form-actions {
+  grid-column: 1 / -1;
+}
+
+.editor-form:not(:has(.editor-generator-panel)) {
+  grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr);
+}
+
+.editor-generator-panel {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(70px, 1fr));
+  gap: 8px;
+  align-items: end;
+  align-self: stretch;
+  justify-content: stretch;
+  margin: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-control);
+  padding: 12px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.editor-generator-panel legend {
+  padding: 0 6px;
+  color: var(--accent-strong);
+  font: 900 0.82rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.editor-generator-panel button {
+  grid-column: 1 / -1;
+  align-self: end;
 }
 
 input,
@@ -120,13 +193,13 @@ textarea:focus {
 
 .preview-panel {
   display: grid;
-  grid-template-columns: auto minmax(0, 1140px);
-  gap: 16px;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
   justify-content: center;
   position: relative;
   z-index: 2;
-  margin-top: 24px;
+  margin-top: 14px;
   min-width: 0;
 }
 
@@ -184,9 +257,12 @@ textarea:focus {
   gap: 8px;
   align-content: start;
   justify-items: center;
-  padding-top: 24px;
+  max-height: min(570px, calc(var(--page-height) - var(--topbar-height) - 214px));
+  padding: 16px 6px 8px;
   grid-column: 1;
   grid-row: 1;
+  overflow: auto;
+  scrollbar-width: thin;
 }
 
 .preview-board-wrap {
@@ -216,17 +292,18 @@ textarea:focus {
 }
 
 .preview-board-wrap {
-  --preview-width-limit: min(1140px, calc(100vw - 128px));
-  --preview-height-limit: min(570px, calc(var(--page-height) - var(--topbar-height) - 220px));
+  --preview-width-limit: 100%;
+  --preview-height-limit: min(590px, calc(var(--page-height) - var(--topbar-height) - 214px));
   display: grid;
   justify-items: center;
   align-items: start;
-  width: var(--preview-width-limit);
+  width: min(100%, var(--preview-width-limit));
   height: var(--preview-height-limit);
   max-width: 1200px;
   max-height: 600px;
   overflow: visible;
   padding: 24px;
+  container-type: inline-size;
 }
 
 .preview-board {
@@ -235,7 +312,8 @@ textarea:focus {
   height: calc(var(--rows) * var(--cell-size));
   margin: 0 auto;
   border: 0;
-  background: var(--surface);
+  background: transparent;
+  filter: drop-shadow(0 14px 18px color-mix(in srgb, var(--shadow-color) 42%, transparent));
   touch-action: auto;
   overflow: visible;
 }
@@ -255,6 +333,7 @@ textarea:focus {
   stroke-linecap: square;
   stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
   vector-effect: non-scaling-stroke;
+  opacity: 0.88;
 }
 
 .preview-blocked-layer,
@@ -311,70 +390,10 @@ textarea:focus {
 }
 
 .preview-node {
-  position: absolute;
   z-index: 4;
-  left: calc((100% / var(--cols)) * var(--node-x));
-  top: calc((100% / var(--rows)) * var(--node-y));
-  width: max(18px, calc(var(--cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
-  height: max(18px, calc(var(--cell-size) * max(var(--map-dot-scale), var(--map-node-scale), 0.18)));
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  color: inherit;
-  background: transparent;
-  box-shadow: none;
-  transform: translate3d(-50%, -50%, 0);
-  transition:
-    background 140ms ease,
-    transform 140ms ease,
-    outline-color 140ms ease;
-}
-
-.preview-node:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
-
-.preview-node:active {
-  transform: translate3d(-50%, -50%, 0) scale(0.98);
-  box-shadow: none;
-}
-
-.preview-node::before {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  width: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
-  height: max(3px, calc(var(--cell-size) * var(--map-node-scale)));
-  border-radius: 999px;
-  background: var(--grid-line);
-  opacity: 1;
-  transition: transform 140ms ease, opacity 140ms ease;
 }
 
 .preview-dot {
-  position: relative;
-  z-index: 3;
-  width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
-  height: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
-  min-width: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
-  min-height: max(16px, calc(var(--cell-size) * var(--map-dot-scale)));
-  flex: 0 0 auto;
-  box-sizing: border-box;
-  display: grid;
-  place-items: center;
-  border: clamp(2px, calc(var(--cell-size) * 0.04), 5px) solid var(--dot-border);
-  border-radius: 999px;
-  color: var(--button-ink);
-  background: var(--dot-color);
-  box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink), 0 clamp(3px, calc(var(--cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
-  font: 900 clamp(1.16rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.72), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
-  white-space: nowrap;
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    filter 160ms ease;
   animation: pop-dot 150ms ease-out;
 }
 
@@ -396,7 +415,7 @@ textarea:focus {
 }
 
 .editor-panel h2 {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   font-size: 1.35rem;
 }
 
@@ -417,10 +436,6 @@ textarea:focus {
   min-height: 38px;
 }
 
-.editor-form-actions {
-  padding-top: 4px;
-}
-
 .preview-hint {
   max-width: 78ch;
   padding-left: 2px;
@@ -430,6 +445,23 @@ textarea:focus {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--surface) 48%, transparent);
+}
+
+@media (max-width: 1120px) {
+  .editor-form,
+  .editor-form:not(:has(.editor-generator-panel)) {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-generator-panel,
+  .editor-form-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .editor-form-actions {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
 }
 
 .pair-chip {

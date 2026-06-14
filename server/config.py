@@ -35,23 +35,16 @@ class AppSettings:
 def get_settings() -> AppSettings:
     config = read_app_config()
     server_config = config.get("server", {})
-    level_config = config.get("level", {})
     path_config = config.get("path", {})
     background_config = config.get("background", {})
     return AppSettings(
         backend_port=clamp_integer(
-            server_config.get("backendPort") or server_config.get("port"),
+            server_config.get("backendPort"),
             DEFAULT_BACKEND_PORT,
             1,
             65535,
         ),
-        developer_token=str(
-            server_config.get("su-token")
-            or server_config.get("suToken")
-            or server_config.get("devToken")
-            or server_config.get("dev-token")
-            or ""
-        ).strip(),
+        developer_token=str(server_config.get("su-token") or "").strip(),
         max_request_body_bytes=clamp_integer(
             server_config.get("maxRequestBodyBytes"),
             DEFAULT_MAX_REQUEST_BODY_BYTES,
@@ -76,13 +69,9 @@ def get_settings() -> AppSettings:
             0,
             30 * 24 * 60 * 60,
         ),
-        levels_dir=resolve_config_path(path_config.get("levels") or level_config.get("path") or "data/levels"),
-        levels_hash_file=resolve_config_path(
-            path_config.get("levelsHash") or path_config.get("levels_hash") or "data/levels-hash.json"
-        ),
-        levels_index_file=resolve_config_path(
-            path_config.get("levelsIndex") or path_config.get("levels_index") or "data/levels-index.json"
-        ),
+        levels_dir=resolve_config_path(path_config.get("levels") or "data/levels"),
+        levels_hash_file=resolve_config_path(path_config.get("levelsHash") or "data/levels-hash.json"),
+        levels_index_file=resolve_config_path(path_config.get("levelsIndex") or "data/levels-index.json"),
         answers_dir=resolve_config_path(path_config.get("answers") or "data/answers"),
         background_dir=resolve_config_path(
             path_config.get("background") or background_config.get("path") or "background"

@@ -14,7 +14,7 @@
 
 - Vue 前端负责游玩、关卡选择、关卡编辑器和个性化配置。
 - FastAPI 后端负责静态前端、关卡目录、关卡保存、审核、开发者验证和在线人数统计。
-- 支持方形和六边形两类地图。
+- 支持方形、直角三角形和正三角形地图。
 - 支持双端连线：同色点对两端可以分别向外画，分支相遇后自动合并。
 - 支持双击未完成路径节点回退，双击端点清空同色路径。
 - 支持主题、地图尺寸视觉参数、点位配色、点位贴图、背景图和前端调试端口配置。
@@ -46,9 +46,9 @@ VITE_FRONTEND_PORT=5173 npm run dev
 - `webui/src/asserts/styles`：前端 CSS。
 - `webui/public`：前端 public 资源，当前包含 `background.webp`、`icon.webp`，也可放点位贴图。
 - `config/config.yaml`：运行配置、路径配置和端口配置。
-- `config/styles/map.json`：棋盘视觉参数。
-- `config/styles/themes.json`：主题 token。
-- `config/styles/points.json`：点位颜色和贴图配置。
+- `config/settings/styles/map.json`：棋盘视觉参数。
+- `config/settings/styles/themes.json`：主题 token。
+- `config/settings/styles/points.json`：点位颜色和贴图配置。
 - `data/levels`：关卡本体，按 `stable`、`alpha`、`removed` 分类。
 - `data/answers`：编辑器答案线路，按同样分类存储。
 - `data/levels-index.json`：轻量关卡目录索引，由后端生成，可删除后重建。
@@ -79,9 +79,9 @@ VITE_FRONTEND_PORT=5173 npm run dev
 - `id`：关卡 id。稳定关卡使用 `1001` 这类四位 id，测试关卡可使用 `1001-tmp`。
 - `name`：显示名。
 - `difficulty`：1 到 5 的难度。
-- `gridType`：地图类型，当前支持 `square` 和 `hex`。
-- `width` / `height`：方形地图尺寸。
-- `radius`：六边形地图尺寸；六边形地图不需要 `width` / `height`。
+- `gridType`：地图类型，当前支持 `square`、`right-triangle` 和 `equilateral-triangle`。
+- `width` / `height`：方形和直角三角形地图尺寸。
+- `radius`：正三角形地图尺寸；正三角形地图不需要 `width` / `height`。
 - `pairs`：点对端点。`id` 对应点位样式配置中的编号，`points` 是两个端点坐标。
 - `removedEdges`：被移除的边集合，用于制造缺口、墙和非矩形可通行区域。
 
@@ -113,7 +113,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 
 对应答案放在 `data/answers/stable`、`data/answers/alpha`、`data/answers/removed`。
 
-普通用户可以打开编辑器新建关卡并生成 JSON，再通过 GitHub 提交。开发者输入 `config/config.yaml` 中的 `server.su-token` 后可以保存、审核测试关卡，并在关卡选择窗口中把 alpha 关卡收录到 stable，或移动到 removed。
+编辑器只对开发者开放。输入 `config/config.yaml` 中的 `server.su-token` 后，可以生成、保存、审核测试关卡，并在关卡选择窗口中把 alpha 关卡收录到 stable，或移动到 removed。
 
 ## 自由度和配置
 
@@ -122,14 +122,14 @@ VITE_FRONTEND_PORT=5173 npm run dev
 地图并不局限于完整矩形：
 
 - 方形地图用 `width` / `height` 控制尺寸。
-- 六边形地图用 `radius` 控制范围。
+- 正三角形地图用 `radius` 控制范围。
 - `removedEdges` 可以移除任意边，用来做墙、缺口、窄通道或局部断开的结构。
-- 点对数量由关卡 `pairs` 决定，显示样式由 `config/styles/points.json` 决定。
+- 点对数量由关卡 `pairs` 决定，显示样式由 `config/settings/styles/points.json` 决定。
 - 胜利条件是所有点对连通，且所有可通行节点被有效路径覆盖。
 
 ### 地图视觉参数
 
-`config/styles/map.json` 控制棋盘显示比例：
+`config/settings/styles/map.json` 控制棋盘显示比例：
 
 - `dotScale`：端点大小。
 - `nodeScale`：普通节点大小。
@@ -141,7 +141,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 
 ### 点位配色和贴图
 
-`config/styles/points.json` 使用统一格式：
+`config/settings/styles/points.json` 使用统一格式：
 
 ```json
 {
@@ -167,7 +167,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 
 ### 主题和背景
 
-- `config/styles/themes.json` 定义主题 token，如 `paper`、`ink`、`line`、`accent`。
+- `config/settings/styles/themes.json` 定义主题 token，如 `paper`、`ink`、`line`、`accent`。
 - `webui/public/background.webp` 是默认背景资源。
 - `config/config.yaml` 的 `background.image` 填 `background` 时会加载 `/background.webp`，填 `no` 可关闭背景。
 - `background.opacity` 和 `background.blur` 控制背景透明度和模糊。

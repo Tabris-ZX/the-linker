@@ -75,6 +75,7 @@
         <div
           ref="boardRef"
           class="board"
+          :class="{ 'is-portrait-board': app.prefersPortraitBoard, 'is-rotated-display': app.shouldRotateBoardDisplay }"
           aria-label="the linker board"
           :style="app.boardStyle"
           @pointerdown="app.handleBoardPointerDown"

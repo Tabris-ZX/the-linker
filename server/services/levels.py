@@ -104,7 +104,7 @@ def read_level_answers(level: dict[str, Any]) -> list[Any]:
     try:
         payload = json.loads(answer_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return level.get("answers", []) if isinstance(level.get("answers"), list) else []
+        return []
     if isinstance(payload, dict) and isinstance(payload.get("answers"), list):
         return payload["answers"]
     return payload if isinstance(payload, list) else []
@@ -134,6 +134,19 @@ def move_answer_file(source_level_id: str, source_category: str, target_level_id
     target_path.unlink(missing_ok=True)
     target_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     source_path.unlink(missing_ok=True)
+
+
+def sync_answer_level_id(level_id: str, category: str) -> None:
+    answer_path = get_answers_dir() / normalize_level_category(category) / f"{level_id}.json"
+    if not answer_path.is_file():
+        return
+    try:
+        payload = json.loads(answer_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if isinstance(payload, dict):
+        payload["levelId"] = level_id
+        write_json_file(answer_path, payload)
 
 
 def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
@@ -382,27 +395,48 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
         raise http_error(500, "Error", f"找不到要修改的关卡 {level_id}")
 
     current_level = json.loads(file_path.read_text(encoding="utf-8"))
+    source_category = get_level_source_category(file_path)
     saved_level, answers = split_level_answers(level)
     saved_level.pop("saveMode", None)
     saved_level = normalize_level_for_storage(saved_level)
-    saved_level["id"] = current_level.get("id", level_id)
-    saved_level["difficulty"] = normalize_level_difficulty(saved_level.get("difficulty", current_level.get("difficulty", 1)))
-    saved_level["name"] = current_level.get("name", get_default_level_name(level_id, get_level_source_category(file_path)))
+    previous_difficulty = normalize_level_difficulty(current_level.get("difficulty", 1))
+    next_difficulty = normalize_level_difficulty(saved_level.get("difficulty", previous_difficulty))
+    target_level_id = level_id
+    target_path = file_path
+    should_rename_stable_level = source_category == "stable" and next_difficulty != previous_difficulty
+    if should_rename_stable_level:
+        target_level_id = get_next_level_id(next_difficulty, "stable")
+        target_path = stable_levels_dir() / f"{target_level_id}.json"
+
+    saved_level["id"] = target_level_id
+    saved_level["difficulty"] = next_difficulty
+    if should_rename_stable_level:
+        saved_level["name"] = get_default_level_name(target_level_id, source_category)
+    else:
+        saved_level["name"] = current_level.get("name", get_default_level_name(target_level_id, source_category))
 
     level_hash = create_level_hash(saved_level)
     hash_index = refresh_levels_hash_index()
-    duplicate_level_ids = [item for item in hash_index["hashes"].get(level_hash["hash"], []) if item != saved_level["id"]]
+    duplicate_level_ids = [item for item in hash_index["hashes"].get(level_hash["hash"], []) if item not in {level_id, saved_level["id"]}]
     if duplicate_level_ids:
         raise http_error(500, "Error", f"关卡重复：与 {', '.join(duplicate_level_ids)} 的地图结构和点对位置一致")
 
-    write_json_file(file_path, saved_level)
-    write_answer_file({**saved_level, "sourceCategory": get_level_source_category(file_path)}, answers)
-    write_levels_hash_index(add_level_hash_to_index(remove_level_hash_from_index(hash_index, saved_level["id"]), saved_level["id"], level_hash))
+    if target_path != file_path:
+        target_path.unlink(missing_ok=True)
+        move_answer_file(level_id, source_category, target_level_id, source_category)
+        file_path.unlink(missing_ok=True)
+
+    write_json_file(target_path, saved_level)
+    write_answer_file({**saved_level, "sourceCategory": source_category}, answers)
+    sync_answer_level_id(target_level_id, source_category)
+    hash_index = remove_level_hash_from_index(hash_index, level_id)
+    hash_index = remove_level_hash_from_index(hash_index, saved_level["id"])
+    write_levels_hash_index(add_level_hash_to_index(hash_index, saved_level["id"], level_hash))
     refresh_level_storage_indexes()
     return {
         **saved_level,
-        "sourcePath": normalize_path(file_path.relative_to(get_levels_dir())),
-        "sourceCategory": get_level_source_category(file_path),
+        "sourcePath": normalize_path(target_path.relative_to(get_levels_dir())),
+        "sourceCategory": source_category,
     }
 
 
@@ -411,7 +445,7 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     source_path_value = str(review.get("sourcePath") or "")
     action = str(review.get("action") or "")
     if action not in {"include", "reject"}:
-        raise http_error(500, "Error", "未知的测试关卡处理动作")
+        raise http_error(400, "Bad Request", "未知的测试关卡处理动作")
 
     stable_levels_dir().mkdir(parents=True, exist_ok=True)
     alpha_levels_dir().mkdir(parents=True, exist_ok=True)
@@ -420,23 +454,20 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     if source_path_value:
         source_path = safe_child_path(get_levels_dir(), source_path_value)
     else:
-        if not TEMP_LEVEL_ID_RE.match(level_id):
-            raise http_error(500, "Error", "只能处理测试关卡")
+        if not LEVEL_ID_RE.match(level_id):
+            raise http_error(400, "Bad Request", "只能处理测试关卡")
         source_path = alpha_levels_dir() / f"{level_id}.json"
 
     if not source_path.is_file() or not is_level_json_file(source_path):
-        raise http_error(500, "Error", f"找不到测试关卡 {source_path_value or level_id}")
+        raise http_error(404, "Not Found", f"找不到测试关卡 {source_path_value or level_id}")
     if get_level_source_category(source_path) != "alpha":
-        raise http_error(500, "Error", "只能处理测试版关卡")
+        raise http_error(400, "Bad Request", "只能处理测试版关卡")
 
     source_level_id = source_path.stem
-    if not TEMP_LEVEL_ID_RE.match(source_level_id):
-        raise http_error(500, "Error", "只能处理临时测试关卡")
-
     source_level = json.loads(source_path.read_text(encoding="utf-8"))
     difficulty = normalize_level_difficulty(source_level.get("difficulty", 1))
     target_category = "stable" if action == "include" else "removed"
-    target_level_id = get_next_level_id(difficulty, "stable") if action == "include" else source_level_id
+    target_level_id = get_next_level_id(difficulty, "stable") if action == "include" else get_removed_level_id(source_level_id)
     target_dir = stable_levels_dir() if action == "include" else removed_levels_dir()
     target_path = target_dir / f"{target_level_id}.json"
 
@@ -455,6 +486,19 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
         "sourcePath": normalize_path(target_path.relative_to(get_levels_dir())),
         "sourceCategory": target_category,
     }
+
+
+def get_removed_level_id(source_level_id: str) -> str:
+    target_level_id = source_level_id
+    target_path = removed_levels_dir() / f"{target_level_id}.json"
+    if not target_path.exists():
+        return target_level_id
+    stem = source_level_id[:-4] if source_level_id.endswith("-tmp") else source_level_id
+    for index in range(1, 1000):
+        candidate = f"{stem}-removed-{index}"
+        if not (removed_levels_dir() / f"{candidate}.json").exists():
+            return candidate
+    raise http_error(500, "Error", f"关卡 {source_level_id} 的待删编号已用尽")
 
 
 def write_json_file(file_path: Path, payload: dict[str, Any]) -> None:

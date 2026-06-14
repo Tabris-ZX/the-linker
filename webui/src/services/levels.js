@@ -116,10 +116,6 @@ function normalizeLevelAnswers(answers) {
     }));
 }
 
-function isValidRawLevel(level) {
-  return level && typeof level === "object" && Array.isArray(level.pairs);
-}
-
 function isValidLevelIndexItem(level) {
   return level && typeof level === "object" && typeof level.id === "string";
 }

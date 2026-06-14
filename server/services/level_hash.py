@@ -119,7 +119,7 @@ def transform_edge(edge: str, transform: Any) -> str:
 
 
 def normalize_grid_type(grid_type: Any = "square") -> str:
-    return "right-triangle" if grid_type == "triangle" else str(grid_type)
+    return str(grid_type or "square")
 
 
 def points_from_edge_key(edge: str) -> list[list[float]] | None:
