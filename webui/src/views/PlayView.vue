@@ -90,13 +90,18 @@
             <path v-if="app.gridPathD" :d="app.gridPathD"></path>
           </svg>
           <svg v-if="app.currentLevel" class="edge-lines" :viewBox="app.boardViewBox" preserveAspectRatio="none">
-            <path
-              v-for="group in app.renderedPathGroups"
-              :key="group.key"
-              :d="group.d"
-              :stroke="group.color"
-              :class="group.className"
-            ></path>
+            <template v-for="group in app.renderedPathGroups" :key="group.key">
+              <path
+                v-if="group.isHintCorrect"
+                :d="group.d"
+                class="hint-chain-border"
+              ></path>
+              <path
+                :d="group.d"
+                :stroke="group.color"
+                :class="group.className"
+              ></path>
+            </template>
             <path
               v-if="app.pointerPreviewLine"
               :d="app.pointerPreviewLine.d"

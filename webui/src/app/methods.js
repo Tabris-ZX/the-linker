@@ -1,8 +1,9 @@
 import { appConfig, defaultPointPaletteId } from "../config/index.js";
 import { areAllPathsStructurallyValid, getAnswerEdges, getRequiredNodes, isLevelAnswerFilled, isPathStructurallyValid } from "../editor/checker.js";
 import { fetchPresenceStats, reviewLevelRequest, sendPresenceHeartbeat, setDeveloperToken, verifyDeveloperToken } from "../router/levels.js";
-import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
+import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelAnswers, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
 import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, lineAttrs, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
+import { clampNumber } from "../utils/object.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 const LAST_LEVEL_STORAGE_KEY = "the-linker-last-level-id";
@@ -253,10 +254,16 @@ export const methods = {
 
       this.currentLevelIndex = index;
       this.currentLevel = cloneLevel(level);
+      this.hintAnswerEdgesByPair = null;
+      this.hintAnswersCacheKey = "";
+      this.isHintAnswerLoading = false;
       this.isLevelPickerOpen = false;
       this.isPersonalBest = false;
       this.saveLastLevelId(this.getLevelCacheKey(this.currentLevel));
       this.resetPaths();
+      if (this.isHintModeEnabled) {
+        await this.revealCorrectHintLines(false);
+      }
     },
 
     /**
@@ -515,7 +522,8 @@ export const methods = {
      * @returns {boolean} 是否可见。
      */
     isLevelCategoryVisible(level) {
-      return this.getLevelCategory(level) === "stable" || this.isDeveloperMode;
+      const category = this.getLevelCategory(level);
+      return category === "stable" || (this.isDeveloperMode && category === "alpha");
     },
 
     /**
@@ -701,6 +709,37 @@ export const methods = {
     },
 
     /**
+     * 将地图样式单个数值限制在输入框声明的范围内。
+     *
+     * @param {keyof appConfig.mapStyle} field 地图样式字段。
+     * @returns {void}
+     */
+    normalizeMapStyleField(field) {
+      if (!Object.prototype.hasOwnProperty.call(this.mapStyle, field)) return;
+      this.mapStyle[field] = this.normalizeUserMapStyle(this.mapStyle)[field];
+    },
+
+    /**
+     * 用鼠标滚轮调整地图样式数字输入。
+     *
+     * @param {WheelEvent} event 滚轮事件。
+     * @param {keyof appConfig.mapStyle} field 地图样式字段。
+     * @returns {void}
+     */
+    handleMapStyleNumberWheel(event, field) {
+      if (!Object.prototype.hasOwnProperty.call(this.mapStyle, field)) return;
+      const input = event?.currentTarget;
+      const step = Number(input?.step || 0.01) || 0.01;
+      const direction = event.deltaY > 0 ? -1 : 1;
+      const min = Number(input?.min ?? -Infinity);
+      const max = Number(input?.max ?? Infinity);
+      const currentValue = Number(this.mapStyle[field]);
+      const fallback = Number.isFinite(min) ? min : 0;
+      const nextValue = clampNumber((Number.isFinite(currentValue) ? currentValue : fallback) + direction * step, min, max);
+      this.mapStyle[field] = Number(nextValue.toFixed(2));
+    },
+
+    /**
      * 从本地存储读取用户个性化设置。
      *
      * @returns {void}
@@ -727,6 +766,8 @@ export const methods = {
       if (["top", "sidebar"].includes(storedSettings.navLayout)) {
         this.navLayout = storedSettings.navLayout;
       }
+      this.isHintModeEnabled = Boolean(storedSettings.assistMode);
+      this.isLinkedBlinkEnabled = Boolean(storedSettings.linkedBlink);
     },
 
     /**
@@ -740,6 +781,8 @@ export const methods = {
           theme: this.selectedTheme,
           palette: this.selectedPalette,
           navLayout: this.navLayout,
+          assistMode: this.isHintModeEnabled,
+          linkedBlink: this.isLinkedBlinkEnabled,
           mapStyle: this.serializeMapStyle(this.mapStyle)
         }));
       } catch {
@@ -756,6 +799,8 @@ export const methods = {
       this.selectedTheme = this.themes[appConfig.theme.default] ? appConfig.theme.default : Object.keys(this.themes)[0] ?? "default";
       this.selectedPalette = this.pointPalettes[appConfig.colors.palette] ? appConfig.colors.palette : defaultPointPaletteId;
       this.navLayout = "top";
+      this.setAssistMode(false);
+      this.setLinkedBlinkMode(false);
       this.mapStyle = { ...appConfig.mapStyle };
       this.applyTheme(this.selectedTheme);
       this.applyPointPalette(this.selectedPalette);
@@ -1029,15 +1074,6 @@ export const methods = {
       };
     },
 
-    /**
-     * 复制当前地图样式 JSON 到剪贴板。
-     *
-     * @returns {Promise<void>}
-     */
-    async copyMapStyleJson() {
-      await this.copyTextToClipboard(this.mapStyleJson);
-    },
-
     async copyTextToClipboard(text) {
       await navigator.clipboard.writeText(text);
     },
@@ -1190,11 +1226,14 @@ export const methods = {
         paths[pair.id] = { branches: [[pair.points[0]]], completed: false };
       });
       this.paths = paths;
+      this.hintLockedPairs = {};
+      this.hintStatusText = "";
       this.activePair = null;
       this.activePathMode = "";
       this.activeBranchIndex = null;
       this.activeRetractBranch = null;
       this.isDrawing = false;
+      this.cancelLinkedBlinkTimer();
       this.pointerMoved = false;
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
@@ -1219,11 +1258,14 @@ export const methods = {
         paths[pair.id] = { branches: [], completed: false };
       });
       this.paths = paths;
+      this.hintLockedPairs = {};
+      this.hintStatusText = "";
       this.activePair = null;
       this.activePathMode = "";
       this.activeBranchIndex = null;
       this.activeRetractBranch = null;
       this.isDrawing = false;
+      this.cancelLinkedBlinkTimer();
       this.pointerMoved = false;
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
@@ -1269,6 +1311,7 @@ export const methods = {
 
       this.startPath(startInfo.pairId, position, startInfo.mode);
       if (!this.isDrawing) return;
+      this.scheduleLinkedBlink(startInfo.pairId);
       event.currentTarget?.setPointerCapture?.(event.pointerId);
       this.pointerMoved = false;
       this.lastPointerNodeKey = keyOf(position.x, position.y);
@@ -1315,6 +1358,7 @@ export const methods = {
       }
 
       this.pointerMoved = false;
+      this.cancelLinkedBlinkTimer();
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
       this.boardPointerGeometry = null;
@@ -1330,6 +1374,7 @@ export const methods = {
      */
     handleBoardPointerCancel(event) {
       this.stopDrawing();
+      this.cancelLinkedBlinkTimer();
       this.lastPointerNodeKey = "";
       this.boardPointerGeometry = null;
       this.releasePointer(event);
@@ -1349,6 +1394,7 @@ export const methods = {
       const point = positionToArray(position);
       const pairId = this.endpoints[keyOf(position.x, position.y)];
       if (pairId) {
+        if (this.isPairHintLocked(pairId)) return;
         this.clearPairPath(pairId);
         return;
       }
@@ -1367,6 +1413,7 @@ export const methods = {
      * @returns {void}
      */
     startPath(pairId, position, mode = "endpoint") {
+      if (this.isPairHintLocked(pairId)) return;
       this.activePair = pairId;
       this.activePathMode = mode;
       this.activeBranchIndex = null;
@@ -1509,6 +1556,7 @@ export const methods = {
         this.activePathMode = "";
         this.activeBranchIndex = null;
         this.activeRetractBranch = null;
+        this.cancelLinkedBlinkTimer();
         return true;
       }
 
@@ -1525,6 +1573,7 @@ export const methods = {
         this.activePathMode = "";
         this.activeBranchIndex = null;
         this.activeRetractBranch = null;
+        this.cancelLinkedBlinkTimer();
         return true;
       }
 
@@ -1639,6 +1688,7 @@ export const methods = {
      */
     retractCompletedPathStep(position) {
       if (!this.activePair || !this.activeRetractBranch) return false;
+      if (this.isPairHintLocked(this.activePair)) return false;
       const branch = this.activeRetractBranch;
       const next = positionToArray(position);
       const last = branch[branch.length - 1];
@@ -1742,6 +1792,168 @@ export const methods = {
     },
 
     /**
+     * 用关卡答案检查当前已完成连线，正确连线会锁定到重置为止。
+     *
+     * @returns {Promise<void>}
+     */
+    async revealCorrectHintLines(showEmptyStatus = true) {
+      if (!this.currentLevel) return;
+      this.isHintModeEnabled = true;
+      const hasAnswers = await this.ensureCurrentLevelAnswerCache();
+      if (!this.isHintModeEnabled) return;
+      if (!hasAnswers) {
+        if (showEmptyStatus) this.hintStatusText = "本关暂无答案";
+        return;
+      }
+
+      this.markCorrectHintLinesFromAnswerCache();
+      this.hintStatusText = "";
+    },
+
+    /**
+     * 使用已缓存答案同步标记当前正确连线。
+     *
+     * @returns {void}
+     */
+    markCorrectHintLinesFromAnswerCache() {
+      if (!this.currentLevel || !this.hintAnswerEdgesByPair) return;
+      const nextLockedPairs = { ...this.hintLockedPairs };
+
+      for (const pair of this.currentLevel.pairs) {
+        if (nextLockedPairs[pair.id]) continue;
+        const answerEdges = this.hintAnswerEdgesByPair.get(pair.id);
+        if (!answerEdges?.size) continue;
+        const state = this.readPairPathState(pair.id);
+        const completedBranch = state.branches.find((branch) => this.pathTouchesBothEndpoints(pair.id, branch));
+        if (!completedBranch || !this.isPathStructurallyValid(pair.id, completedBranch)) continue;
+        const pathEdges = this.getPathEdgeSet(completedBranch);
+        if (this.areEdgeSetsEqual(pathEdges, answerEdges)) {
+          nextLockedPairs[pair.id] = true;
+        }
+      }
+
+      this.hintLockedPairs = nextLockedPairs;
+    },
+
+    /**
+     * 切换辅助模式。关闭时移除辅助标记和锁定。
+     *
+     * @param {boolean} enabled 是否开启。
+     * @returns {Promise<void>}
+     */
+    async setAssistMode(enabled) {
+      this.isHintModeEnabled = Boolean(enabled);
+      if (!this.isHintModeEnabled) {
+        this.hintLockedPairs = {};
+        this.hintStatusText = "";
+        this.savePersonalizationSettings();
+        return;
+      }
+
+      this.savePersonalizationSettings();
+      await this.revealCorrectHintLines();
+    },
+
+    /**
+     * 切换关联闪烁。关闭时立即停止当前闪烁。
+     *
+     * @param {boolean} enabled 是否开启。
+     * @returns {void}
+     */
+    setLinkedBlinkMode(enabled) {
+      this.isLinkedBlinkEnabled = Boolean(enabled);
+      if (!this.isLinkedBlinkEnabled) {
+        this.cancelLinkedBlinkTimer();
+      }
+      this.savePersonalizationSettings();
+    },
+
+    /**
+     * 按需读取并缓存当前关卡答案。
+     *
+     * @returns {Promise<boolean>} 是否存在可用答案。
+     */
+    async ensureCurrentLevelAnswerCache() {
+      if (!this.currentLevel?.sourcePath) return false;
+      const levelKey = this.getLevelCacheKey(this.currentLevel);
+      if (this.hintAnswersCacheKey === levelKey && this.hintAnswerEdgesByPair) {
+        return this.hintAnswerEdgesByPair.size > 0;
+      }
+      if (this.isHintAnswerLoading) return false;
+
+      this.isHintAnswerLoading = true;
+      let answers = [];
+      try {
+        answers = await loadLevelAnswers(this.currentLevel);
+      } finally {
+        this.isHintAnswerLoading = false;
+      }
+      if (this.getLevelCacheKey(this.currentLevel) !== levelKey) return false;
+      this.currentLevel = {
+        ...this.currentLevel,
+        answers
+      };
+      this.hintAnswerEdgesByPair = this.getAnswerEdgesByPair(answers);
+      this.hintAnswersCacheKey = levelKey;
+      return this.hintAnswerEdgesByPair.size > 0;
+    },
+
+    /**
+     * 按点对分组答案边。
+     *
+     * @returns {Map<string, Set<string>>} 点对到答案边集合。
+     */
+    getAnswerEdgesByPair(answers = this.currentLevel?.answers ?? []) {
+      const edgesByPair = new Map();
+      answers.forEach((answer) => {
+        const pairId = String(answer?.pairId ?? "");
+        if (!answer?.edge || !pairId) return;
+        if (!edgesByPair.has(pairId)) edgesByPair.set(pairId, new Set());
+        edgesByPair.get(pairId).add(answer.edge);
+      });
+      return edgesByPair;
+    },
+
+    /**
+     * 获取路径覆盖的边集合。
+     *
+     * @param {Array<[number, number]>} path 路径。
+     * @returns {Set<string>} 边集合。
+     */
+    getPathEdgeSet(path) {
+      const edges = new Set();
+      for (let index = 1; index < path.length; index += 1) {
+        edges.add(edgeKey(path[index - 1], path[index]));
+      }
+      return edges;
+    },
+
+    /**
+     * 比较两个边集合是否完全一致。
+     *
+     * @param {Set<string>} left 左集合。
+     * @param {Set<string>} right 右集合。
+     * @returns {boolean} 是否一致。
+     */
+    areEdgeSetsEqual(left, right) {
+      if (left.size !== right.size) return false;
+      for (const edge of left) {
+        if (!right.has(edge)) return false;
+      }
+      return true;
+    },
+
+    /**
+     * 判断指定点对是否已由提示锁定。
+     *
+     * @param {string} pairId 点对 id。
+     * @returns {boolean} 是否锁定。
+     */
+    isPairHintLocked(pairId) {
+      return Boolean(this.hintLockedPairs[pairId]);
+    },
+
+    /**
      * 双击未完成路径节点时回退到该节点。
      *
      * @param {[number, number]} point 节点。
@@ -1750,6 +1962,7 @@ export const methods = {
     rollbackIncompletePathAtPoint(point) {
       const nodeKey = keyOf(point[0], point[1]);
       for (const [pairId] of Object.entries(this.paths)) {
+        if (this.isPairHintLocked(pairId)) continue;
         const state = this.normalizePairPathState(pairId, this.paths[pairId]);
         if (state.completed) continue;
         const branchIndex = state.branches.findIndex((branch) => branch.some((item) => keyOf(item[0], item[1]) === nodeKey));
@@ -1781,6 +1994,7 @@ export const methods = {
     breakCompletedPathAtPoint(point) {
       const nodeKey = keyOf(point[0], point[1]);
       for (const [pairId] of Object.entries(this.paths)) {
+        if (this.isPairHintLocked(pairId)) continue;
         const state = this.normalizePairPathState(pairId, this.paths[pairId]);
         const branchIndex = state.branches.findIndex((branch) => this.pathTouchesBothEndpoints(pairId, branch));
         if (branchIndex < 0) continue;
@@ -1817,6 +2031,10 @@ export const methods = {
      * @returns {void}
      */
     evaluateBoard() {
+      if (this.isHintModeEnabled) {
+        this.markCorrectHintLinesFromAnswerCache();
+      }
+
       // Win when every pair is connected and every traversable node is covered.
       if (!this.areAllPathsStructurallyValid()) {
         this.isWon = false;
@@ -1943,6 +2161,7 @@ export const methods = {
      * @returns {"endpoint"|"completed-endpoint"|""} 起点模式；不可开始时返回空字符串。
      */
     getEndpointStartMode(pairId, position) {
+      if (this.isPairHintLocked(pairId)) return "";
       const state = this.readPairPathState(pairId);
       const point = positionToArray(position);
       if (state.completed) {
@@ -1975,6 +2194,7 @@ export const methods = {
      * @returns {void}
      */
     clearPairPath(pairId) {
+      if (this.isPairHintLocked(pairId)) return;
       const state = this.normalizePairPathState(pairId, this.paths[pairId]);
       if (state.branches.length === 0) {
         return;
@@ -2029,6 +2249,7 @@ export const methods = {
       this.activeBranchIndex = null;
       this.activeRetractBranch = null;
       this.pointerMoved = false;
+      this.cancelLinkedBlinkTimer();
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
       this.boardPointerGeometry = null;
@@ -2083,6 +2304,35 @@ export const methods = {
       this.timerStartedAt = null;
       this.timerElapsedMs = 0;
       this.timerIntervalId = null;
+    },
+
+    /**
+     * 延迟 0.5 秒后启用同色端点闪烁。
+     *
+     * @param {string} pairId 当前点对 id。
+     * @returns {void}
+     */
+    scheduleLinkedBlink(pairId) {
+      this.cancelLinkedBlinkTimer();
+      if (!this.isLinkedBlinkEnabled || !pairId) return;
+      this.linkedBlinkTimerId = window.setTimeout(() => {
+        this.linkedBlinkTimerId = null;
+        if (!this.isLinkedBlinkEnabled || !this.isDrawing || this.activePair !== pairId) return;
+        this.isLinkedBlinkActive = true;
+      }, 500);
+    },
+
+    /**
+     * 停止关联闪烁并清理延迟计时器。
+     *
+     * @returns {void}
+     */
+    cancelLinkedBlinkTimer() {
+      if (this.linkedBlinkTimerId !== null) {
+        window.clearTimeout(this.linkedBlinkTimerId);
+        this.linkedBlinkTimerId = null;
+      }
+      this.isLinkedBlinkActive = false;
     },
 
     /**

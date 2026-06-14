@@ -26,7 +26,7 @@ def get_visible_levels(request: Request, levels: list[dict[str, Any]]) -> list[d
     has_developer_token = bool(get_bearer_token(request))
     if has_developer_token:
         authorize_developer_request(request)
-        return levels
+        return [level for level in levels if level.get("sourceCategory") != "removed"]
     return [level for level in levels if level.get("sourceCategory") == "stable"]
 
 
@@ -105,10 +105,11 @@ async def get_level_detail_by_source_path(path: str, request: Request) -> dict[s
 async def get_level_answers(path: str, request: Request) -> dict[str, Any]:
     """读取编辑器答案线路。
 
-    需要开发者 Bearer Token。普通游玩详情接口不会返回 answers。
+    stable 关卡可供提示按钮按需读取；alpha 关卡仍需要开发者 Bearer Token。
     """
-    authorize_developer_request(request)
     level = read_level_by_source_path(path)
+    if level.get("sourceCategory") != "stable":
+        authorize_developer_request(request)
     return {"levelId": level.get("id"), "answers": read_level_answers(level)}
 
 

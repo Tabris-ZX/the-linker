@@ -524,20 +524,20 @@ h2 {
   gap: 10px;
 }
 
-.layout-controls {
+.game-controls {
   display: grid;
   gap: 8px;
   padding-top: 4px;
 }
 
-.map-style-controls {
+.style-controls {
   display: grid;
   gap: 8px;
   padding-top: 4px;
 }
 
-.layout-controls h3,
-.map-style-controls h3 {
+.game-controls h3,
+.style-controls h3 {
   margin: 0;
   color: var(--accent-strong);
   font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
@@ -548,40 +548,45 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
-.personalization-panel select,
-.personalization-panel input[type="range"] {
-  grid-column: 1 / -1;
+.game-controls label,
+.style-controls label {
+  grid-template-columns: minmax(0, 1fr) 72px;
+  font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+  font-weight: 900;
 }
 
-.personalization-panel input[type="range"] {
-  padding: 0;
-  border: 0;
-  background: transparent;
+.style-controls select,
+.style-controls input[type="number"],
+.setting-toggle-button {
+  grid-column: 2;
+  width: 72px;
+  max-width: 72px;
+  justify-self: end;
 }
 
 .personalization-panel input[type="number"] {
-  grid-column: 1 / -1;
-  max-width: 110px;
   padding: 6px 8px;
 }
 
-.personalization-copy-button {
-  justify-self: start;
-  padding: 7px 10px;
-  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+.personalization-select-row select {
+  grid-column: 1 / -1;
 }
 
-.personalization-json {
-  min-height: 118px;
-  margin: 0;
-  overflow: auto;
-  padding: 10px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
+.style-controls input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.setting-toggle-button {
+  min-height: 38px;
+  padding: 6px 8px;
   color: var(--ink);
   background: var(--surface);
-  font: 700 0.82rem/1.45 Consolas, "Courier New", monospace;
-  white-space: pre-wrap;
+}
+
+.setting-toggle-button.is-enabled {
+  color: var(--button-ink);
+  background: var(--accent);
 }
 
 .personalization-data-actions {
@@ -711,8 +716,7 @@ button:disabled {
 .play-status,
 .victory-mark,
 .level-output-panel,
-.rule-content,
-.personalization-json {
+.rule-content {
   border-color: var(--ink);
 }
 
@@ -729,7 +733,6 @@ input,
 select,
 textarea,
 .rule-content,
-.personalization-json,
 .level-output-panel {
   border-radius: var(--radius-control);
 }

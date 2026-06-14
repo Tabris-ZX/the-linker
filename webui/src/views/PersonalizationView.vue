@@ -20,59 +20,69 @@
         </select>
       </label>
     </div>
-    <section class="layout-controls" aria-label="布局设置">
-      <h3>布局</h3>
+    <section class="game-controls" aria-label="游戏设置">
+      <h3>游戏</h3>
+      <label class="assist-mode-toggle">
+        辅助模式
+        <button
+          type="button"
+          class="setting-toggle-button"
+          :class="{ 'is-enabled': app.isHintModeEnabled }"
+          role="switch"
+          :aria-checked="String(app.isHintModeEnabled)"
+          @click="app.setAssistMode(!app.isHintModeEnabled)"
+        >
+          {{ app.isHintModeEnabled ? "开" : "关" }}
+        </button>
+      </label>
+      <label>
+        关联闪烁
+        <button
+          type="button"
+          class="setting-toggle-button"
+          :class="{ 'is-enabled': app.isLinkedBlinkEnabled }"
+          role="switch"
+          :aria-checked="String(app.isLinkedBlinkEnabled)"
+          @click="app.setLinkedBlinkMode(!app.isLinkedBlinkEnabled)"
+        >
+          {{ app.isLinkedBlinkEnabled ? "开" : "关" }}
+        </button>
+      </label>
+    </section>
+    <section class="style-controls" aria-label="样式设置">
+      <h3>样式</h3>
       <label>
         导航位置
         <select v-model="app.navLayout" aria-label="导航位置">
-          <option value="top">顶部导航栏</option>
-          <option value="sidebar">左侧边栏</option>
+          <option value="top">顶部</option>
+          <option value="sidebar">侧边</option>
         </select>
       </label>
-    </section>
-    <section class="map-style-controls" aria-label="地图样式">
-      <h3>地图样式</h3>
       <label>
         地图缩放
-        <span>{{ app.mapStyle.boardScale.toFixed(2) }}</span>
-        <input v-model.number="app.mapStyle.boardScale" type="range" min="0.6" max="1.4" step="0.01">
-        <input v-model.number="app.mapStyle.boardScale" type="number" min="0.6" max="1.4" step="0.01">
+        <input v-model.number="app.mapStyle.boardScale" type="number" min="0.6" max="1.4" step="0.01" @change="app.normalizeMapStyleField('boardScale')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'boardScale')">
       </label>
       <label>
         点对大小
-        <span>{{ app.mapStyle.dotScale.toFixed(2) }}</span>
-        <input v-model.number="app.mapStyle.dotScale" type="range" min="0.3" max="0.8" step="0.01">
-        <input v-model.number="app.mapStyle.dotScale" type="number" min="0.3" max="0.8" step="0.01">
+        <input v-model.number="app.mapStyle.dotScale" type="number" min="0.3" max="0.8" step="0.01" @change="app.normalizeMapStyleField('dotScale')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'dotScale')">
       </label>
       <label>
         节点大小
-        <span>{{ app.mapStyle.nodeScale.toFixed(2) }}</span>
-        <input v-model.number="app.mapStyle.nodeScale" type="range" min="0.04" max="0.5" step="0.01">
-        <input v-model.number="app.mapStyle.nodeScale" type="number" min="0.04" max="0.5" step="0.01">
+        <input v-model.number="app.mapStyle.nodeScale" type="number" min="0.04" max="0.5" step="0.01" @change="app.normalizeMapStyleField('nodeScale')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'nodeScale')">
       </label>
       <label>
         连线宽度
-        <span>{{ app.mapStyle.lineScale.toFixed(2) }}</span>
-        <input v-model.number="app.mapStyle.lineScale" type="range" min="0.1" max="0.8" step="0.01">
-        <input v-model.number="app.mapStyle.lineScale" type="number" min="0.1" max="0.8" step="0.01">
+        <input v-model.number="app.mapStyle.lineScale" type="number" min="0.1" max="0.8" step="0.01" @change="app.normalizeMapStyleField('lineScale')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'lineScale')">
       </label>
       <label>
         格边宽度
-        <span>{{ app.mapStyle.gridLineScale.toFixed(2) }}</span>
-        <input v-model.number="app.mapStyle.gridLineScale" type="range" min="0.02" max="0.2" step="0.01">
-        <input v-model.number="app.mapStyle.gridLineScale" type="number" min="0.02" max="0.2" step="0.01">
+        <input v-model.number="app.mapStyle.gridLineScale" type="number" min="0.02" max="0.2" step="0.01" @change="app.normalizeMapStyleField('gridLineScale')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'gridLineScale')">
       </label>
       <label>
         吸附强度
-        <span>{{ app.mapStyle.snapPointRadius.toFixed(2) }}</span>
-        <input v-model.number="app.mapStyle.snapPointRadius" type="range" min="0.1" max="0.5" step="0.01">
-        <input v-model.number="app.mapStyle.snapPointRadius" type="number" min="0.1" max="0.5" step="0.01">
+        <input v-model.number="app.mapStyle.snapPointRadius" type="number" min="0.1" max="0.5" step="0.01" @change="app.normalizeMapStyleField('snapPointRadius')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'snapPointRadius')">
       </label>
     </section>
-    <button type="button" class="personalization-copy-button" @click="app.copyMapStyleJson">
-      复制 JSON
-    </button>
-    <pre class="personalization-json">{{ app.mapStyleJson }}</pre>
     <div class="personalization-data-actions">
       <button type="button" class="personalization-clear-data-button" @click="app.requestClearGameData">
         清空数据

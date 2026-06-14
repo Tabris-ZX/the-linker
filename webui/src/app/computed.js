@@ -239,17 +239,6 @@ export const computed = {
     },
 
     /**
-     * 生成当前地图样式 JSON 文本。
-     *
-     * @returns {string} 格式化后的地图样式 JSON。
-     */
-    mapStyleJson() {
-      return JSON.stringify({
-        mapStyle: this.serializeMapStyle(this.mapStyle)
-      }, null, 2);
-    },
-
-    /**
      * 获取所有端点到点对 id 的映射。
      *
      * @returns {Record<string, string>} 节点 key 到点对 id 的映射。
@@ -329,7 +318,7 @@ export const computed = {
           key: `${segment.pairId}-${segment.edge}`,
           attrs: lineAttrs(this.toBoardDisplayPoint(segment.from), this.toBoardDisplayPoint(segment.to)),
           color: pair.color,
-          className: ""
+          className: this.hintLockedPairs[segment.pairId] ? "is-hint-correct" : ""
         });
       });
 
@@ -380,6 +369,7 @@ export const computed = {
         key: group.key,
         color: group.color,
         className: group.className,
+        isHintCorrect: group.className.split(" ").includes("is-hint-correct"),
         d: linePathD(group.lines)
       })).filter((group) => group.d);
     },
@@ -393,7 +383,7 @@ export const computed = {
       if (!this.currentLevel) return [];
       const nodes = [];
       const filledNodes = this.getFilledNodes();
-      const activeTargetKey = this.getActiveTargetKey();
+      const activeTargetKey = this.isLinkedBlinkEnabled && this.isLinkedBlinkActive ? this.getActiveTargetKey() : "";
       const requiredNodes = new Set(this.getRequiredNodes());
       const bounds = this.boardDisplayBounds;
 

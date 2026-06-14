@@ -79,6 +79,15 @@ export default {
       developerTokenCooldownUntil: 0,
       completedLevels: {},
       paths: {},
+      hintLockedPairs: {},
+      hintAnswerEdgesByPair: null,
+      hintAnswersCacheKey: "",
+      isHintAnswerLoading: false,
+      isHintModeEnabled: false,
+      hintStatusText: "",
+      isLinkedBlinkEnabled: false,
+      isLinkedBlinkActive: false,
+      linkedBlinkTimerId: null,
       activePair: null,
       activePathMode: "",
       activeBranchIndex: null,
@@ -171,6 +180,7 @@ export default {
    * @returns {void}
    */
   beforeUnmount() {
+    this.cancelLinkedBlinkTimer();
     this.cancelPointerPreviewFrame();
     this.stopBoardOrientationWatcher();
     this.stopGameTimer();

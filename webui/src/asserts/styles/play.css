@@ -311,6 +311,21 @@
   transition: none;
 }
 
+.edge-lines .is-hint-correct {
+  opacity: 1;
+}
+
+.edge-lines .hint-chain-border {
+  stroke: var(--ink);
+  stroke-width: max(3px, calc(var(--cell-size) * var(--map-line-scale) * 1.32));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 0.12 0.1;
+  stroke-dashoffset: 0.04;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.9;
+}
+
 .victory-mark {
   position: absolute;
   top: 50%;
