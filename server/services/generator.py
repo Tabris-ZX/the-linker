@@ -55,7 +55,7 @@ def run_generator_profile(request_payload: dict[str, Any], difficulty: int, grid
     if grid_type == "equilateral-triangle":
         args.extend(["--radius", str(clamp_int(profile.get("radius", 3), 1, 6))])
     else:
-        width = clamp_int(profile.get("width", 7), 1, 17)
+        width = clamp_int(profile.get("width", 7), 1, 19)
         height = clamp_int(profile.get("height", 5), 1, 17)
         args.extend(["--width", str(width), "--height", str(height)])
 

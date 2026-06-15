@@ -35,6 +35,7 @@ const DEFAULTS = {
 
 const options = parseArgs(process.argv.slice(2));
 applyDifficultyDefaults(options);
+options.storageMethod = detectStorageMethod();
 const rng = createRng(options.seed);
 
 if (options.help) {
@@ -50,11 +51,16 @@ const jobs = options.squareDifficultyPack ? buildSquareDifficultyPack(options) :
 for (let index = 0; index < jobs.length; index += 1) {
   const job = jobs[index];
   const level = generateLevel(job.config, job.index);
-  const levelId = options.dryRun ? `dry-${index + 1}` : await nextAlphaLevelId(job.config.difficulty);
+  const levelId = options.dryRun
+    ? `dry-${index + 1}`
+    : options.storageMethod === "sqlite"
+      ? ""
+      : await nextAlphaLevelId(job.config.difficulty);
   level.id = levelId;
-  level.name = job.config.name
+  const generatedName = job.config.name
     ? `${job.config.name}${job.nameSuffix ?? ""}`
-    : `Generated ${labelForGridType(level.gridType)} ${levelId}`;
+    : `Generated ${labelForGridType(level.gridType)} ${levelId || "Level"}`;
+  level.name = options.storageMethod === "sqlite" && !options.dryRun && !job.config.name ? "" : generatedName;
   level.difficulty = job.config.difficulty;
 
   const answerPayload = {
@@ -66,8 +72,15 @@ for (let index = 0; index < jobs.length; index += 1) {
   validateGeneratedLevel(storedLevel, answerPayload.answers);
 
   if (!options.dryRun) {
-    await writeJson(join(ALPHA_LEVEL_DIR, `${levelId}.json`), storedLevel);
-    await writeJson(join(ALPHA_ANSWER_DIR, `${levelId}.json`), answerPayload);
+    if (options.storageMethod === "sqlite") {
+      const savedLevel = saveLevelToSqlite(storedLevel, answerPayload.answers);
+      storedLevel.id = savedLevel.id;
+      storedLevel.name = savedLevel.name;
+      answerPayload.levelId = savedLevel.id;
+    } else {
+      await writeJson(join(ALPHA_LEVEL_DIR, `${levelId}.json`), storedLevel);
+      await writeJson(join(ALPHA_ANSWER_DIR, `${levelId}.json`), answerPayload);
+    }
   }
   generated.push({ level: storedLevel, answerPayload, answers: answerPayload.answers.length });
 }
@@ -738,6 +751,45 @@ function runPython(source) {
     cwd: ROOT_DIR,
     encoding: "utf8"
   };
+  const uv = spawnSync("uv", ["run", "python", "-c", source], options);
+  if (!uv.error || uv.error.code !== "ENOENT") return uv;
+  const first = spawnSync("python", ["-c", source], options);
+  if (!first.error || first.error.code !== "ENOENT") return first;
+  return spawnSync("python3", ["-c", source], options);
+}
+
+function detectStorageMethod() {
+  const result = runPython("from server.config import get_settings; print(get_settings().storage_method)");
+  if (result.status !== 0) return "file";
+  return result.stdout.trim() === "sqlite" ? "sqlite" : "file";
+}
+
+function saveLevelToSqlite(level, answers) {
+  const source = [
+    "import json, sys",
+    "from server.services.levels import save_level",
+    "payload = json.load(sys.stdin)",
+    "level = dict(payload['level'])",
+    "level['answers'] = payload['answers']",
+    "saved = save_level(level)",
+    "print(json.dumps(saved, ensure_ascii=False))"
+  ].join("\n");
+  const result = runPythonWithInput(source, JSON.stringify({ level, answers }));
+  if (result.status !== 0) {
+    const message = (result.stderr || result.stdout || "unknown error").trim();
+    throw new Error(`Failed to save generated level to sqlite: ${message}`);
+  }
+  return JSON.parse(result.stdout);
+}
+
+function runPythonWithInput(source, input) {
+  const options = {
+    cwd: ROOT_DIR,
+    encoding: "utf8",
+    input
+  };
+  const uv = spawnSync("uv", ["run", "python", "-c", source], options);
+  if (!uv.error || uv.error.code !== "ENOENT") return uv;
   const first = spawnSync("python", ["-c", source], options);
   if (!first.error || first.error.code !== "ENOENT") return first;
   return spawnSync("python3", ["-c", source], options);
@@ -983,7 +1035,7 @@ function parseArgs(args) {
   if (!GRID_TYPES.has(parsed.gridType)) throw new Error(`Unsupported grid type: ${parsed.gridType}`);
   parsed.count = clamp(parsed.count, 1, 100);
   parsed.difficulty = clamp(parsed.difficulty, 1, 5);
-  parsed.width = clamp(parsed.width, 1, 17);
+  parsed.width = clamp(parsed.width, 1, 19);
   parsed.height = clamp(parsed.height, 1, 17);
   parsed.radius = clamp(parsed.radius, 1, 6);
   parsed.minSegmentLength = clamp(parsed.minSegmentLength, 2, 20);

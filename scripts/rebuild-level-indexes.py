@@ -15,8 +15,11 @@ from server.services.levels import refresh_all_level_indexes
 def main() -> None:
     settings = get_settings()
     refresh_all_level_indexes()
-    print(f"Rebuilt level index: {settings.levels_index_file}")
-    print(f"Rebuilt level hash: {settings.levels_hash_file}")
+    if settings.storage_method == "sqlite":
+        print(f"Synced sqlite level hashes: {settings.sqlite_database_file}")
+    else:
+        print(f"Rebuilt level index: {settings.levels_index_file}")
+        print(f"Rebuilt level hash: {settings.levels_hash_file}")
 
 
 if __name__ == "__main__":

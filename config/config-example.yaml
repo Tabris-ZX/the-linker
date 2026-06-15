@@ -14,6 +14,12 @@ server:
   developerAuthMaxFailedAttempts: 3
   developerAuthLockSeconds: 7200
 
+storage:
+  # method: file 或 sqlite
+  method: file
+  # sqlitePath: SQLite 数据库文件位置；method 为 sqlite 时生效
+  sqlitePath: data/db/linker.db
+
 path:
   # levels: 关卡目录，按 stable/alpha/removed 子目录组织
   # levelsHash: 关卡结构哈希索引文件，用于重复关卡检测

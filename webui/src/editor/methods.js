@@ -64,7 +64,7 @@ export const editorMethods = {
      */
     syncEditorBounds() {
       this.editorState.gridType = normalizeGridType(this.editorState.gridType);
-      this.editorState.width = clampNumber(this.editorState.width, 1, 17);
+      this.editorState.width = clampNumber(this.editorState.width, 1, 19);
       this.editorState.height = clampNumber(this.editorState.height, 1, 17);
       this.editorState.radius = clampNumber(this.editorState.radius ?? 3, 1, 6);
       const validNodes = new Set(getGridNodes(this.editorState).map(([x, y]) => keyOf(x, y)));
@@ -624,7 +624,7 @@ export const editorMethods = {
       if (this.editorState.gridType === "equilateral-triangle") {
         map.radius = clampNumber(this.editorState.radius, 1, 6);
       } else {
-        map.width = clampNumber(this.editorState.width, 1, 17);
+        map.width = clampNumber(this.editorState.width, 1, 19);
         map.height = clampNumber(this.editorState.height, 1, 17);
       }
       return map;

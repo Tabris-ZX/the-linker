@@ -560,7 +560,10 @@ h2 {
 .setting-toggle-button {
   grid-column: 2;
   width: 72px;
+  min-width: 72px;
   max-width: 72px;
+  height: 38px;
+  min-height: 38px;
   justify-self: end;
 }
 
@@ -578,10 +581,10 @@ h2 {
 }
 
 .setting-toggle-button {
-  min-height: 38px;
   padding: 6px 8px;
   color: var(--ink);
   background: var(--surface);
+  font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
 .setting-toggle-button.is-enabled {

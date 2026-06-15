@@ -10,9 +10,9 @@
     "profiles": {
       "1": {
         "square": [
-          { "width": 4, "height": 3, "pairs": 4 },
-          { "width": 4, "height": 4, "pairs": 5 },
-          { "width": 5, "height": 4, "pairs": 5 }
+          { "width": 5, "height": 4, "pairs": 4 },
+          { "width": 6, "height": 4, "pairs": 5 },
+          { "width": 7, "height": 4, "pairs": 5 }
         ],
         "right-triangle": [
           { "width": 5, "height": 4, "pairs": 4 },
@@ -25,9 +25,9 @@
       },
       "2": {
         "square": [
-          { "width": 6, "height": 6, "pairs": 7 },
-          { "width": 7, "height": 6, "pairs": 7 },
-          { "width": 8, "height": 6, "pairs": 7 }
+          { "width": 7, "height": 5, "pairs": 5 },
+          { "width": 8, "height": 5, "pairs": 5 },
+          { "width": 9, "height": 5, "pairs": 6 }
         ],
         "right-triangle": [
           { "width": 6, "height": 5, "pairs": 5 },
@@ -39,10 +39,10 @@
       },
       "3": {
         "square": [
-          { "width": 8, "height": 7, "pairs": 8 },
-          { "width": 9, "height": 8, "pairs": 9 },
-          { "width": 10, "height": 8, "pairs": 9 },
-          { "width": 11, "height": 8, "pairs": 9 }
+          { "width": 10, "height": 6, "pairs": 8 },
+          { "width": 11, "height": 6, "pairs": 8 },
+          { "width": 12, "height": 7, "pairs": 9 },
+          { "width": 13, "height": 7, "pairs": 9 }
         ],
         "right-triangle": [
           { "width": 5, "height": 4, "pairs": 5 },
@@ -54,11 +54,10 @@
       },
       "4": {
         "square": [
-          { "width": 10, "height": 8, "pairs": 9 },
-          { "width": 11, "height": 9, "pairs": 10 },
-          { "width": 12, "height": 10, "pairs": 11 },
-          { "width": 13, "height": 10, "pairs": 11 },
-          { "width": 14, "height": 10, "pairs": 11 }
+          { "width": 14, "height": 8, "pairs": 11 },
+          { "width": 15, "height": 8, "pairs": 11 },
+          { "width": 16, "height": 9, "pairs": 12 },
+          { "width": 17, "height": 9, "pairs": 12 }
         ],
         "right-triangle": [
           { "width": 5, "height": 5, "pairs": 5 },
@@ -70,11 +69,12 @@
       },
       "5": {
         "square": [
-          { "width": 13, "height": 10, "pairs": 11 },
-          { "width": 14, "height": 11, "pairs": 12 },
-          { "width": 15, "height": 12, "pairs": 13 },
-          { "width": 16, "height": 12, "pairs": 13 },
-          { "width": 17, "height": 12, "pairs": 13 }
+          { "width": 17, "height": 9, "pairs": 13 },
+          { "width": 18, "height": 9, "pairs": 13 },
+          { "width": 19, "height": 9, "pairs": 14 },
+          { "width": 17, "height": 10, "pairs": 14 },
+          { "width": 18, "height": 10, "pairs": 14 },
+          { "width": 19, "height": 10, "pairs": 15 }
         ],
         "right-triangle": [
           { "width": 5, "height": 5, "pairs": 5 },

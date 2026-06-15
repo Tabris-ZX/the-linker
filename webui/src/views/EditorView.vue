@@ -33,7 +33,7 @@
           <div class="editor-form-group-title">地图参数</div>
           <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
             宽度
-            <input v-model.number="app.editorState.width" type="number" min="2" max="15" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'width', app.syncEditorBounds)">
+            <input v-model.number="app.editorState.width" type="number" min="2" max="19" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'width', app.syncEditorBounds)">
           </label>
           <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
             高度
@@ -143,7 +143,7 @@
                     draggable="false"
                     @error="app.handlePointTextureError(node.point)"
                   >
-                  <span class="dot-label">{{ node.point.label }}</span>
+                  <span class="dot-label" :class="{ 'is-wide': String(node.point.label).length > 1 }">{{ node.point.label }}</span>
                 </span>
               </button>
             </div>

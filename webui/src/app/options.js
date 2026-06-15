@@ -120,8 +120,11 @@ export default {
       boardPointerGeometry: null,
       pendingPointerPreview: null,
       pointerPreviewFrameId: 0,
+      pendingBoardDragPosition: null,
+      boardDragFrameId: 0,
       lastPointerNodeKey: "",
       lastBoardTap: null,
+      lastBoardDoubleClickAt: 0,
       editorPairLimit: EDITOR_PAIR_LIMIT,
       editorPairCount: 5,
       editorGeneratorState: {

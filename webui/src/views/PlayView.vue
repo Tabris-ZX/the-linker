@@ -92,14 +92,14 @@
           <svg v-if="app.currentLevel" class="edge-lines" :viewBox="app.boardViewBox" preserveAspectRatio="none">
             <template v-for="group in app.renderedPathGroups" :key="group.key">
               <path
-                v-if="group.isHintCorrect"
-                :d="group.d"
-                class="hint-chain-border"
-              ></path>
-              <path
                 :d="group.d"
                 :stroke="group.color"
                 :class="group.className"
+              ></path>
+              <path
+                v-if="group.isHintCorrect"
+                :d="group.d"
+                class="hint-chain-link"
               ></path>
             </template>
             <path
@@ -133,7 +133,7 @@
                   draggable="false"
                   @error="app.handlePointTextureError(node.endpoint)"
                 >
-                <span class="dot-label">{{ node.endpoint.label }}</span>
+                <span class="dot-label" :class="{ 'is-wide': String(node.endpoint.label).length > 1 }">{{ node.endpoint.label }}</span>
               </span>
             </button>
           </template>

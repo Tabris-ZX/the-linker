@@ -15,6 +15,8 @@ const DEVELOPER_TOKEN_MAX_FAILED_ATTEMPTS = 3;
 const DEVELOPER_TOKEN_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 const TOUCH_DOUBLE_TAP_MS = 320;
 const TOUCH_DOUBLE_TAP_DISTANCE = 18;
+const POINTER_DOUBLE_TAP_MS = 460;
+const POINTER_DOUBLE_TAP_DISTANCE = 34;
 
 const PRESENCE_CLIENT_STORAGE_KEY = "the-linker-presence-session-id";
 
@@ -1234,6 +1236,7 @@ export const methods = {
       this.activeRetractBranch = null;
       this.isDrawing = false;
       this.cancelLinkedBlinkTimer();
+      this.cancelBoardDragFrame();
       this.pointerMoved = false;
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
@@ -1266,6 +1269,7 @@ export const methods = {
       this.activeRetractBranch = null;
       this.isDrawing = false;
       this.cancelLinkedBlinkTimer();
+      this.cancelBoardDragFrame();
       this.pointerMoved = false;
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
@@ -1290,15 +1294,11 @@ export const methods = {
       const position = this.positionFromEvent(event);
       if (!position) return;
 
-      if (event.detail > 1) {
-        this.stopDrawing();
-        return;
-      }
-
-      if (this.isTouchDoubleTap(event, position)) {
+      if (event.detail > 1 || this.isBoardDoubleTap(event, position)) {
         this.lastBoardTap = null;
         this.stopDrawing();
-        this.handleBoardDoubleClick(event);
+        this.lastBoardDoubleClickAt = event.timeStamp;
+        this.handleBoardDoubleClickAtPosition(position);
         event.preventDefault();
         return;
       }
@@ -1328,15 +1328,8 @@ export const methods = {
       if (!this.isDrawing || !this.activePair) return;
       const pointerPosition = this.pointerPositionFromEvent(event);
       this.queuePointerPreview(pointerPosition);
-
-      const position = this.nearestPositionFromEvent(event);
-      if (!position) return;
+      this.queueBoardDragPosition(pointerPosition);
       event.preventDefault();
-      this.pointerMoved = true;
-      const nodeKey = keyOf(position.x, position.y);
-      if (nodeKey === this.lastPointerNodeKey) return;
-      this.lastPointerNodeKey = nodeKey;
-      this.addStep(position);
     },
 
     /**
@@ -1347,7 +1340,8 @@ export const methods = {
      */
     handleBoardPointerUp(event) {
       const pairToPause = this.activePair;
-      const finalPosition = this.nearestPositionFromEvent(event);
+      this.cancelBoardDragFrame();
+      const finalPosition = this.dragPositionFromPointer(this.pointerPositionFromEvent(event));
 
       if (this.isDrawing && this.activePair && finalPosition) {
         this.addStep(finalPosition);
@@ -1373,6 +1367,7 @@ export const methods = {
      * @returns {void}
      */
     handleBoardPointerCancel(event) {
+      this.cancelBoardDragFrame();
       this.stopDrawing();
       this.cancelLinkedBlinkTimer();
       this.lastPointerNodeKey = "";
@@ -1388,9 +1383,19 @@ export const methods = {
      */
     handleBoardDoubleClick(event) {
       if (!this.currentLevel) return;
+      if (event.timeStamp - this.lastBoardDoubleClickAt >= 0 && event.timeStamp - this.lastBoardDoubleClickAt < 160) return;
       const position = this.positionFromEvent(event);
       if (!position) return;
+      this.handleBoardDoubleClickAtPosition(position);
+    },
 
+    /**
+     * 按指定节点执行双击行为：端点清空整条同色路径，未完成路径节点回退到该点。
+     *
+     * @param {{ x: number, y: number }} position 节点位置。
+     * @returns {void}
+     */
+    handleBoardDoubleClickAtPosition(position) {
       const point = positionToArray(position);
       const pairId = this.endpoints[keyOf(position.x, position.y)];
       if (pairId) {
@@ -2089,6 +2094,16 @@ export const methods = {
      */
     nearestPositionFromEvent(event) {
       const point = this.pointerPositionFromEvent(event);
+      return this.nearestPositionFromPointer(point);
+    },
+
+    /**
+     * 从逻辑指针位置寻找最近的可吸附网格节点。
+     *
+     * @param {{ renderX: number, renderY: number }|null} point 指针逻辑位置。
+     * @returns {{ x: number, y: number }|null} 最近节点；超出吸附半径时返回 null。
+     */
+    nearestPositionFromPointer(point) {
       if (!point) return null;
       let nearest = null;
       let nearestDistance = Infinity;
@@ -2102,6 +2117,108 @@ export const methods = {
       const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
       if (!nearest || nearestDistance > snapRadius) return null;
       return nearest;
+    },
+
+    /**
+     * 拖拽时解析目标节点：直接命中优先，否则按当前路径末端的合法邻居推断。
+     *
+     * @param {{ x: number, y: number, renderX: number, renderY: number }|null} point 指针逻辑位置。
+     * @returns {{ x: number, y: number }|null} 目标节点。
+     */
+    dragPositionFromPointer(point) {
+      if (!point) return null;
+      const direct = this.nearestPositionFromPointer(point);
+      if (direct) return direct;
+      return this.directionalDragPositionFromPointer(point);
+    },
+
+    /**
+     * 当指针没有命中节点时，根据拖拽方向选择当前末端的合法相邻节点。
+     *
+     * @param {{ renderX: number, renderY: number }|null} point 指针逻辑位置。
+     * @returns {{ x: number, y: number }|null} 方向推断出的目标节点。
+     */
+    directionalDragPositionFromPointer(point) {
+      if (!point || this.activePathMode === "completed-endpoint") return null;
+      const branch = this.getActiveBranch();
+      const current = branch[branch.length - 1];
+      if (!current) return null;
+      const currentRender = this.toBoardDisplayPoint(current);
+      const pointerVector = [point.renderX - currentRender[0], point.renderY - currentRender[1]];
+      const pointerDistance = Math.hypot(pointerVector[0], pointerVector[1]);
+      if (pointerDistance <= 0) return null;
+
+      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      let best = null;
+      let bestScore = Infinity;
+
+      this.getDirectionalDragCandidates(current).forEach((candidate) => {
+        if (!this.canPreviewStepTo(candidate)) return;
+        const candidateRender = this.toBoardDisplayPoint(candidate);
+        const edgeVector = [candidateRender[0] - currentRender[0], candidateRender[1] - currentRender[1]];
+        const edgeLength = Math.hypot(edgeVector[0], edgeVector[1]);
+        if (edgeLength <= 0 || pointerDistance < edgeLength * 0.68) return;
+
+        const projection = (pointerVector[0] * edgeVector[0] + pointerVector[1] * edgeVector[1]) / (edgeLength * edgeLength);
+        if (projection < 0.63) return;
+
+        const perpendicular = Math.abs(pointerVector[0] * edgeVector[1] - pointerVector[1] * edgeVector[0]) / edgeLength;
+        const distanceToCandidate = Math.hypot(point.renderX - candidateRender[0], point.renderY - candidateRender[1]);
+        const tolerance = Math.max(snapRadius, edgeLength * 0.24);
+        if (perpendicular > tolerance && distanceToCandidate > edgeLength * 0.65) return;
+
+        const score = distanceToCandidate + Math.max(0, perpendicular - snapRadius) * 0.65;
+        if (score < bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
+      });
+
+      return best ? { x: best[0], y: best[1] } : null;
+    },
+
+    /**
+     * 获取当前节点可尝试拖向的相邻节点。
+     *
+     * @param {[number, number]} current 当前路径末端。
+     * @returns {Array<[number, number]>} 候选节点。
+     */
+    getDirectionalDragCandidates(current) {
+      return this.boardNeighborMap.get(keyOf(current[0], current[1])) ?? [];
+    },
+
+    /**
+     * 轻量预判目标节点是否可能被当前路径追加，避免方向吸附选中非法点。
+     *
+     * @param {[number, number]} next 目标节点。
+     * @returns {boolean} 是否可作为拖拽候选。
+     */
+    canPreviewStepTo(next) {
+      if (!this.activePair || this.activeBranchIndex === null) return false;
+      const state = this.readPairPathState(this.activePair);
+      if (state.completed) return false;
+      const branch = state.branches[this.activeBranchIndex] ?? [];
+      const last = branch[branch.length - 1];
+      if (!last || samePoint(last, next)) return false;
+
+      const previousIndex = branch.findIndex((point) => samePoint(point, next));
+      if (previousIndex >= 0) return previousIndex === branch.length - 2;
+      if (!isAdjacent(last, next, this.currentLevel.gridType)) return false;
+      if (!this.availableEdgeSet.has(edgeKey(last, next))) return false;
+
+      const edgeOccupant = this.getEdgeOccupant(last, next);
+      if (edgeOccupant) return false;
+
+      const endpointOwner = this.endpoints[keyOf(next[0], next[1])];
+      if (endpointOwner && endpointOwner !== this.activePair) return false;
+
+      const mergeIndex = state.branches.findIndex((otherBranch, otherIndex) => (
+        otherIndex !== this.activeBranchIndex && otherBranch.some((point) => samePoint(point, next))
+      ));
+      const nodeOccupant = this.getNodeOccupant(next);
+      if (nodeOccupant && nodeOccupant !== this.activePair) return false;
+      if (nodeOccupant === this.activePair && mergeIndex < 0) return false;
+      return true;
     },
 
     /**
@@ -2250,6 +2367,7 @@ export const methods = {
       this.activeRetractBranch = null;
       this.pointerMoved = false;
       this.cancelLinkedBlinkTimer();
+      this.cancelBoardDragFrame();
       this.clearPointerPreview();
       this.lastPointerNodeKey = "";
       this.boardPointerGeometry = null;
@@ -2358,36 +2476,38 @@ export const methods = {
     },
 
     /**
-     * 判断触屏上的两次点击是否构成双击。
+     * 判断连续两次点击是否构成棋盘双击。
      *
      * @param {PointerEvent} event 指针事件。
      * @param {{ x: number, y: number }} position 吸附节点。
      * @returns {boolean} 是否双击。
      */
-    isTouchDoubleTap(event, position) {
-      if (event.pointerType !== "touch") return false;
+    isBoardDoubleTap(event, position) {
       const lastTap = this.lastBoardTap;
       if (!lastTap) return false;
+      if (lastTap.pointerType !== event.pointerType) return false;
       const elapsed = event.timeStamp - lastTap.timeStamp;
-      if (elapsed < 0 || elapsed > TOUCH_DOUBLE_TAP_MS) return false;
+      const maxElapsed = event.pointerType === "touch" ? TOUCH_DOUBLE_TAP_MS : POINTER_DOUBLE_TAP_MS;
+      if (elapsed < 0 || elapsed > maxElapsed) return false;
       if (lastTap.nodeKey !== keyOf(position.x, position.y)) return false;
       const distance = Math.hypot(event.clientX - lastTap.clientX, event.clientY - lastTap.clientY);
-      return distance <= TOUCH_DOUBLE_TAP_DISTANCE;
+      const maxDistance = event.pointerType === "touch" ? TOUCH_DOUBLE_TAP_DISTANCE : POINTER_DOUBLE_TAP_DISTANCE;
+      return distance <= maxDistance;
     },
 
     /**
-     * 记录触屏点击，用于自行识别移动端双击。
+     * 记录点击，用于自行识别棋盘双击。
      *
      * @param {PointerEvent} event 指针事件。
      * @param {{ x: number, y: number }} position 吸附节点。
      * @returns {void}
      */
     rememberBoardTap(event, position) {
-      if (event.pointerType !== "touch") return;
       this.lastBoardTap = {
         timeStamp: event.timeStamp,
         clientX: event.clientX,
         clientY: event.clientY,
+        pointerType: event.pointerType,
         nodeKey: keyOf(position.x, position.y)
       };
     },
@@ -2427,6 +2547,54 @@ export const methods = {
       this.cancelPointerPreviewFrame();
       this.pendingPointerPreview = null;
       this.pointerPreview = null;
+    },
+
+    /**
+     * 将拖拽节点计算合并到下一帧，避免高频 pointermove 压低帧率。
+     *
+     * @param {{ x: number, y: number, renderX: number, renderY: number }|null} point 最新指针位置。
+     * @returns {void}
+     */
+    queueBoardDragPosition(point) {
+      this.pendingBoardDragPosition = point;
+      if (this.boardDragFrameId) return;
+      this.boardDragFrameId = window.requestAnimationFrame(() => {
+        this.boardDragFrameId = 0;
+        this.processQueuedBoardDragPosition();
+      });
+    },
+
+    /**
+     * 处理当前帧最后一次拖拽位置。
+     *
+     * @returns {void}
+     */
+    processQueuedBoardDragPosition() {
+      const pointerPosition = this.pendingBoardDragPosition;
+      this.pendingBoardDragPosition = null;
+      if (!this.isDrawing || !this.activePair || !pointerPosition) return;
+
+      const position = this.dragPositionFromPointer(pointerPosition);
+      if (!position) return;
+      const nodeKey = keyOf(position.x, position.y);
+      if (nodeKey === this.lastPointerNodeKey) return;
+      if (this.addStep(position)) {
+        this.pointerMoved = true;
+        this.lastPointerNodeKey = nodeKey;
+      }
+    },
+
+    /**
+     * 取消挂起的拖拽计算帧。
+     *
+     * @returns {void}
+     */
+    cancelBoardDragFrame() {
+      if (this.boardDragFrameId) {
+        window.cancelAnimationFrame(this.boardDragFrameId);
+        this.boardDragFrameId = 0;
+      }
+      this.pendingBoardDragPosition = null;
     },
 
     /**

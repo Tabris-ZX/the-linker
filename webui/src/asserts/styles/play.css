@@ -315,15 +315,17 @@
   opacity: 1;
 }
 
-.edge-lines .hint-chain-border {
+.edge-lines .hint-chain-link {
+  fill: none;
   stroke: var(--ink);
-  stroke-width: max(3px, calc(var(--cell-size) * var(--map-line-scale) * 1.32));
+  stroke-width: 5px;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 0.12 0.1;
-  stroke-dashoffset: 0.04;
+  stroke-dasharray: 14px 10px;
+  stroke-dashoffset: 5px;
   vector-effect: non-scaling-stroke;
-  opacity: 0.9;
+  opacity: 0.95;
+  pointer-events: none;
 }
 
 .victory-mark {
@@ -512,7 +514,7 @@
   color: var(--button-ink);
   background: var(--dot-color);
   box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.03), 4px) var(--ink), 0 clamp(3px, calc(var(--cell-size) * 0.06), 8px) 0 rgba(0, 0, 0, 0.18);
-  font: 900 clamp(1.16rem, calc(var(--cell-size) * var(--map-dot-scale) * 0.72), 4.8rem)/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font: 900 max(10px, calc(var(--cell-size) * var(--map-dot-scale) * 0.8))/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   white-space: nowrap;
   transition:
     transform 160ms ease,
@@ -559,8 +561,25 @@
 }
 
 .dot-label {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   z-index: 2;
+  display: grid;
+  place-items: center;
+  max-width: 80%;
+  max-height: 80%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: clip;
+  line-height: 0.85;
+  transform: translate(-50%, -45%);
+  pointer-events: none;
+}
+
+.dot-label.is-wide {
+  font-size: 0.78em;
+  letter-spacing: -0.04em;
 }
 
 .dot.has-texture .dot-label {

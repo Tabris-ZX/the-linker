@@ -11,6 +11,7 @@ from typing import Any
 
 from server.config import get_settings
 from server.paths import normalize_path, safe_child_path
+from server.services import level_db
 from server.services.level_hash import (
     add_level_hash_to_index,
     create_empty_levels_hash_index,
@@ -33,6 +34,7 @@ levels_cache_signature: tuple[tuple[str, int, int], ...] | None = None
 levels_cache: list[dict[str, Any]] | None = None
 levels_cache_checked_at = 0.0
 level_index_cache: list[dict[str, Any]] | None = None
+level_index_cache_signature: tuple[int, int] | None = None
 
 
 def get_levels_dir() -> Path:
@@ -53,6 +55,10 @@ def removed_levels_dir() -> Path:
 
 def get_answers_dir() -> Path:
     return get_settings().answers_dir
+
+
+def use_sqlite_storage() -> bool:
+    return get_settings().storage_method == "sqlite"
 
 
 def normalize_level_category(category: Any) -> str:
@@ -100,6 +106,11 @@ def split_level_answers(level: dict[str, Any]) -> tuple[dict[str, Any], list[Any
 
 
 def read_level_answers(level: dict[str, Any]) -> list[Any]:
+    if use_sqlite_storage():
+        return level_db.read_answers(
+            normalize_level_category(level.get("sourceCategory", "stable")),
+            str(level.get("id") or ""),
+        )
     answer_path = get_answer_file_path(level)
     try:
         payload = json.loads(answer_path.read_text(encoding="utf-8"))
@@ -115,11 +126,22 @@ def read_level_with_answers(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def write_answer_file(level: dict[str, Any], answers: list[Any]) -> None:
+    if use_sqlite_storage():
+        level_db.write_answers(
+            normalize_level_category(level.get("sourceCategory", "stable")),
+            str(level.get("id") or ""),
+            answers,
+        )
+        return
     answer_path = get_answer_file_path(level)
     write_json_file(answer_path, {"levelId": level.get("id"), "answers": answers})
 
 
 def move_answer_file(source_level_id: str, source_category: str, target_level_id: str, target_category: str) -> None:
+    if use_sqlite_storage():
+        answers = level_db.read_answers(normalize_level_category(source_category), source_level_id)
+        level_db.write_answers(normalize_level_category(target_category), target_level_id, answers)
+        return
     source_path = get_answers_dir() / normalize_level_category(source_category) / f"{source_level_id}.json"
     target_path = get_answers_dir() / normalize_level_category(target_category) / f"{target_level_id}.json"
     if not source_path.is_file():
@@ -137,6 +159,8 @@ def move_answer_file(source_level_id: str, source_category: str, target_level_id
 
 
 def sync_answer_level_id(level_id: str, category: str) -> None:
+    if use_sqlite_storage():
+        return
     answer_path = get_answers_dir() / normalize_level_category(category) / f"{level_id}.json"
     if not answer_path.is_file():
         return
@@ -189,6 +213,8 @@ def is_level_json_file(file_path: Path) -> bool:
 
 
 def read_levels() -> list[dict[str, Any]]:
+    if use_sqlite_storage():
+        return level_db.read_levels()
     levels_dir = get_levels_dir()
     levels_dir.mkdir(parents=True, exist_ok=True)
     return [dict(level) for level in get_cached_levels()]
@@ -196,6 +222,8 @@ def read_levels() -> list[dict[str, Any]]:
 
 def read_level_index() -> list[dict[str, Any]]:
     """读取关卡目录，只返回列表展示和筛选所需的轻量字段。"""
+    if use_sqlite_storage():
+        return level_db.read_level_index()
     return [dict(level) for level in read_level_index_cache()]
 
 
@@ -203,6 +231,11 @@ def read_level_by_id(level_id: str) -> dict[str, Any]:
     """按 id 读取完整关卡内容。"""
     if not LEVEL_ID_RE.match(level_id):
         raise http_error(404, "Not Found", f"找不到关卡 {level_id}")
+    if use_sqlite_storage():
+        level = level_db.read_level_by_id(level_id)
+        if not level:
+            raise http_error(404, "Not Found", f"找不到关卡 {level_id}")
+        return level
     file_path = find_level_file_path(level_id)
     if not file_path:
         raise http_error(404, "Not Found", f"找不到关卡 {level_id}")
@@ -211,6 +244,11 @@ def read_level_by_id(level_id: str) -> dict[str, Any]:
 
 def read_level_by_source_path(source_path: str) -> dict[str, Any]:
     """按目录中的相对路径读取完整关卡内容。"""
+    if use_sqlite_storage():
+        level = level_db.read_level_by_source_path(source_path)
+        if not level:
+            raise http_error(404, "Not Found", f"找不到关卡 {source_path}")
+        return level
     file_path = safe_child_path(get_levels_dir(), source_path)
     if not file_path.is_file() or not is_level_json_file(file_path):
         raise http_error(404, "Not Found", f"找不到关卡 {source_path}")
@@ -246,13 +284,17 @@ def get_cached_levels() -> list[dict[str, Any]]:
 
 def read_level_index_cache() -> list[dict[str, Any]]:
     global level_index_cache
+    global level_index_cache_signature
 
-    if level_index_cache is not None:
+    index_file = get_settings().levels_index_file
+    index_signature = create_file_signature(index_file)
+    if level_index_cache is not None and level_index_cache_signature == index_signature:
         return level_index_cache
 
-    cached_index = read_levels_index_file(get_settings().levels_index_file)
+    cached_index = read_levels_index_file(index_file)
     if is_valid_level_index_cache(cached_index):
         level_index_cache = cached_index["levels"]
+        level_index_cache_signature = index_signature
         return level_index_cache
 
     return refresh_level_index()
@@ -285,11 +327,19 @@ def write_level_index_file(index_file: Path, levels: list[dict[str, Any]]) -> No
 
 def refresh_level_index() -> list[dict[str, Any]]:
     global level_index_cache
+    global level_index_cache_signature
+
+    if use_sqlite_storage():
+        level_index_cache = level_db.read_level_index()
+        level_index_cache_signature = None
+        return [dict(level) for level in level_index_cache]
 
     files = get_sorted_level_files()
     levels = [create_level_index_item(read_level_file(file_path)) for file_path in files]
-    write_level_index_file(get_settings().levels_index_file, levels)
+    index_file = get_settings().levels_index_file
+    write_level_index_file(index_file, levels)
     level_index_cache = levels
+    level_index_cache_signature = create_file_signature(index_file)
     return levels
 
 
@@ -305,17 +355,26 @@ def invalidate_levels_cache() -> None:
 
 def invalidate_level_index_cache() -> None:
     global level_index_cache
+    global level_index_cache_signature
 
     level_index_cache = None
+    level_index_cache_signature = None
 
 
 def refresh_level_storage_indexes() -> None:
     invalidate_levels_cache()
+    if use_sqlite_storage():
+        invalidate_level_index_cache()
+        return
     refresh_level_index()
 
 
 def refresh_all_level_indexes() -> None:
     invalidate_levels_cache()
+    if use_sqlite_storage():
+        level_db.sync_hashes(create_level_hash)
+        invalidate_level_index_cache()
+        return
     refresh_levels_hash_index()
     refresh_level_index()
 
@@ -327,6 +386,14 @@ def create_level_file_signature(file_path: Path) -> tuple[str, int, int]:
         stat.st_mtime_ns,
         stat.st_size,
     )
+
+
+def create_file_signature(file_path: Path) -> tuple[int, int] | None:
+    try:
+        stat = file_path.stat()
+    except OSError:
+        return None
+    return (stat.st_mtime_ns, stat.st_size)
 
 
 def read_level_file(file_path: Path) -> dict[str, Any]:
@@ -353,6 +420,9 @@ def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def save_level(level: dict[str, Any]) -> dict[str, Any]:
+    if use_sqlite_storage():
+        return save_level_to_sqlite(level)
+
     alpha_levels_dir().mkdir(parents=True, exist_ok=True)
     if level.get("saveMode") == "update":
         return update_existing_level(level)
@@ -386,6 +456,9 @@ def save_level(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
+    if use_sqlite_storage():
+        return update_existing_level_in_sqlite(level)
+
     level_id = str(level.get("id") or "")
     if not LEVEL_ID_RE.match(level_id):
         raise http_error(500, "Error", "只能修改已有的关卡")
@@ -441,6 +514,9 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
+    if use_sqlite_storage():
+        return review_test_level_in_sqlite(review)
+
     level_id = str(review.get("levelId") or "")
     source_path_value = str(review.get("sourcePath") or "")
     action = str(review.get("action") or "")
@@ -488,8 +564,135 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def save_level_to_sqlite(level: dict[str, Any]) -> dict[str, Any]:
+    if level.get("saveMode") == "update":
+        return update_existing_level_in_sqlite(level)
+
+    saved_level, answers = split_level_answers(level)
+    saved_level.pop("saveMode", None)
+    saved_level = normalize_level_for_storage(saved_level)
+    saved_level["difficulty"] = normalize_level_difficulty(saved_level.get("difficulty", 1))
+    level_id = get_next_level_id(saved_level["difficulty"], "alpha")
+
+    level_hash = create_level_hash(saved_level)
+    duplicate_level_ids = level_db.find_duplicate_level_ids(level_hash["hash"])
+    if duplicate_level_ids:
+        raise http_error(500, "Error", f"关卡重复：与 {', '.join(duplicate_level_ids)} 的地图结构和点对位置一致")
+
+    saved_level["id"] = level_id
+    if not saved_level.get("name") or saved_level.get("name") == "Custom Level":
+        saved_level["name"] = get_default_level_name(level_id, "alpha")
+    saved_level["levelHash"] = level_hash["hash"]
+    saved_level["levelCanonical"] = level_hash["canonical"]
+    level_db.write_level(saved_level, "alpha", answers)
+    refresh_level_storage_indexes()
+    return {
+        **strip_sqlite_private_fields(saved_level),
+        "sourcePath": f"alpha/{level_id}.json",
+        "sourceCategory": "alpha",
+    }
+
+
+def update_existing_level_in_sqlite(level: dict[str, Any]) -> dict[str, Any]:
+    level_id = str(level.get("id") or "")
+    if not LEVEL_ID_RE.match(level_id):
+        raise http_error(500, "Error", "只能修改已有的关卡")
+
+    current_level = level_db.read_level_by_id(level_id)
+    if not current_level:
+        raise http_error(500, "Error", f"找不到要修改的关卡 {level_id}")
+    source_category = normalize_level_category(current_level.get("sourceCategory", "stable"))
+    saved_level, answers = split_level_answers(level)
+    saved_level.pop("saveMode", None)
+    saved_level = normalize_level_for_storage(saved_level)
+    previous_difficulty = normalize_level_difficulty(current_level.get("difficulty", 1))
+    next_difficulty = normalize_level_difficulty(saved_level.get("difficulty", previous_difficulty))
+    target_level_id = level_id
+    should_rename_stable_level = source_category == "stable" and next_difficulty != previous_difficulty
+    if should_rename_stable_level:
+        target_level_id = get_next_level_id(next_difficulty, "stable")
+
+    saved_level["id"] = target_level_id
+    saved_level["difficulty"] = next_difficulty
+    if should_rename_stable_level:
+        saved_level["name"] = get_default_level_name(target_level_id, source_category)
+    else:
+        saved_level["name"] = current_level.get("name", get_default_level_name(target_level_id, source_category))
+
+    level_hash = create_level_hash(saved_level)
+    duplicate_level_ids = level_db.find_duplicate_level_ids(level_hash["hash"], {level_id, saved_level["id"]})
+    if duplicate_level_ids:
+        raise http_error(500, "Error", f"关卡重复：与 {', '.join(duplicate_level_ids)} 的地图结构和点对位置一致")
+
+    saved_level["levelHash"] = level_hash["hash"]
+    saved_level["levelCanonical"] = level_hash["canonical"]
+    if target_level_id != level_id:
+        level_db.move_level(source_category, level_id, source_category, saved_level)
+        level_db.write_answers(source_category, target_level_id, answers)
+    else:
+        level_db.write_level(saved_level, source_category, answers)
+    refresh_level_storage_indexes()
+    return {
+        **strip_sqlite_private_fields(saved_level),
+        "sourcePath": f"{source_category}/{target_level_id}.json",
+        "sourceCategory": source_category,
+    }
+
+
+def review_test_level_in_sqlite(review: dict[str, Any]) -> dict[str, Any]:
+    level_id = str(review.get("levelId") or "")
+    source_path_value = str(review.get("sourcePath") or "")
+    action = str(review.get("action") or "")
+    if action not in {"include", "reject"}:
+        raise http_error(400, "Bad Request", "未知的测试关卡处理动作")
+
+    source_level = level_db.read_level_by_source_path(source_path_value) if source_path_value else level_db.read_level_by_id(level_id)
+    if not source_level:
+        raise http_error(404, "Not Found", f"找不到测试关卡 {source_path_value or level_id}")
+    if normalize_level_category(source_level.get("sourceCategory")) != "alpha":
+        raise http_error(400, "Bad Request", "只能处理测试版关卡")
+
+    source_level_id = str(source_level.get("id") or level_id)
+    difficulty = normalize_level_difficulty(source_level.get("difficulty", 1))
+    target_category = "stable" if action == "include" else "removed"
+    target_level_id = get_next_level_id(difficulty, "stable") if action == "include" else get_removed_level_id(source_level_id)
+
+    moved_level = normalize_level_for_storage(source_level)
+    moved_level["id"] = target_level_id
+    moved_level["difficulty"] = difficulty
+    moved_level["name"] = get_default_level_name(target_level_id, target_category)
+    level_hash = create_level_hash(moved_level)
+    moved_level["levelHash"] = level_hash["hash"]
+    moved_level["levelCanonical"] = level_hash["canonical"]
+
+    level_db.move_level("alpha", source_level_id, target_category, moved_level)
+    refresh_all_level_indexes()
+    return {
+        **strip_sqlite_private_fields(moved_level),
+        "sourcePath": f"{target_category}/{target_level_id}.json",
+        "sourceCategory": target_category,
+    }
+
+
+def strip_sqlite_private_fields(level: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(level)
+    payload.pop("levelHash", None)
+    payload.pop("levelCanonical", None)
+    return payload
+
+
 def get_removed_level_id(source_level_id: str) -> str:
     target_level_id = source_level_id
+    if use_sqlite_storage():
+        if not level_db.level_exists("removed", target_level_id):
+            return target_level_id
+        stem = source_level_id[:-4] if source_level_id.endswith("-tmp") else source_level_id
+        for index in range(1, 1000):
+            candidate = f"{stem}-removed-{index}"
+            if not level_db.level_exists("removed", candidate):
+                return candidate
+        raise http_error(500, "Error", f"关卡 {source_level_id} 的待删编号已用尽")
+
     target_path = removed_levels_dir() / f"{target_level_id}.json"
     if not target_path.exists():
         return target_level_id
@@ -507,6 +710,13 @@ def write_json_file(file_path: Path, payload: dict[str, Any]) -> None:
 
 
 def refresh_levels_hash_index() -> dict[str, Any]:
+    if use_sqlite_storage():
+        level_db.sync_hashes(create_level_hash)
+        index = create_empty_levels_hash_index()
+        for level in read_levels():
+            add_level_hash_to_index(index, level["id"], create_level_hash(level))
+        return index
+
     index = create_empty_levels_hash_index()
     for level in read_levels():
         add_level_hash_to_index(index, level["id"], create_level_hash(level))
@@ -517,6 +727,12 @@ def refresh_levels_hash_index() -> dict[str, Any]:
 def get_next_level_id(difficulty: Any, category: str) -> str:
     normalized_difficulty = normalize_level_difficulty(difficulty)
     normalized_category = normalize_level_category(category)
+    if use_sqlite_storage():
+        try:
+            return level_db.get_next_level_id(normalized_difficulty, normalized_category)
+        except RuntimeError as error:
+            raise http_error(500, "Error", str(error)) from error
+
     is_temporary = normalized_category != "stable"
     directories = [stable_levels_dir()] if not is_temporary else [alpha_levels_dir(), removed_levels_dir()]
     used_numbers: set[int] = set()
@@ -540,6 +756,12 @@ def get_next_level_id(difficulty: Any, category: str) -> str:
 
 
 def find_level_file_path(level_id: str) -> Path | None:
+    if use_sqlite_storage():
+        level = level_db.read_level_by_id(level_id)
+        if not level:
+            return None
+        return get_levels_dir() / normalize_path(level.get("sourcePath", ""))
+
     for file_path in list_files(get_levels_dir()):
         if file_path.name == f"{level_id}.json":
             return file_path

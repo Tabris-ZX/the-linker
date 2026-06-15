@@ -280,6 +280,28 @@ export const computed = {
     },
 
     /**
+     * 获取当前关卡可通行邻接表，避免拖拽时反复扫描全图节点。
+     *
+     * @returns {Map<string, Array<[number, number]>>} 节点 key 到相邻节点列表的映射。
+     */
+    boardNeighborMap() {
+      const map = new Map();
+      if (!this.currentLevel) return map;
+      this.availableEdgeSet.forEach((edge) => {
+        const points = pointsFromEdgeKey(edge);
+        if (points.length !== 2) return;
+        const [from, to] = points;
+        const fromKey = keyOf(from[0], from[1]);
+        const toKey = keyOf(to[0], to[1]);
+        if (!map.has(fromKey)) map.set(fromKey, []);
+        if (!map.has(toKey)) map.set(toKey, []);
+        map.get(fromKey).push(to);
+        map.get(toKey).push(from);
+      });
+      return map;
+    },
+
+    /**
      * 获取当前关卡节点的渲染坐标缓存，用于指针吸附。
      *
      * @returns {Array<{ x: number, y: number, renderX: number, renderY: number }>} 节点坐标列表。
