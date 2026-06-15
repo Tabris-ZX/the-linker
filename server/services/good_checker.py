@@ -79,6 +79,7 @@ def paths_from_answers(
     pair_specs: list[dict[str, str]],
     graph: dict[str, set[str]],
 ) -> dict[str, list[str]]:
+    """把答案边集合还原成每个点对对应的完整路径。"""
     pair_ids = {pair["id"] for pair in pair_specs}
     answer_graphs: dict[str, dict[str, set[str]]] = {pair_id: {} for pair_id in pair_ids}
 
@@ -103,6 +104,7 @@ def paths_from_answers(
 
 
 def trace_answer_path(pair: dict[str, str], graph: dict[str, set[str]]) -> list[str]:
+    """沿答案图还原单个点对的连续路径。"""
     start = pair["start"]
     end = pair["end"]
     if start not in graph or end not in graph:
@@ -142,6 +144,7 @@ def shortest_distance(
     stop_below_length: int,
     deadline: float,
 ) -> int:
+    """在允许节点集合内寻找最短可通行距离。"""
     queue: list[tuple[str, int]] = [(start, 0)]
     seen = {start}
     cursor = 0
@@ -163,6 +166,7 @@ def shortest_distance(
 
 
 def build_pair_specs(level: dict[str, Any], graph: dict[str, set[str]]) -> list[dict[str, str]]:
+    """为每个点对生成最小校验所需的起点、终点信息。"""
     endpoint_owner: dict[str, str] = {}
     pair_specs = []
     for pair in level["pairs"]:
@@ -184,6 +188,7 @@ def build_pair_specs(level: dict[str, Any], graph: dict[str, set[str]]) -> list[
 
 
 def build_playable_graph(level: dict[str, Any]) -> dict[str, set[str]]:
+    """根据关卡尺寸和移除边构建可通行图。"""
     removed_edges = set(level.get("removedEdges", []))
     graph: dict[str, set[str]] = {}
     for edge in get_all_square_edges(level):
@@ -199,6 +204,7 @@ def build_playable_graph(level: dict[str, Any]) -> dict[str, set[str]]:
 
 
 def get_all_square_edges(level: dict[str, Any]) -> list[str]:
+    """列出方格关卡的全部候选边。"""
     width = int(level.get("width", 0))
     height = int(level.get("height", 0))
     edges = []
@@ -212,6 +218,7 @@ def get_all_square_edges(level: dict[str, Any]) -> list[str]:
 
 
 def normalize_level(level: dict[str, Any]) -> dict[str, Any]:
+    """把关卡输入规范化为好解检查所需的最小字段。"""
     grid_type = str(level.get("gridType", "square") or "square")
     if grid_type != "square":
         return {**level, "gridType": grid_type}
@@ -226,6 +233,7 @@ def normalize_level(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_pairs(pairs: Any) -> list[dict[str, Any]]:
+    """把关卡点对数组规范为可校验结构。"""
     if not isinstance(pairs, list):
         raise http_error(400, "Bad Request", "pairs 必须是数组")
     normalized = []
@@ -238,11 +246,13 @@ def normalize_pairs(pairs: Any) -> list[dict[str, Any]]:
 
 
 def normalize_edge(edge: Any) -> str:
+    """把边规范成稳定的字符串键。"""
     points = points_from_edge_key(str(edge))
     return edge_key(points[0], points[1]) if points else ""
 
 
 def points_from_edge_key(edge: str) -> list[list[int | float]] | None:
+    """把边键解析为两个点坐标。"""
     points = [normalize_point(part) for part in str(edge).split("|")]
     if len(points) != 2 or any(point is None for point in points):
         return None
@@ -250,6 +260,7 @@ def points_from_edge_key(edge: str) -> list[list[int | float]] | None:
 
 
 def normalize_point(point: Any) -> list[int | float] | None:
+    """把点坐标规范为数值数组。"""
     if isinstance(point, str):
         parts = point.split(",")
     elif isinstance(point, list | tuple):
@@ -265,12 +276,14 @@ def normalize_point(point: Any) -> list[int | float] | None:
 
 
 def edge_key(left: list[Any], right: list[Any]) -> str:
+    """生成无方向的边键。"""
     left_key = point_key(left)
     right_key = point_key(right)
     return f"{left_key}|{right_key}" if left_key < right_key else f"{right_key}|{left_key}"
 
 
 def point_key(point: list[Any]) -> str:
+    """生成点的字符串键。"""
     return f"{format_number(point[0])},{format_number(point[1])}"
 
 

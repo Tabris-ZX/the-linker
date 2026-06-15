@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api", tags=["levels"])
 
 
 def get_visible_levels(request: Request, levels: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """按访问权限过滤关卡目录。"""
     has_developer_token = bool(get_bearer_token(request))
     if has_developer_token:
         authorize_developer_request(request)

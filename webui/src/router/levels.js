@@ -84,6 +84,12 @@ export async function saveLevelRequest(level, options = {}) {
   throw new Error(lastError.message ?? "保存失败，请确认后端服务正在运行");
 }
 
+/**
+ * 调用后端生成器创建一张临时关卡。
+ *
+ * @param {object} payload 生成参数。
+ * @returns {Promise<object>} 生成器返回的关卡和答案。
+ */
 export async function generateLevelRequest(payload) {
   const response = await fetch("/api/levels/generate", {
     method: "POST",
@@ -98,6 +104,12 @@ export async function generateLevelRequest(payload) {
   throw new Error(errorPayload.message ?? "生成失败，请确认后端服务正在运行");
 }
 
+/**
+ * 调用后端好解检查器验证编辑器答案。
+ *
+ * @param {object} payload 包含 map、answers 和 options 的校验请求。
+ * @returns {Promise<object>} 检查结果。
+ */
 export async function checkLevelGoodRequest(payload) {
   const response = await fetch("/api/levels/check-good", {
     method: "POST",
@@ -146,14 +158,22 @@ export async function reviewLevelRequest(level, action) {
   throw new Error(lastError.message ?? "处理失败，请确认后端服务正在运行");
 }
 
+/** 返回关卡保存 API 地址。 */
 function getLevelApiUrl() {
   return "/api/levels";
 }
 
+/** 返回关卡审核 API 地址列表。 */
 function getLevelReviewApiUrls() {
   return ["/api/levels/review"];
 }
 
+/**
+ * 验证开发者 token 是否可用。
+ *
+ * @param {string} token 待验证 token。
+ * @returns {Promise<boolean>} 验证通过时为 true。
+ */
 export async function verifyDeveloperToken(token) {
   const response = await fetch("/api/developer/verify", {
     method: "POST",
@@ -166,6 +186,12 @@ export async function verifyDeveloperToken(token) {
   throw new Error(payload.message ?? "开发者 token 无效");
 }
 
+/**
+ * 上报在线心跳。
+ *
+ * @param {string} [clientId=""] 当前客户端 id。
+ * @returns {Promise<object>} 心跳结果。
+ */
 export async function sendPresenceHeartbeat(clientId = "") {
   const response = await fetch("/api/stats/presence", {
     method: "POST",
@@ -177,6 +203,11 @@ export async function sendPresenceHeartbeat(clientId = "") {
   throw new Error(payload.message ?? "在线心跳失败");
 }
 
+/**
+ * 获取在线人数统计。
+ *
+ * @returns {Promise<object>} 在线统计。
+ */
 export async function fetchPresenceStats() {
   const response = await fetch(withCacheBuster("/api/stats/presence"), {
     cache: "no-cache",
@@ -187,19 +218,27 @@ export async function fetchPresenceStats() {
   throw new Error(payload.message ?? "在线人数获取失败");
 }
 
+/** 读取当前内存中的开发者 token。 */
 export function getDeveloperToken() {
   return developerToken;
 }
 
+/**
+ * 设置当前请求使用的开发者 token。
+ *
+ * @param {string} token 开发者 token。
+ */
 export function setDeveloperToken(token) {
   developerToken = token;
 }
 
+/** 根据当前 token 构造鉴权请求头。 */
 function getDeveloperAuthHeaders() {
   const token = getDeveloperToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** 给 GET 请求 URL 添加时间戳，绕过浏览器缓存。 */
 function withCacheBuster(url) {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}_=${Date.now()}`;

@@ -16,6 +16,7 @@ SCHEMA_VERSION = 2
 
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
+    """打开数据库连接并自动处理事务提交或回滚。"""
     database_file = get_settings().sqlite_database_file
     database_file.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(database_file)
@@ -33,6 +34,7 @@ def connect() -> Iterator[sqlite3.Connection]:
 
 
 def ensure_schema(connection: sqlite3.Connection) -> None:
+    """创建或升级数据库表结构。"""
     connection.execute("PRAGMA foreign_keys = OFF")
     connection.executescript(
         """
@@ -94,6 +96,7 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
 
 
 def migrate_existing_levels_table(connection: sqlite3.Connection) -> None:
+    """将旧版 levels 表迁移为当前结构。"""
     columns = {row["name"] for row in connection.execute("PRAGMA table_info(levels)").fetchall()}
     required = {
         "id",
@@ -139,6 +142,7 @@ def migrate_existing_levels_table(connection: sqlite3.Connection) -> None:
 
 
 def migrate_existing_answers_table(connection: sqlite3.Connection) -> None:
+    """将旧版 answers 表迁移为当前结构。"""
     rows = connection.execute("PRAGMA table_info(answers)").fetchall()
     columns = {row["name"] for row in rows}
     primary_key_columns = [row["name"] for row in sorted(rows, key=lambda item: item["pk"]) if row["pk"]]
@@ -172,6 +176,7 @@ def migrate_existing_answers_table(connection: sqlite3.Connection) -> None:
 
 
 def read_level_index() -> list[dict[str, Any]]:
+    """读取用于列表展示的关卡索引。"""
     with connect() as connection:
         rows = connection.execute(
             """
@@ -186,6 +191,7 @@ def read_level_index() -> list[dict[str, Any]]:
 
 
 def read_levels() -> list[dict[str, Any]]:
+    """读取全部关卡完整记录。"""
     with connect() as connection:
         rows = connection.execute(
             """
@@ -200,6 +206,7 @@ def read_levels() -> list[dict[str, Any]]:
 
 
 def read_level_by_id(level_id: str) -> dict[str, Any] | None:
+    """按关卡 id 读取首个匹配记录。"""
     with connect() as connection:
         row = connection.execute(
             """
@@ -215,6 +222,7 @@ def read_level_by_id(level_id: str) -> dict[str, Any] | None:
 
 
 def read_level_by_source_path(source_path: str) -> dict[str, Any] | None:
+    """按 sourcePath 读取关卡。"""
     category, level_id = split_source_path(source_path)
     if not category or not level_id:
         return None
@@ -227,6 +235,7 @@ def read_level_by_source_path(source_path: str) -> dict[str, Any] | None:
 
 
 def read_answers(category: str, level_id: str) -> list[Any]:
+    """读取某个关卡的答案数组。"""
     with connect() as connection:
         row = connection.execute(
             "SELECT answer FROM answers WHERE level_status = ? AND level_id = ?",
@@ -238,6 +247,7 @@ def read_answers(category: str, level_id: str) -> list[Any]:
 
 
 def write_level(level: dict[str, Any], category: str, answers: list[Any] | None = None) -> None:
+    """写入或更新关卡及其答案。"""
     normalized_category = normalize_category(category)
     now = utc_now()
     payload = storage_payload(level)
@@ -287,11 +297,13 @@ def write_level(level: dict[str, Any], category: str, answers: list[Any] | None 
 
 
 def write_answers(category: str, level_id: str, answers: list[Any]) -> None:
+    """单独写入某个关卡的答案。"""
     with connect() as connection:
         write_answers_with_connection(connection, normalize_category(category), level_id, answers, utc_now())
 
 
 def move_level(source_category: str, source_id: str, target_category: str, target_level: dict[str, Any]) -> None:
+    """把关卡从一个分类移动到另一个分类。"""
     source_category = normalize_category(source_category)
     target_category = normalize_category(target_category)
     answers = read_answers(source_category, source_id)
@@ -308,6 +320,7 @@ def move_level(source_category: str, source_id: str, target_category: str, targe
 
 
 def delete_level(category: str, level_id: str) -> None:
+    """删除指定分类下的关卡。"""
     with connect() as connection:
         connection.execute(
             "DELETE FROM levels WHERE status = ? AND id = ?",
@@ -316,6 +329,7 @@ def delete_level(category: str, level_id: str) -> None:
 
 
 def level_exists(category: str, level_id: str) -> bool:
+    """判断关卡是否存在。"""
     with connect() as connection:
         row = connection.execute(
             "SELECT 1 FROM levels WHERE status = ? AND id = ?",
@@ -325,6 +339,7 @@ def level_exists(category: str, level_id: str) -> bool:
 
 
 def find_duplicate_level_ids(level_hash: str, exclude_ids: set[str] | None = None) -> list[str]:
+    """查找具有相同哈希的关卡 id。"""
     exclude_ids = exclude_ids or set()
     with connect() as connection:
         rows = connection.execute(
@@ -335,6 +350,7 @@ def find_duplicate_level_ids(level_hash: str, exclude_ids: set[str] | None = Non
 
 
 def get_next_level_id(difficulty: int, category: str) -> str:
+    """生成下一个可用的关卡 id。"""
     normalized_category = normalize_category(category)
     is_temporary = normalized_category != "stable"
     categories = ("alpha", "removed") if is_temporary else ("stable",)
@@ -360,6 +376,7 @@ def get_next_level_id(difficulty: int, category: str) -> str:
 
 
 def import_from_files(levels_dir: Path, answers_dir: Path, *, replace: bool = False) -> dict[str, int]:
+    """从文件系统导入关卡和答案到数据库。"""
     counts = {"levels": 0, "answers": 0}
     with connect() as connection:
         if replace:
@@ -381,6 +398,7 @@ def import_from_files(levels_dir: Path, answers_dir: Path, *, replace: bool = Fa
 
 
 def sync_hashes(create_level_hash: Any) -> None:
+    """重新计算并回写所有关卡哈希。"""
     levels = read_levels()
     with connect() as connection:
         for level in levels:
@@ -408,6 +426,7 @@ def write_answers_with_connection(
     answers: list[Any],
     updated_at: str,
 ) -> None:
+    """在已有数据库连接里写入答案。"""
     connection.execute(
         """
         INSERT INTO answers (level_status, level_id, answer, updated_at)
@@ -421,6 +440,7 @@ def write_answers_with_connection(
 
 
 def level_from_row(row: sqlite3.Row | None) -> dict[str, Any]:
+    """把数据库行转换为关卡字典。"""
     if row is None:
         return {}
     payload = json_obj(row["payload"])
@@ -445,6 +465,7 @@ def level_from_row(row: sqlite3.Row | None) -> dict[str, Any]:
 
 
 def level_index_item_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    """把数据库行转换为关卡索引项。"""
     return {
         "id": str(row["id"]),
         "name": row["name"],
@@ -455,6 +476,7 @@ def level_index_item_from_row(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def storage_payload(level: dict[str, Any]) -> dict[str, Any]:
+    """移除不应该落库的运行时字段。"""
     payload = dict(level)
     for key in (
         "sourcePath",
@@ -468,6 +490,7 @@ def storage_payload(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def split_source_path(value: str) -> tuple[str, str]:
+    """把 sourcePath 拆成分类和文件名。"""
     normalized = normalize_path(value)
     category, _, file_name = normalized.partition("/")
     if category not in CATEGORIES or not file_name.endswith(".json"):
@@ -476,19 +499,23 @@ def split_source_path(value: str) -> tuple[str, str]:
 
 
 def source_path(category: str, level_id: str) -> str:
+    """拼出标准 sourcePath。"""
     return f"{normalize_category(category)}/{level_id}.json"
 
 
 def normalize_category(category: Any) -> str:
+    """把分类规范为稳定值。"""
     value = str(category or "stable")
     return value if value in CATEGORIES else "stable"
 
 
 def json_text(value: Any) -> str:
+    """把值序列化为紧凑 JSON 文本。"""
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
 def json_list(value: Any) -> list[Any]:
+    """把任意 JSON 内容读取为列表。"""
     if isinstance(value, list):
         return value
     try:
@@ -499,6 +526,7 @@ def json_list(value: Any) -> list[Any]:
 
 
 def json_obj(value: Any) -> dict[str, Any]:
+    """把任意 JSON 内容读取为对象。"""
     if isinstance(value, dict):
         return value
     try:
@@ -509,6 +537,7 @@ def json_obj(value: Any) -> dict[str, Any]:
 
 
 def nullable_int(value: Any) -> int | None:
+    """把可空值转换成整数。"""
     if value is None or value == "":
         return None
     try:
@@ -518,4 +547,5 @@ def nullable_int(value: Any) -> int | None:
 
 
 def utc_now() -> str:
+    """返回当前 UTC 时间的 ISO 字符串。"""
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")

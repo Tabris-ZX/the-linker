@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
-import { isAdjacent, keyOf } from "../../webui/src/utils/geometry.js";
+import { isAdjacent, keyOf } from "../../../webui/src/utils/geometry.js";
 
 export function buildSquareDifficultyPackJobs(config) {
   const specs = [1, 2, 3, 4, 5].map((difficulty) => ({

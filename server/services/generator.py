@@ -12,11 +12,12 @@ from server.services.levels import normalize_level_difficulty
 from server.utils.http import http_error
 
 GENERATOR_CONFIG_PATH = PROJECT_ROOT / "config" / "settings" / "generator.json"
-GENERATOR_SCRIPT_PATH = PROJECT_ROOT / "scripts" / "generate-alpha-levels.mjs"
+GENERATOR_SCRIPT_PATH = PROJECT_ROOT / "server" / "scripts" / "generate-alpha-levels.mjs"
 GRID_TYPES = {"square", "right-triangle", "equilateral-triangle"}
 
 
 def generate_editor_level(request_payload: dict[str, Any]) -> dict[str, Any]:
+    """按请求参数调用外部生成器并返回一张可编辑关卡。"""
     difficulty = normalize_level_difficulty(request_payload.get("difficulty", 1))
     grid_type = normalize_grid_type(request_payload.get("gridType", "square"))
     profiles = pick_generator_profiles(difficulty, grid_type)
@@ -32,6 +33,7 @@ def generate_editor_level(request_payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_generator_profile(request_payload: dict[str, Any], difficulty: int, grid_type: str, profile: dict[str, Any]) -> dict[str, Any]:
+    """使用单个生成配置运行 Node 生成脚本。"""
     pairs = clamp_int(profile.get("pairs", 5), 1, 16)
 
     args = [
@@ -90,6 +92,7 @@ def run_generator_profile(request_payload: dict[str, Any], difficulty: int, grid
 
 
 def pick_generator_profiles(difficulty: int, grid_type: str) -> list[dict[str, Any]]:
+    """从配置中读取并展开生成器 profile。"""
     config = read_generator_config()
     editor_config = config.get("editorGenerator", {})
     profiles = (
@@ -110,6 +113,7 @@ def pick_generator_profiles(difficulty: int, grid_type: str) -> list[dict[str, A
 
 
 def expand_generator_profile(editor_config: dict[str, Any], difficulty: int, grid_type: str, profile: dict[str, Any]) -> list[dict[str, Any]]:
+    """把一个 profile 按 repeat 展开成多个待执行配置。"""
     repeat = clamp_int(profile.get("repeat", 1), 1, 20)
     merged = merge_generator_profile(editor_config, difficulty, grid_type, profile)
     merged.pop("repeat", None)
@@ -117,6 +121,7 @@ def expand_generator_profile(editor_config: dict[str, Any], difficulty: int, gri
 
 
 def merge_generator_profile(editor_config: dict[str, Any], difficulty: int, grid_type: str, profile: dict[str, Any]) -> dict[str, Any]:
+    """合并全局默认值与单个 profile。"""
     return {
         **object_config(editor_config.get("defaults")),
         **profile,
@@ -124,6 +129,7 @@ def merge_generator_profile(editor_config: dict[str, Any], difficulty: int, grid
 
 
 def read_generator_config() -> dict[str, Any]:
+    """读取生成器配置文件。"""
     try:
         payload = json.loads(GENERATOR_CONFIG_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -132,10 +138,12 @@ def read_generator_config() -> dict[str, Any]:
 
 
 def object_config(value: Any) -> dict[str, Any]:
+    """把任意值归一化为字典。"""
     return value if isinstance(value, dict) else {}
 
 
 def normalize_grid_type(value: Any) -> str:
+    """校验生成器支持的格子类型。"""
     grid_type = str(value or "square")
     if grid_type not in GRID_TYPES:
         raise http_error(500, "Error", "不支持的格子类型")
@@ -143,6 +151,7 @@ def normalize_grid_type(value: Any) -> str:
 
 
 def clamp_int(value: Any, minimum: int, maximum: int) -> int:
+    """把数值约束在指定范围内。"""
     try:
         number = int(round(float(value)))
     except (TypeError, ValueError):
@@ -151,6 +160,7 @@ def clamp_int(value: Any, minimum: int, maximum: int) -> int:
 
 
 def summarize_generator_error(output: str) -> str:
+    """从生成器输出中提取更可读的错误信息。"""
     lines = [line.strip() for line in output.splitlines() if line.strip()]
     if not lines:
         return "生成失败"

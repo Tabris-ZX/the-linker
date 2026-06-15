@@ -3,8 +3,8 @@
     <section class="editor-panel app-card">
       <h2 id="editor-title">关卡编辑器</h2>
       <form class="editor-form" @submit.prevent="app.writeLevelTemplate()">
-        <div class="editor-form-group editor-form-group-main">
-          <div class="editor-form-group-title">基础信息</div>
+        <fieldset class="editor-form-group editor-form-group-main">
+          <legend>基础信息</legend>
           <div v-if="app.isDeveloperMode" class="editor-level-select">
             <label>
               修改关卡
@@ -28,9 +28,9 @@
               <option value="equilateral-triangle">正三角形</option>
             </select>
           </label>
-        </div>
-        <div class="editor-form-group editor-form-group-grid">
-          <div class="editor-form-group-title">地图参数</div>
+        </fieldset>
+        <fieldset class="editor-form-group editor-form-group-grid">
+          <legend>地图参数</legend>
           <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
             宽度
             <input v-model.number="app.editorState.width" type="number" min="2" max="19" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'width', app.syncEditorBounds)">
@@ -58,7 +58,7 @@
               <option value="edge">移除模式</option>
             </select>
           </label>
-        </div>
+        </fieldset>
         <fieldset v-if="app.isDeveloperMode" class="editor-generator-panel">
           <legend>生成器</legend>
           <label>

@@ -25,6 +25,11 @@ function createPresenceClientId() {
 }
 
 export const methods = {
+    /**
+     * 根据当前设备方向判断是否需要旋转棋盘显示。
+     *
+     * @returns {void}
+     */
     setupBoardOrientationWatcher() {
       if (!window.matchMedia) {
         this.prefersPortraitBoard = window.innerWidth < window.innerHeight;
@@ -42,6 +47,11 @@ export const methods = {
       this.boardOrientationQueryListener = update;
     },
 
+    /**
+     * 取消设备方向监听。
+     *
+     * @returns {void}
+     */
     stopBoardOrientationWatcher() {
       const query = this.boardOrientationQuery;
       const listener = this.boardOrientationQueryListener;
@@ -53,6 +63,12 @@ export const methods = {
       this.boardOrientationQueryListener = null;
     },
 
+    /**
+     * 将逻辑坐标转换为棋盘显示坐标。
+     *
+     * @param {[number, number]} point 逻辑坐标。
+     * @returns {[number, number]} 显示坐标。
+     */
     toBoardDisplayPoint(point) {
       if (!this.currentLevel) return point;
       const renderPoint = toRenderPoint(point, this.currentLevel.gridType);
@@ -64,6 +80,13 @@ export const methods = {
       ];
     },
 
+    /**
+     * 将棋盘显示坐标反推为逻辑坐标。
+     *
+     * @param {[number, number]} point 显示坐标。
+     * @param {object} [bounds] 网格边界。
+     * @returns {[number, number]} 逻辑坐标。
+     */
     fromBoardDisplayPoint(point, bounds = getGridBounds(this.currentLevel)) {
       if (!this.currentLevel) return point;
       const renderPoint = this.shouldRotateBoardDisplay
@@ -75,6 +98,12 @@ export const methods = {
       return fromRenderPoint(renderPoint, this.currentLevel.gridType);
     },
 
+    /**
+     * 把边字符串转成棋盘上的可渲染线段数据。
+     *
+     * @param {string} edge 边 key。
+     * @returns {{ key: string, attrs: object }|null} 渲染数据。
+     */
     edgeDisplayRenderData(edge) {
       const points = edge.split("|").map((key) => key.split(",").map(Number));
       if (points.length !== 2 || points.some((point) => point.some(Number.isNaN))) return null;
@@ -86,6 +115,11 @@ export const methods = {
       };
     },
 
+    /**
+     * 获取并缓存当前会话的 presence client id。
+     *
+     * @returns {string} client id。
+     */
     getPresenceClientId() {
       if (this.presenceClientId) return this.presenceClientId;
       try {
@@ -97,6 +131,11 @@ export const methods = {
       }
       return this.presenceClientId;
     },
+    /**
+     * 上报在线状态并同步开发者视图中的在线人数。
+     *
+     * @returns {Promise<void>}
+     */
     async refreshPresence() {
       try {
         const heartbeat = await sendPresenceHeartbeat(this.getPresenceClientId());
@@ -110,6 +149,7 @@ export const methods = {
       }
     },
 
+    /** 启动在线心跳轮询。 */
     startPresencePolling() {
       if (this.presenceIntervalId) {
         this.refreshPresence();
@@ -119,6 +159,7 @@ export const methods = {
       this.presenceIntervalId = window.setInterval(this.refreshPresence, 15000);
     },
 
+    /** 停止在线心跳轮询。 */
     stopPresencePolling() {
       if (!this.presenceIntervalId) return;
       window.clearInterval(this.presenceIntervalId);
@@ -138,7 +179,7 @@ export const methods = {
     },
 
     /**
-     * 后台初始化关卡目录，并自动打开上次关卡或第一关。
+     * 初始化关卡目录并打开首个可用关卡。
      *
      * @returns {Promise<void>}
      */
@@ -161,7 +202,7 @@ export const methods = {
     },
 
     /**
-     * 从关卡目录刷新关卡，并只加载首批关卡。
+     * 刷新关卡目录并合并已缓存的完整关卡。
      *
      * @returns {Promise<void>}
      */
@@ -211,6 +252,12 @@ export const methods = {
      *
      * @param {number} index 关卡索引。
      * @returns {Promise<object|null>} 完整关卡。
+     */
+    /**
+     * 按索引确保关卡详情已加载。
+     *
+     * @param {number} index 关卡索引。
+     * @returns {Promise<object|null>} 关卡详情。
      */
     async ensureLevelDetail(index) {
       const item = this.levels[index];

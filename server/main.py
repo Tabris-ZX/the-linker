@@ -38,6 +38,7 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 
 def append_vary_header(current_value: str | None, header_name: str) -> str:
+    """向 `Vary` 响应头追加字段，避免重复写入。"""
     values = [value.strip() for value in (current_value or "").split(",") if value.strip()]
     if not any(value.lower() == header_name.lower() for value in values):
         values.append(header_name)
@@ -45,6 +46,7 @@ def append_vary_header(current_value: str | None, header_name: str) -> str:
 
 
 def create_app() -> FastAPI:
+    """构建 FastAPI 应用并注册全局中间件、异常处理器和路由。"""
     app = FastAPI(title="The Linker Server")
     app.add_exception_handler(HTTPException, http_exception_handler)
 

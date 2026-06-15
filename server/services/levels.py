@@ -38,35 +38,43 @@ level_index_cache_signature: tuple[int, int] | None = None
 
 
 def get_levels_dir() -> Path:
+    """返回关卡根目录。"""
     return get_settings().levels_dir
 
 
 def stable_levels_dir() -> Path:
+    """返回正式关卡目录。"""
     return get_levels_dir() / "stable"
 
 
 def alpha_levels_dir() -> Path:
+    """返回测试关卡目录。"""
     return get_levels_dir() / "alpha"
 
 
 def removed_levels_dir() -> Path:
+    """返回被拒绝关卡目录。"""
     return get_levels_dir() / "removed"
 
 
 def get_answers_dir() -> Path:
+    """返回答案文件根目录。"""
     return get_settings().answers_dir
 
 
 def use_sqlite_storage() -> bool:
+    """判断当前是否使用 SQLite 存储。"""
     return get_settings().storage_method == "sqlite"
 
 
 def normalize_level_category(category: Any) -> str:
+    """把关卡分类规范为 stable、alpha 或 removed。"""
     value = str(category or "stable")
     return value if value in CATEGORY_ORDER else "stable"
 
 
 def normalize_level_difficulty(value: Any) -> int:
+    """把难度规范为 1 到 5 的整数。"""
     try:
         difficulty = int(round(float(value)))
     except (TypeError, ValueError):
@@ -75,19 +83,23 @@ def normalize_level_difficulty(value: Any) -> int:
 
 
 def is_temporary_level_id(level_id: str) -> bool:
+    """判断关卡 id 是否是测试关卡编号。"""
     return bool(TEMP_LEVEL_ID_RE.match(level_id))
 
 
 def is_stable_level_id(level_id: str) -> bool:
+    """判断关卡 id 是否是正式关卡编号。"""
     return bool(STABLE_LEVEL_ID_RE.match(level_id))
 
 
 def get_default_level_name(level_id: str, category: str = "stable") -> str:
+    """根据关卡 id 和分类生成默认展示名。"""
     prefix = "Lv" if normalize_level_category(category) == "stable" and is_stable_level_id(level_id) else "Imp"
     return f"{prefix} {level_id}"
 
 
 def get_answer_file_path(level: dict[str, Any] | None = None, *, source_path: str = "", level_id: str = "", category: str = "") -> Path:
+    """按关卡对象、sourcePath 或 id/category 计算答案文件路径。"""
     if source_path:
         normalized_source_path = normalize_path(source_path)
         directory, _, file_name = normalized_source_path.partition("/")
@@ -100,12 +112,14 @@ def get_answer_file_path(level: dict[str, Any] | None = None, *, source_path: st
 
 
 def split_level_answers(level: dict[str, Any]) -> tuple[dict[str, Any], list[Any]]:
+    """从关卡载荷中拆出 answers 字段。"""
     level_payload = dict(level)
     answers = level_payload.pop("answers", [])
     return level_payload, answers if isinstance(answers, list) else []
 
 
 def read_level_answers(level: dict[str, Any]) -> list[Any]:
+    """读取关卡答案，兼容文件和 SQLite 存储。"""
     if use_sqlite_storage():
         return level_db.read_answers(
             normalize_level_category(level.get("sourceCategory", "stable")),
@@ -122,10 +136,12 @@ def read_level_answers(level: dict[str, Any]) -> list[Any]:
 
 
 def read_level_with_answers(level: dict[str, Any]) -> dict[str, Any]:
+    """返回包含 answers 的关卡对象。"""
     return {**level, "answers": read_level_answers(level)}
 
 
 def write_answer_file(level: dict[str, Any], answers: list[Any]) -> None:
+    """写入关卡答案。"""
     if use_sqlite_storage():
         level_db.write_answers(
             normalize_level_category(level.get("sourceCategory", "stable")),
@@ -138,6 +154,7 @@ def write_answer_file(level: dict[str, Any], answers: list[Any]) -> None:
 
 
 def move_answer_file(source_level_id: str, source_category: str, target_level_id: str, target_category: str) -> None:
+    """移动答案文件并同步其中记录的关卡 id。"""
     if use_sqlite_storage():
         answers = level_db.read_answers(normalize_level_category(source_category), source_level_id)
         level_db.write_answers(normalize_level_category(target_category), target_level_id, answers)
@@ -159,6 +176,7 @@ def move_answer_file(source_level_id: str, source_category: str, target_level_id
 
 
 def sync_answer_level_id(level_id: str, category: str) -> None:
+    """修正答案文件中的 levelId。"""
     if use_sqlite_storage():
         return
     answer_path = get_answers_dir() / normalize_level_category(category) / f"{level_id}.json"
@@ -174,6 +192,7 @@ def sync_answer_level_id(level_id: str, category: str) -> None:
 
 
 def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
+    """移除只在运行时使用、不应保存的关卡字段。"""
     payload = dict(level)
     payload.pop("sourcePath", None)
     payload.pop("sourceCategory", None)
@@ -182,6 +201,7 @@ def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_level_for_storage(level: dict[str, Any]) -> dict[str, Any]:
+    """把关卡对象规范为可持久化结构。"""
     payload = strip_level_runtime_only_fields(level)
     pairs = payload.get("pairs")
     if isinstance(pairs, list):
@@ -197,6 +217,7 @@ def normalize_level_for_storage(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def list_files(directory: Path) -> list[Path]:
+    """递归列出目录下的普通文件。"""
     if not directory.exists():
         return []
     files: list[Path] = []
@@ -209,10 +230,12 @@ def list_files(directory: Path) -> list[Path]:
 
 
 def is_level_json_file(file_path: Path) -> bool:
+    """判断文件名是否符合关卡 JSON 命名规则。"""
     return file_path.suffix.lower() == ".json" and bool(LEVEL_FILE_RE.match(file_path.name))
 
 
 def read_levels() -> list[dict[str, Any]]:
+    """读取全部关卡完整内容。"""
     if use_sqlite_storage():
         return level_db.read_levels()
     levels_dir = get_levels_dir()
@@ -256,6 +279,7 @@ def read_level_by_source_path(source_path: str) -> dict[str, Any]:
 
 
 def get_sorted_level_files() -> list[Path]:
+    """按分类顺序和文件名列出关卡文件。"""
     levels_dir = get_levels_dir()
     levels_dir.mkdir(parents=True, exist_ok=True)
     return sorted(
@@ -265,6 +289,7 @@ def get_sorted_level_files() -> list[Path]:
 
 
 def get_cached_levels() -> list[dict[str, Any]]:
+    """读取带短 TTL 和文件签名校验的关卡缓存。"""
     global levels_cache
     global levels_cache_checked_at
     global levels_cache_signature
@@ -283,6 +308,7 @@ def get_cached_levels() -> list[dict[str, Any]]:
 
 
 def read_level_index_cache() -> list[dict[str, Any]]:
+    """读取内存或磁盘中的关卡目录缓存。"""
     global level_index_cache
     global level_index_cache_signature
 
@@ -301,6 +327,7 @@ def read_level_index_cache() -> list[dict[str, Any]]:
 
 
 def read_levels_index_file(index_file: Path) -> dict[str, Any] | None:
+    """读取关卡目录索引文件。"""
     try:
         payload = json.loads(index_file.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -309,6 +336,7 @@ def read_levels_index_file(index_file: Path) -> dict[str, Any] | None:
 
 
 def is_valid_level_index_cache(payload: dict[str, Any] | None) -> bool:
+    """校验关卡目录索引文件版本和结构。"""
     if payload is None:
         return False
     if payload.get("version") != LEVEL_INDEX_VERSION:
@@ -317,6 +345,7 @@ def is_valid_level_index_cache(payload: dict[str, Any] | None) -> bool:
 
 
 def write_level_index_file(index_file: Path, levels: list[dict[str, Any]]) -> None:
+    """把轻量关卡目录写入索引文件。"""
     payload = {
         "version": LEVEL_INDEX_VERSION,
         "updatedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
@@ -326,6 +355,7 @@ def write_level_index_file(index_file: Path, levels: list[dict[str, Any]]) -> No
 
 
 def refresh_level_index() -> list[dict[str, Any]]:
+    """重新扫描关卡并刷新目录索引。"""
     global level_index_cache
     global level_index_cache_signature
 
@@ -344,6 +374,7 @@ def refresh_level_index() -> list[dict[str, Any]]:
 
 
 def invalidate_levels_cache() -> None:
+    """清空完整关卡内存缓存。"""
     global levels_cache
     global levels_cache_checked_at
     global levels_cache_signature
@@ -354,6 +385,7 @@ def invalidate_levels_cache() -> None:
 
 
 def invalidate_level_index_cache() -> None:
+    """清空关卡目录内存缓存。"""
     global level_index_cache
     global level_index_cache_signature
 
@@ -362,6 +394,7 @@ def invalidate_level_index_cache() -> None:
 
 
 def refresh_level_storage_indexes() -> None:
+    """在关卡变更后刷新必要的存储索引。"""
     invalidate_levels_cache()
     if use_sqlite_storage():
         invalidate_level_index_cache()
@@ -370,6 +403,7 @@ def refresh_level_storage_indexes() -> None:
 
 
 def refresh_all_level_indexes() -> None:
+    """刷新关卡目录和哈希索引。"""
     invalidate_levels_cache()
     if use_sqlite_storage():
         level_db.sync_hashes(create_level_hash)
@@ -380,6 +414,7 @@ def refresh_all_level_indexes() -> None:
 
 
 def create_level_file_signature(file_path: Path) -> tuple[str, int, int]:
+    """生成用于缓存失效判断的关卡文件签名。"""
     stat = file_path.stat()
     return (
         normalize_path(file_path.relative_to(get_levels_dir())),
@@ -389,6 +424,7 @@ def create_level_file_signature(file_path: Path) -> tuple[str, int, int]:
 
 
 def create_file_signature(file_path: Path) -> tuple[int, int] | None:
+    """生成普通文件签名，文件不存在时返回 None。"""
     try:
         stat = file_path.stat()
     except OSError:
@@ -397,6 +433,7 @@ def create_file_signature(file_path: Path) -> tuple[int, int] | None:
 
 
 def read_level_file(file_path: Path) -> dict[str, Any]:
+    """读取单个关卡文件并补充来源字段。"""
     levels_dir = get_levels_dir()
     level = json.loads(file_path.read_text(encoding="utf-8"))
     level.pop("answers", None)
@@ -409,6 +446,7 @@ def read_level_file(file_path: Path) -> dict[str, Any]:
 
 
 def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
+    """从完整关卡提取目录索引项。"""
     item = {
         "id": level.get("id"),
         "name": level.get("name"),
@@ -420,6 +458,7 @@ def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def save_level(level: dict[str, Any]) -> dict[str, Any]:
+    """保存新关卡或更新已有关卡。"""
     if use_sqlite_storage():
         return save_level_to_sqlite(level)
 
@@ -456,6 +495,7 @@ def save_level(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
+    """更新文件存储中的已有关卡。"""
     if use_sqlite_storage():
         return update_existing_level_in_sqlite(level)
 
@@ -514,6 +554,7 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
+    """审核文件存储中的测试关卡，收录或移入 removed。"""
     if use_sqlite_storage():
         return review_test_level_in_sqlite(review)
 
@@ -565,6 +606,7 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
 
 
 def save_level_to_sqlite(level: dict[str, Any]) -> dict[str, Any]:
+    """保存新关卡到 SQLite。"""
     if level.get("saveMode") == "update":
         return update_existing_level_in_sqlite(level)
 
@@ -594,6 +636,7 @@ def save_level_to_sqlite(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_existing_level_in_sqlite(level: dict[str, Any]) -> dict[str, Any]:
+    """更新 SQLite 中的已有关卡。"""
     level_id = str(level.get("id") or "")
     if not LEVEL_ID_RE.match(level_id):
         raise http_error(500, "Error", "只能修改已有的关卡")
@@ -640,6 +683,7 @@ def update_existing_level_in_sqlite(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def review_test_level_in_sqlite(review: dict[str, Any]) -> dict[str, Any]:
+    """审核 SQLite 中的测试关卡。"""
     level_id = str(review.get("levelId") or "")
     source_path_value = str(review.get("sourcePath") or "")
     action = str(review.get("action") or "")
@@ -675,6 +719,7 @@ def review_test_level_in_sqlite(review: dict[str, Any]) -> dict[str, Any]:
 
 
 def strip_sqlite_private_fields(level: dict[str, Any]) -> dict[str, Any]:
+    """移除 SQLite 内部哈希字段后返回给 API。"""
     payload = dict(level)
     payload.pop("levelHash", None)
     payload.pop("levelCanonical", None)
@@ -682,6 +727,7 @@ def strip_sqlite_private_fields(level: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_removed_level_id(source_level_id: str) -> str:
+    """为被拒绝关卡生成不冲突的 removed id。"""
     target_level_id = source_level_id
     if use_sqlite_storage():
         if not level_db.level_exists("removed", target_level_id):
@@ -705,11 +751,13 @@ def get_removed_level_id(source_level_id: str) -> str:
 
 
 def write_json_file(file_path: Path, payload: dict[str, Any]) -> None:
+    """以项目统一格式写入 JSON 文件。"""
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def refresh_levels_hash_index() -> dict[str, Any]:
+    """重建关卡哈希索引。"""
     if use_sqlite_storage():
         level_db.sync_hashes(create_level_hash)
         index = create_empty_levels_hash_index()
@@ -725,6 +773,7 @@ def refresh_levels_hash_index() -> dict[str, Any]:
 
 
 def get_next_level_id(difficulty: Any, category: str) -> str:
+    """按难度和分类分配下一个关卡编号。"""
     normalized_difficulty = normalize_level_difficulty(difficulty)
     normalized_category = normalize_level_category(category)
     if use_sqlite_storage():
@@ -756,6 +805,7 @@ def get_next_level_id(difficulty: Any, category: str) -> str:
 
 
 def find_level_file_path(level_id: str) -> Path | None:
+    """按 id 查找文件存储中的关卡路径。"""
     if use_sqlite_storage():
         level = level_db.read_level_by_id(level_id)
         if not level:
@@ -769,12 +819,14 @@ def find_level_file_path(level_id: str) -> Path | None:
 
 
 def get_level_source_category(file_path: Path) -> str:
+    """从关卡文件路径推断来源分类。"""
     relative_path = normalize_path(file_path.relative_to(get_levels_dir()))
     directory = relative_path.split("/", 1)[0]
     return normalize_level_category(directory)
 
 
 def get_level_save_rate_limit() -> dict[str, Any]:
+    """读取当前保存关卡操作的限流状态。"""
     elapsed = time.time() - last_level_saved_at
     level_save_interval = get_settings().level_save_interval_seconds
     if elapsed >= level_save_interval:
@@ -783,6 +835,7 @@ def get_level_save_rate_limit() -> dict[str, Any]:
 
 
 def mark_level_save_started() -> float:
+    """记录一次保存开始时间并返回该时间戳。"""
     global last_level_saved_at
     save_started_at = time.time()
     last_level_saved_at = save_started_at
@@ -790,6 +843,7 @@ def mark_level_save_started() -> float:
 
 
 def reset_level_save_marker(save_started_at: float) -> None:
+    """保存失败时回滚对应的保存时间标记。"""
     global last_level_saved_at
     if last_level_saved_at == save_started_at:
         last_level_saved_at = 0

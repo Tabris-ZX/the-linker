@@ -9,9 +9,9 @@ import { fileURLToPath } from "node:url";
 import { buildEquilateralTriangleGeneratedCandidate } from "./generators/equilateral-triangle.mjs";
 import { buildRightTriangleGeneratedCandidate } from "./generators/right-triangle.mjs";
 import { buildSquareDifficultyPackJobs, buildSquareGeneratedCandidate, squareDifficultySizes } from "./generators/square.mjs";
-import { edgeKey, getAllGridEdges, getGridNodes, isAdjacent, keyOf, pointsFromEdgeKey } from "../webui/src/utils/geometry.js";
+import { edgeKey, getAllGridEdges, getGridNodes, isAdjacent, keyOf, pointsFromEdgeKey } from "../../webui/src/utils/geometry.js";
 
-const ROOT_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
+const ROOT_DIR = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const LEVELS_ROOT = join(ROOT_DIR, "data/levels");
 const ANSWERS_ROOT = join(ROOT_DIR, "data/answers");
 const ALPHA_LEVEL_DIR = join(LEVELS_ROOT, "alpha");
@@ -1100,7 +1100,7 @@ function printGeneratedJson(generated) {
 
 function printHelp() {
   console.log(`Usage:
-  node scripts/generate-alpha-levels.mjs [options]
+  node server/scripts/generate-alpha-levels.mjs [options]
 
 Options:
   --type square|right-triangle|equilateral-triangle
@@ -1118,8 +1118,8 @@ Options:
   --name <text>               Custom name prefix
 
 Examples:
-  node scripts/generate-alpha-levels.mjs --type square --count 3 --width 6 --height 6
-  node scripts/generate-alpha-levels.mjs --type right-triangle --count 3 --difficulty 4
-  node scripts/generate-alpha-levels.mjs --type equilateral-triangle --radius 3 --pairs 5
+  node server/scripts/generate-alpha-levels.mjs --type square --count 3 --width 6 --height 6
+  node server/scripts/generate-alpha-levels.mjs --type right-triangle --count 3 --difficulty 4
+  node server/scripts/generate-alpha-levels.mjs --type equilateral-triangle --radius 3 --pairs 5
 `);
 }

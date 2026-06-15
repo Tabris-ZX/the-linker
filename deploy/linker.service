@@ -1,0 +1,24 @@
+[Unit]
+Description=The Linker FastAPI server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__ROOT_DIR__
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/env bash -lc 'exec "__UV_BIN__" run python -m server.main'
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=__ROOT_DIR__/data __ROOT_DIR__/webui/dist
+
+[Install]
+WantedBy=multi-user.target

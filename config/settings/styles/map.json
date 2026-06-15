@@ -1,10 +1,10 @@
 {
   "mapStyle": {
     "boardScale": 1,
-    "dotScale": 0.65,
+    "dotScale": 0.70,
     "nodeScale": 0.3,
     "lineScale": 0.6,
     "gridLineScale": 0.08,
-    "snapPointRadius": 0.3
+    "snapPointRadius": 0.2
   }
 }

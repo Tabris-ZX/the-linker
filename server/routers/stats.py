@@ -15,6 +15,7 @@ presence_clients: dict[str, float] = {}
 
 
 def prune_presence(now: float) -> None:
+    """清理超过在线 TTL 的心跳记录。"""
     expired_ids = [
         client_id
         for client_id, seen_at in presence_clients.items()
@@ -26,6 +27,7 @@ def prune_presence(now: float) -> None:
 
 @router.post("/stats/presence", summary="Update online heartbeat")
 async def update_presence(request: Request) -> dict[str, Any]:
+    """写入当前客户端的在线心跳。"""
     payload = await request.json()
     client_id = str(payload.get("clientId") or "").strip() or uuid.uuid4().hex
     now = time.time()
@@ -39,6 +41,7 @@ async def update_presence(request: Request) -> dict[str, Any]:
 
 @router.get("/stats/presence", summary="Read online users")
 async def read_presence(request: Request) -> dict[str, Any]:
+    """读取当前在线人数，仅开发者可访问。"""
     authorize_developer_request(request)
     now = time.time()
     prune_presence(now)

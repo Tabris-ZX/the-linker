@@ -24,6 +24,12 @@ export async function loadLevelDetail(levelId, sourcePath = "") {
   return hydrateLevel(await fetchLevelDetail(levelId, sourcePath));
 }
 
+/**
+ * 按关卡来源路径加载编辑器答案。
+ *
+ * @param {object} level 关卡目录项或完整关卡。
+ * @returns {Promise<Array<object>>} 答案边列表。
+ */
 export async function loadLevelAnswers(level) {
   const payload = await fetchLevelAnswers(level.sourcePath);
   return Array.isArray(payload?.answers) ? payload.answers : [];
@@ -75,6 +81,12 @@ export function hydrateLevel(rawLevel, definitions = pointDefinitions) {
   };
 }
 
+/**
+ * 补全关卡目录项默认字段。
+ *
+ * @param {object} rawLevel 原始目录项。
+ * @returns {object} 可用于列表渲染的目录项。
+ */
 export function hydrateLevelIndexItem(rawLevel) {
   return {
     ...rawLevel,
@@ -100,6 +112,7 @@ function normalizeLevelDifficulty(value) {
 }
 
 function normalizeLevelSourceCategory(category, sourcePath = "") {
+  /** 根据显式分类或 sourcePath 推断关卡来源分类。 */
   if (["stable", "alpha", "removed"].includes(category)) return category;
   const [directory] = String(sourcePath).split("/");
   if (["stable", "alpha", "removed"].includes(directory)) return directory;
@@ -107,6 +120,7 @@ function normalizeLevelSourceCategory(category, sourcePath = "") {
 }
 
 function normalizeLevelAnswers(answers) {
+  /** 过滤并规范化答案列表。 */
   if (!Array.isArray(answers)) return [];
   return answers
     .filter((answer) => answer && typeof answer === "object" && answer.edge && /^\d+$/.test(String(answer.pairId ?? "")))
@@ -117,5 +131,6 @@ function normalizeLevelAnswers(answers) {
 }
 
 function isValidLevelIndexItem(level) {
+  /** 判断对象是否是可展示的关卡目录项。 */
   return level && typeof level === "object" && typeof level.id === "string";
 }
