@@ -26,19 +26,8 @@ path:
   # levelsIndex: 关卡轻量目录索引文件，由后端自动生成，可删除后重建
   # answers: 编辑器答案目录，按 stable/alpha/removed 子目录组织
   # styles: 样式配置目录
-  # webuiDist: 前端构建输出目录，FastAPI 会直接服务这里的静态文件
   levels: data/levels
   levelsHash: data/levels-hash.json
   levelsIndex: data/levels-index.json
   answers: data/answers
   styles: config/settings/styles
-  webuiDist: webui/dist
-
-
-background:
-  # image: webui/public 下的背景图片名；不写扩展名时会按 webp/png 查找，填 no 可关闭背景
-  # opacity: 背景透明度，范围 0-1
-  # blur: 背景模糊，数字会按 px 处理
-  image: "background"
-  opacity: 0.2
-  blur: 0px

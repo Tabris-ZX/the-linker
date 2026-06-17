@@ -32,8 +32,6 @@ class AppSettings:
     answers_dir: Path
     storage_method: str
     sqlite_database_file: Path
-    background_dir: Path
-    webui_dist_dir: Path
 
 
 def get_settings() -> AppSettings:
@@ -42,7 +40,6 @@ def get_settings() -> AppSettings:
     server_config = config.get("server", {})
     path_config = config.get("path", {})
     storage_config = config.get("storage", {})
-    background_config = config.get("background", {})
     storage_method = normalize_storage_method(
         storage_config.get("method")
         or storage_config.get("type")
@@ -91,10 +88,6 @@ def get_settings() -> AppSettings:
             or path_config.get("database")
             or "data/db/linker.db"
         ),
-        background_dir=resolve_config_path(
-            path_config.get("background") or background_config.get("path") or "background"
-        ),
-        webui_dist_dir=resolve_config_path(path_config.get("webuiDist") or "webui/dist"),
     )
 
 

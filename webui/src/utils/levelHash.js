@@ -7,15 +7,6 @@ const SQUARE_TRANSFORMS = [
   ([x, y], width, height) => [y, width - x, height, width]
 ];
 
-const TRIANGLE_TRANSFORMS = [
-  ([q, r]) => [q, r],
-  ([q, r]) => [-r, q + r],
-  ([q, r]) => [-q - r, q],
-  ([q, r]) => [-q, -r],
-  ([q, r]) => [r, -q - r],
-  ([q, r]) => [q + r, -q]
-];
-
 /**
  * 计算关卡在旋转等价下的稳定哈希。
  *
@@ -68,7 +59,7 @@ function canonicalizeVariant(level, gridType, transform) {
 }
 
 function getLevelTransforms(level, gridType) {
-  if (gridType === "equilateral-triangle") return TRIANGLE_TRANSFORMS.map((transform) => (point) => transform(point));
+  if (gridType === "equilateral-triangle") return [(point) => point];
   const width = Number(level.width ?? 0);
   const height = Number(level.height ?? 0);
   return SQUARE_TRANSFORMS
@@ -84,9 +75,9 @@ function getLevelTransforms(level, gridType) {
 }
 
 function getTransformedSize(level, gridType, transform) {
-  if (gridType === "equilateral-triangle") return { radius: Number(level.radius ?? level.width ?? 0) };
   const width = Number(level.width ?? 0);
   const height = Number(level.height ?? 0);
+  if (gridType === "equilateral-triangle") return { width, height };
   const [nextWidth, nextHeight] = transform.size ?? [width, height];
   return { width: nextWidth ?? width, height: nextHeight ?? height };
 }

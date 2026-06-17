@@ -54,12 +54,13 @@ def run_generator_profile(request_payload: dict[str, Any], difficulty: int, grid
         str(clamp_int(request_payload.get("attempts", profile.get("attempts", 40)), 1, 500)),
     ]
 
+    width = clamp_int(profile.get("width", 7), 1, 19)
+    height = clamp_int(profile.get("height", 5), 1, 17)
     if grid_type == "equilateral-triangle":
-        args.extend(["--radius", str(clamp_int(profile.get("radius", 3), 1, 6))])
-    else:
-        width = clamp_int(profile.get("width", 7), 1, 19)
-        height = clamp_int(profile.get("height", 5), 1, 17)
-        args.extend(["--width", str(width), "--height", str(height)])
+        height = clamp_int(profile.get("height", 3), 1, 8)
+        width = max(height + 1, width)
+        width = clamp_int(width, height + 1, 12)
+    args.extend(["--width", str(width), "--height", str(height)])
 
     loop_passes = clamp_int(request_payload.get("loopPasses", profile.get("loopPasses", 360)), 0, 5000)
     args.extend([
@@ -102,7 +103,7 @@ def pick_generator_profiles(difficulty: int, grid_type: str) -> list[dict[str, A
         .get(grid_type, [])
     )
     if not isinstance(profiles, list) or not profiles:
-        profiles = [{"radius": 3, "pairs": 5}] if grid_type == "equilateral-triangle" else [{"width": 7, "height": 5, "pairs": 5}]
+        profiles = [{"width": 6, "height": 3, "pairs": 5}] if grid_type == "equilateral-triangle" else [{"width": 7, "height": 5, "pairs": 5}]
 
     merged = []
     for profile in profiles:

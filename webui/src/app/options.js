@@ -145,7 +145,6 @@ export default {
         difficulty: 1,
         width: 6,
         height: 5,
-        radius: 3,
         pairIds,
         activePairId: pairIds[0],
         mode: "mark",

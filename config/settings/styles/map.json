@@ -5,6 +5,6 @@
     "nodeScale": 0.3,
     "lineScale": 0.6,
     "gridLineScale": 0.08,
-    "snapPointRadius": 0.2
+    "snapPointTolerance": 0.2
   }
 }

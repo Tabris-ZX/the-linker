@@ -31,17 +31,13 @@
               <option value="equilateral-triangle">正三角形</option>
             </select>
           </label>
-          <label v-if="app.editorState.gridType !== 'equilateral-triangle'" class="editor-size-field">
+          <label class="editor-size-field">
             宽度
-            <input v-model.number="app.editorState.width" type="number" min="2" max="19" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'width', app.syncEditorBounds)">
+            <input v-model.number="app.editorState.width" type="number" min="2" :max="app.editorState.gridType === 'equilateral-triangle' ? 12 : 19" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'width', app.syncEditorBounds)">
           </label>
-          <label v-if="app.editorState.gridType !== 'equilateral-triangle'" class="editor-size-field">
+          <label class="editor-size-field">
             高度
-            <input v-model.number="app.editorState.height" type="number" min="2" max="15" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'height', app.syncEditorBounds)">
-          </label>
-          <label v-if="app.editorState.gridType === 'equilateral-triangle'" class="editor-size-field">
-            半径
-            <input v-model.number="app.editorState.radius" type="number" min="1" max="6" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'radius', app.syncEditorBounds)">
+            <input v-model.number="app.editorState.height" type="number" min="2" :max="app.editorState.gridType === 'equilateral-triangle' ? 8 : 15" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'height', app.syncEditorBounds)">
           </label>
           <label class="editor-pair-count-field">
             点对数量

@@ -1,7 +1,7 @@
 import { isEditorEdgeInBounds, validateEditorLevelAnswer } from "./checker.js";
 import { checkLevelGoodRequest, generateLevelRequest } from "../router/levels.js";
 import { hydrateLevel, loadLevelAnswers, saveLevelFile } from "../services/levels.js";
-import { edgeKey, fromRenderPoint, getGridBounds, getGridNodes, getGridRadius, isAdjacent, keyOf, lineAttrs, normalizeGridType, pointFromKey, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
+import { edgeKey, fromRenderPoint, getEquilateralTriangleSize, getGridBounds, getGridNodes, isAdjacent, keyOf, lineAttrs, normalizeGridType, pointFromKey, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
 export const editorMethods = {
@@ -45,7 +45,7 @@ export const editorMethods = {
      * 用鼠标滚轮调整编辑器数字输入。
      *
      * @param {WheelEvent} event 滚轮事件。
-     * @param {"width"|"height"|"radius"|"pairCount"|"difficulty"} field 字段名。
+     * @param {"width"|"height"|"pairCount"|"difficulty"} field 字段名。
      * @param {Function} sync 同步方法。
      * @returns {void}
      */
@@ -83,7 +83,10 @@ export const editorMethods = {
       this.editorState.gridType = normalizeGridType(this.editorState.gridType);
       this.editorState.width = clampNumber(this.editorState.width, 1, 19);
       this.editorState.height = clampNumber(this.editorState.height, 1, 17);
-      this.editorState.radius = clampNumber(this.editorState.radius ?? 3, 1, 6);
+      if (this.editorState.gridType === "equilateral-triangle") {
+        this.editorState.height = clampNumber(this.editorState.height, 1, 8);
+        this.editorState.width = clampNumber(this.editorState.width, this.editorState.height + 1, 12);
+      }
       const validNodes = new Set(getGridNodes(this.editorState).map(([x, y]) => keyOf(x, y)));
       this.editorState.points = Object.fromEntries(
         Object.entries(this.editorState.points).map(([pairId, points]) => [
@@ -280,7 +283,6 @@ export const editorMethods = {
         difficulty: 1,
         width: 6,
         height: 5,
-        radius: 3,
         pairIds,
         activePairId: pairIds[0],
         mode: this.editorState.mode ?? "mark",
@@ -301,15 +303,16 @@ export const editorMethods = {
      */
     loadEditorLevel(level) {
       const pairIds = level.pairs.map((pair) => pair.id);
+      const equilateralSize = getEquilateralTriangleSize(level);
+      const isEquilateral = normalizeGridType(level.gridType ?? "square") === "equilateral-triangle";
       this.editorEditingLevelId = this.getLevelCacheKey(level);
       this.editorPairCount = pairIds.length;
       this.editorState = {
         name: level.name ?? "",
         gridType: normalizeGridType(level.gridType ?? "square"),
         difficulty: clampNumber(level.difficulty, 1, 5),
-        width: level.width ?? getGridRadius(level) * 2,
-        height: level.height ?? getGridRadius(level) * 2,
-        radius: getGridRadius(level),
+        width: isEquilateral ? clampNumber(equilateralSize.width, 2, 12) : level.width ?? 6,
+        height: isEquilateral ? clampNumber(equilateralSize.height, 1, 8) : level.height ?? 5,
         pairIds,
         activePairId: pairIds[0],
         mode: this.editorState.mode ?? "mark",
@@ -749,8 +752,8 @@ export const editorMethods = {
           nearest = { x: node.x, y: node.y };
         }
       });
-      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
-      if (!nearest || nearestDistance > snapRadius) return null;
+      const snapTolerance = Math.max(this.mapStyle.snapPointTolerance, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      if (!nearest || nearestDistance > snapTolerance) return null;
       return nearest;
     },
 
@@ -769,7 +772,7 @@ export const editorMethods = {
       const pointerDistance = Math.hypot(pointerVector[0], pointerVector[1]);
       if (pointerDistance <= 0) return null;
 
-      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      const snapTolerance = Math.max(this.mapStyle.snapPointTolerance, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
       let best = null;
       let bestScore = Infinity;
 
@@ -784,10 +787,10 @@ export const editorMethods = {
 
         const perpendicular = Math.abs(pointerVector[0] * edgeVector[1] - pointerVector[1] * edgeVector[0]) / edgeLength;
         const distanceToCandidate = Math.hypot(point.renderX - candidateRender[0], point.renderY - candidateRender[1]);
-        const tolerance = Math.max(snapRadius, edgeLength * 0.24);
+        const tolerance = Math.max(snapTolerance, edgeLength * 0.24);
         if (perpendicular > tolerance && distanceToCandidate > edgeLength * 0.65) return;
 
-        const score = distanceToCandidate + Math.max(0, perpendicular - snapRadius) * 0.65;
+        const score = distanceToCandidate + Math.max(0, perpendicular - snapTolerance) * 0.65;
         if (score < bestScore) {
           bestScore = score;
           best = candidate;
@@ -994,11 +997,11 @@ export const editorMethods = {
         })),
         removedEdges: [...this.editorState.removedEdges]
       };
+      map.width = clampNumber(this.editorState.width, 1, 19);
+      map.height = clampNumber(this.editorState.height, 1, 17);
       if (this.editorState.gridType === "equilateral-triangle") {
-        map.radius = clampNumber(this.editorState.radius, 1, 6);
-      } else {
-        map.width = clampNumber(this.editorState.width, 1, 19);
-        map.height = clampNumber(this.editorState.height, 1, 17);
+        map.height = clampNumber(map.height, 1, 8);
+        map.width = clampNumber(map.width, map.height + 1, 12);
       }
       return map;
     },
@@ -1025,9 +1028,7 @@ export const editorMethods = {
      * @returns {string} 默认关卡 id。
      */
     getEditorDefaultId() {
-      return this.editorState.gridType === "equilateral-triangle"
-        ? `custom-r${this.editorState.radius}-${this.editorState.pairIds.length}`
-        : `custom-${this.editorState.width}x${this.editorState.height}-${this.editorState.pairIds.length}`;
+      return `custom-${this.editorState.width}x${this.editorState.height}-${this.editorState.pairIds.length}`;
     },
 
     /**

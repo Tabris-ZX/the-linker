@@ -9,9 +9,11 @@ from typing import Any, Iterator
 
 from server.config import get_settings
 from server.paths import normalize_path
+from server.models import AnswerData, LevelData, LevelIndexItem
 
 CATEGORIES = {"stable", "alpha", "removed"}
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+BACKUP_DATABASE_NAME = "linker-backup.db"
 
 
 @contextmanager
@@ -26,11 +28,22 @@ def connect() -> Iterator[sqlite3.Connection]:
         ensure_schema(connection)
         yield connection
         connection.commit()
+        sync_backup_database(connection, database_file)
     except Exception:
         connection.rollback()
         raise
     finally:
         connection.close()
+
+
+def sync_backup_database(source: sqlite3.Connection, database_file: Path) -> None:
+    """把主 SQLite 数据库同步到同目录备份库。"""
+    backup_file = database_file.with_name(BACKUP_DATABASE_NAME)
+    if backup_file == database_file:
+        return
+    backup_file.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(backup_file) as backup:
+        source.backup(backup)
 
 
 def ensure_schema(connection: sqlite3.Connection) -> None:
@@ -51,7 +64,6 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
           grid_type TEXT NOT NULL DEFAULT 'square',
           width INTEGER,
           height INTEGER,
-          radius INTEGER,
           pairs JSON NOT NULL DEFAULT '[]',
           removed_edges JSON NOT NULL DEFAULT '[]',
           payload JSON NOT NULL DEFAULT '{}',
@@ -106,7 +118,6 @@ def migrate_existing_levels_table(connection: sqlite3.Connection) -> None:
         "grid_type",
         "width",
         "height",
-        "radius",
         "pairs",
         "removed_edges",
         "payload",
@@ -116,10 +127,12 @@ def migrate_existing_levels_table(connection: sqlite3.Connection) -> None:
     }
     if required.issubset(columns):
         return
-    connection.execute("ALTER TABLE levels RENAME TO levels_legacy")
+    legacy_columns = columns
+    legacy_rows = connection.execute("SELECT * FROM levels").fetchall()
     connection.executescript(
         """
-        CREATE TABLE levels (
+        DROP TABLE IF EXISTS levels_new;
+        CREATE TABLE levels_new (
           id TEXT NOT NULL,
           name TEXT,
           status TEXT NOT NULL DEFAULT 'stable',
@@ -127,7 +140,6 @@ def migrate_existing_levels_table(connection: sqlite3.Connection) -> None:
           grid_type TEXT NOT NULL DEFAULT 'square',
           width INTEGER,
           height INTEGER,
-          radius INTEGER,
           pairs JSON NOT NULL DEFAULT '[]',
           removed_edges JSON NOT NULL DEFAULT '[]',
           payload JSON NOT NULL DEFAULT '{}',
@@ -136,9 +148,39 @@ def migrate_existing_levels_table(connection: sqlite3.Connection) -> None:
           updated_at TEXT NOT NULL,
           PRIMARY KEY (status, id)
         );
-        DROP TABLE levels_legacy;
         """
     )
+    for row in legacy_rows:
+        payload = json_obj(row_value(row, legacy_columns, "payload", "{}"))
+        grid_type = str(row_value(row, legacy_columns, "grid_type", payload.get("gridType") or "square") or "square")
+        width = nullable_int(row_value(row, legacy_columns, "width"))
+        height = nullable_int(row_value(row, legacy_columns, "height"))
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO levels_new (
+              id, name, status, difficulty, grid_type, width, height,
+              pairs, removed_edges, payload, level_hash, level_canonical, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(row_value(row, legacy_columns, "id", "")),
+                row_value(row, legacy_columns, "name"),
+                normalize_category(row_value(row, legacy_columns, "status", "stable")),
+                nullable_int(row_value(row, legacy_columns, "difficulty")) or 1,
+                grid_type,
+                width,
+                height,
+                row_value(row, legacy_columns, "pairs", "[]"),
+                row_value(row, legacy_columns, "removed_edges", "[]"),
+                json_text(payload),
+                row_value(row, legacy_columns, "level_hash"),
+                row_value(row, legacy_columns, "level_canonical"),
+                row_value(row, legacy_columns, "updated_at") or utc_now(),
+            ),
+        )
+    connection.execute("DROP TABLE levels")
+    connection.execute("ALTER TABLE levels_new RENAME TO levels")
 
 
 def migrate_existing_answers_table(connection: sqlite3.Connection) -> None:
@@ -146,16 +188,19 @@ def migrate_existing_answers_table(connection: sqlite3.Connection) -> None:
     rows = connection.execute("PRAGMA table_info(answers)").fetchall()
     columns = {row["name"] for row in rows}
     primary_key_columns = [row["name"] for row in sorted(rows, key=lambda item: item["pk"]) if row["pk"]]
+    foreign_tables = {row["table"] for row in connection.execute("PRAGMA foreign_key_list(answers)").fetchall()}
     if (
         {"level_status", "level_id", "answer", "updated_at"}.issubset(columns)
         and "id" not in columns
         and primary_key_columns == ["level_status", "level_id"]
+        and foreign_tables == {"levels"}
     ):
         return
-    connection.execute("ALTER TABLE answers RENAME TO answers_legacy")
+    legacy_rows = connection.execute("SELECT * FROM answers").fetchall()
     connection.executescript(
         """
-        CREATE TABLE answers (
+        DROP TABLE IF EXISTS answers_new;
+        CREATE TABLE answers_new (
           level_status TEXT NOT NULL,
           level_id TEXT NOT NULL,
           answer JSON NOT NULL DEFAULT '[]',
@@ -166,16 +211,30 @@ def migrate_existing_answers_table(connection: sqlite3.Connection) -> None:
             ON UPDATE CASCADE
             ON DELETE CASCADE
         );
-        INSERT OR REPLACE INTO answers (level_status, level_id, answer, updated_at)
-          SELECT level_status, level_id, answer, updated_at
-          FROM answers_legacy
-          WHERE level_status IS NOT NULL AND level_id IS NOT NULL;
-        DROP TABLE answers_legacy;
         """
     )
+    for row in legacy_rows:
+        level_status = row["level_status"] if "level_status" in columns else None
+        level_id = row["level_id"] if "level_id" in columns else None
+        if level_status is None or level_id is None:
+            continue
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO answers_new (level_status, level_id, answer, updated_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                level_status,
+                level_id,
+                row["answer"] if "answer" in columns else "[]",
+                row["updated_at"] if "updated_at" in columns else utc_now(),
+            ),
+        )
+    connection.execute("DROP TABLE answers")
+    connection.execute("ALTER TABLE answers_new RENAME TO answers")
 
 
-def read_level_index() -> list[dict[str, Any]]:
+def read_level_index() -> list[LevelIndexItem]:
     """读取用于列表展示的关卡索引。"""
     with connect() as connection:
         rows = connection.execute(
@@ -190,7 +249,7 @@ def read_level_index() -> list[dict[str, Any]]:
     return [level_index_item_from_row(row) for row in rows]
 
 
-def read_levels() -> list[dict[str, Any]]:
+def read_levels() -> list[LevelData]:
     """读取全部关卡完整记录。"""
     with connect() as connection:
         rows = connection.execute(
@@ -205,7 +264,7 @@ def read_levels() -> list[dict[str, Any]]:
     return [level_from_row(row) for row in rows]
 
 
-def read_level_by_id(level_id: str) -> dict[str, Any] | None:
+def read_level_by_id(level_id: str) -> LevelData | None:
     """按关卡 id 读取首个匹配记录。"""
     with connect() as connection:
         row = connection.execute(
@@ -221,7 +280,7 @@ def read_level_by_id(level_id: str) -> dict[str, Any] | None:
     return level_from_row(row) if row else None
 
 
-def read_level_by_source_path(source_path: str) -> dict[str, Any] | None:
+def read_level_by_source_path(source_path: str) -> LevelData | None:
     """按 sourcePath 读取关卡。"""
     category, level_id = split_source_path(source_path)
     if not category or not level_id:
@@ -246,7 +305,7 @@ def read_answers(category: str, level_id: str) -> list[Any]:
     return json_list(row["answer"])
 
 
-def write_level(level: dict[str, Any], category: str, answers: list[Any] | None = None) -> None:
+def write_level(level: LevelData, category: str, answers: list[Any] | None = None) -> None:
     """写入或更新关卡及其答案。"""
     normalized_category = normalize_category(category)
     now = utc_now()
@@ -257,17 +316,16 @@ def write_level(level: dict[str, Any], category: str, answers: list[Any] | None 
         connection.execute(
             """
             INSERT INTO levels (
-              id, name, status, difficulty, grid_type, width, height, radius,
+              id, name, status, difficulty, grid_type, width, height,
               pairs, removed_edges, payload, level_hash, level_canonical, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(status, id) DO UPDATE SET
               name = excluded.name,
               difficulty = excluded.difficulty,
               grid_type = excluded.grid_type,
               width = excluded.width,
               height = excluded.height,
-              radius = excluded.radius,
               pairs = excluded.pairs,
               removed_edges = excluded.removed_edges,
               payload = excluded.payload,
@@ -283,7 +341,6 @@ def write_level(level: dict[str, Any], category: str, answers: list[Any] | None 
                 str(level.get("gridType") or "square"),
                 nullable_int(level.get("width")),
                 nullable_int(level.get("height")),
-                nullable_int(level.get("radius")),
                 json_text(level.get("pairs", [])),
                 json_text(level.get("removedEdges", [])),
                 json_text(payload),
@@ -302,7 +359,7 @@ def write_answers(category: str, level_id: str, answers: list[Any]) -> None:
         write_answers_with_connection(connection, normalize_category(category), level_id, answers, utc_now())
 
 
-def move_level(source_category: str, source_id: str, target_category: str, target_level: dict[str, Any]) -> None:
+def move_level(source_category: str, source_id: str, target_category: str, target_level: LevelData) -> None:
     """把关卡从一个分类移动到另一个分类。"""
     source_category = normalize_category(source_category)
     target_category = normalize_category(target_category)
@@ -439,7 +496,7 @@ def write_answers_with_connection(
     )
 
 
-def level_from_row(row: sqlite3.Row | None) -> dict[str, Any]:
+def level_from_row(row: sqlite3.Row | None) -> LevelData:
     """把数据库行转换为关卡字典。"""
     if row is None:
         return {}
@@ -459,12 +516,10 @@ def level_from_row(row: sqlite3.Row | None) -> dict[str, Any]:
         level["width"] = int(row["width"])
     if row["height"] is not None:
         level["height"] = int(row["height"])
-    if row["radius"] is not None:
-        level["radius"] = int(row["radius"])
     return level
 
 
-def level_index_item_from_row(row: sqlite3.Row) -> dict[str, Any]:
+def level_index_item_from_row(row: sqlite3.Row) -> LevelIndexItem:
     """把数据库行转换为关卡索引项。"""
     return {
         "id": str(row["id"]),
@@ -475,7 +530,7 @@ def level_index_item_from_row(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-def storage_payload(level: dict[str, Any]) -> dict[str, Any]:
+def storage_payload(level: LevelData) -> dict[str, Any]:
     """移除不应该落库的运行时字段。"""
     payload = dict(level)
     for key in (
@@ -534,6 +589,11 @@ def json_obj(value: Any) -> dict[str, Any]:
     except (TypeError, json.JSONDecodeError):
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def row_value(row: sqlite3.Row, columns: set[str], key: str, fallback: Any = None) -> Any:
+    """从可能缺列的旧表行里读取字段。"""
+    return row[key] if key in columns else fallback
 
 
 def nullable_int(value: Any) -> int | None:

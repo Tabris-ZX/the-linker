@@ -9,7 +9,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from server.config import get_settings
-from server.services import level_db
+from server.repositories import level_repository as level_db
 from server.services.level_hash import create_level_hash
 
 

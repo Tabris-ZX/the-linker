@@ -24,7 +24,6 @@ const DEFAULTS = {
   gridType: "square",
   width: 7,
   height: 5,
-  radius: 3,
   pairs: 0,
   attempts: 200,
   loopPasses: 240,
@@ -817,12 +816,6 @@ function stripGeneratorFields(level) {
 }
 
 function buildLevelShape(config) {
-  if (config.gridType === "equilateral-triangle") {
-    return {
-      gridType: config.gridType,
-      radius: config.radius
-    };
-  }
   return {
     gridType: config.gridType,
     width: config.width,
@@ -1014,7 +1007,6 @@ function parseArgs(args) {
       parsed.height = toInt(next(), parsed.height);
       provided.add("height");
     }
-    else if (arg === "--radius") parsed.radius = toInt(next(), parsed.radius);
     else if (arg === "--pairs") {
       parsed.pairs = toInt(next(), parsed.pairs);
       provided.add("pairs");
@@ -1037,7 +1029,10 @@ function parseArgs(args) {
   parsed.difficulty = clamp(parsed.difficulty, 1, 5);
   parsed.width = clamp(parsed.width, 1, 19);
   parsed.height = clamp(parsed.height, 1, 17);
-  parsed.radius = clamp(parsed.radius, 1, 6);
+  if (parsed.gridType === "equilateral-triangle") {
+    parsed.height = clamp(parsed.height, 1, 8);
+    parsed.width = clamp(parsed.width, parsed.height + 1, 12);
+  }
   parsed.minSegmentLength = clamp(parsed.minSegmentLength, 2, 20);
   parsed.qualityCandidates = clamp(parsed.qualityCandidates, 1, 20);
   return parsed;
@@ -1083,7 +1078,7 @@ function printGeneratedSummary(generated, config) {
   console.log(`${action} ${generated.length} ${label} alpha level(s), seed=${config.seed}`);
   for (const item of generated) {
     const size = item.level.gridType === "equilateral-triangle"
-      ? `r${item.level.radius}`
+      ? `${item.level.width}x${item.level.height}`
       : `${item.level.width}x${item.level.height}`;
     console.log(`- ${item.level.id}: ${item.level.name}, d=${item.level.difficulty}, size=${size}, pairs=${item.level.pairs.length}, answers=${item.answers}`);
   }
@@ -1107,8 +1102,7 @@ Options:
   --count <n>                 Number of alpha levels to generate
   --difficulty <1-5>          Difficulty bucket/id prefix
   --square-difficulty-pack    Generate 3 square levels for each difficulty 1-5
-  --width <n> --height <n>    Square/right-triangle size in cells
-  --radius <n>                Equilateral triangle radius
+  --width <n> --height <n>    Map size. Equilateral requires width > height
   --pairs <n>                 Pair count, default sqrt(node count)
   --quality-candidates <n>    For square generation, return the best of n good candidates
   --seed <n>                  Reproducible seed
@@ -1120,6 +1114,6 @@ Options:
 Examples:
   node server/scripts/generate-alpha-levels.mjs --type square --count 3 --width 6 --height 6
   node server/scripts/generate-alpha-levels.mjs --type right-triangle --count 3 --difficulty 4
-  node server/scripts/generate-alpha-levels.mjs --type equilateral-triangle --radius 3 --pairs 5
+  node server/scripts/generate-alpha-levels.mjs --type equilateral-triangle --width 6 --height 3 --pairs 5
 `);
 }

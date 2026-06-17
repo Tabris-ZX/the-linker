@@ -122,7 +122,7 @@ function parseJsonConfig(rawValue) {
  * 归一化地图样式数值，限制到可用范围。
  *
  * @param {object} config 地图样式配置。
- * @returns {{ boardScale: number, dotScale: number, nodeScale: number, lineScale: number, gridLineScale: number, snapPointRadius: number }} 地图样式。
+ * @returns {{ boardScale: number, dotScale: number, nodeScale: number, lineScale: number, gridLineScale: number, snapPointTolerance: number }} 地图样式。
  */
 function normalizeMapStyle(config) {
   const rawStyle = config?.mapStyle ?? config ?? {};
@@ -132,7 +132,7 @@ function normalizeMapStyle(config) {
     nodeScale: clampNumber(Number(rawStyle.nodeScale), 0.04, 0.5),
     lineScale: clampNumber(Number(rawStyle.lineScale), 0.1, 0.8),
     gridLineScale: clampNumber(Number(rawStyle.gridLineScale), 0.02, 0.2),
-    snapPointRadius: clampNumber(Number(rawStyle.snapPointRadius), 0.1, 0.5)
+    snapPointTolerance: clampNumber(Number(rawStyle.snapPointTolerance), 0.1, 0.5)
   };
 }
 

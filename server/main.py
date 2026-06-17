@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 
 from server.config import get_settings
-from server.routers import assets, config, levels, stats, verify, web
+from server.routers import levels, stats, verify
 from server.utils.http import http_exception_handler
 
 LOGGING_CONFIG = {
@@ -62,9 +62,6 @@ def create_app() -> FastAPI:
     app.include_router(levels.router)
     app.include_router(stats.router)
     app.include_router(verify.router)
-    app.include_router(config.router)
-    app.include_router(assets.router)
-    app.include_router(web.router)
     return app
 
 

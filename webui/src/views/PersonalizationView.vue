@@ -79,8 +79,8 @@
         <input v-model.number="app.mapStyle.gridLineScale" type="number" min="0.02" max="0.2" step="0.01" @change="app.normalizeMapStyleField('gridLineScale')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'gridLineScale')">
       </label>
       <label>
-        吸附强度
-        <input v-model.number="app.mapStyle.snapPointRadius" type="number" min="0.1" max="0.5" step="0.01" @change="app.normalizeMapStyleField('snapPointRadius')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'snapPointRadius')">
+        吸附容差
+        <input v-model.number="app.mapStyle.snapPointTolerance" type="number" min="0.1" max="0.5" step="0.01" @change="app.normalizeMapStyleField('snapPointTolerance')" @wheel.prevent="app.handleMapStyleNumberWheel($event, 'snapPointTolerance')">
       </label>
     </section>
     <div class="personalization-data-actions">

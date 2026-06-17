@@ -42,14 +42,20 @@ export function getGridBounds(level) {
 }
 
 /**
- * 获取等边三角网格半径，并修正非法值。
+ * 获取等边三角网格尺寸，并修正非法值。
+ *
+ * `width` 是六边形水平顶边长度，`height` 是顺时针旋转 30 度后与三角边重合的高度尺度。
  *
  * @param {object} level 关卡或编辑器网格配置。
- * @returns {number} 有效半径。
+ * @returns {{ width: number, height: number }} 有效尺寸。
  */
-export function getGridRadius(level) {
-  const radius = Number(level?.radius ?? level?.width ?? 3);
-  return Number.isFinite(radius) ? Math.max(1, Math.round(radius)) : 3;
+export function getEquilateralTriangleSize(level) {
+  const rawWidth = Number(level?.width ?? 6);
+  const rawHeight = Number(level?.height ?? 3);
+  const height = Number.isFinite(rawHeight) ? Math.max(1, Math.round(rawHeight)) : 3;
+  const minWidth = height + 1;
+  const width = Number.isFinite(rawWidth) ? Math.max(minWidth, Math.round(rawWidth)) : Math.max(minWidth, 6);
+  return { width, height };
 }
 
 /**
@@ -322,11 +328,12 @@ function normalizeGridArgs(widthOrLevel, height, gridType) {
  * @returns {Array<[number, number]>} 轴坐标节点列表。
  */
 function getEquilateralTriangleNodes(level) {
-  const radius = getGridRadius(level);
+  const { width, height } = getEquilateralTriangleSize(level);
   const nodes = [];
-  for (let q = -radius; q <= radius; q += 1) {
-    for (let r = -radius; r <= radius; r += 1) {
-      if (Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= radius) {
+  for (let q = -height; q <= width; q += 1) {
+    for (let r = -height; r <= height; r += 1) {
+      const diagonal = q + r;
+      if (diagonal >= -height && diagonal <= width) {
         nodes.push([q, r]);
       }
     }

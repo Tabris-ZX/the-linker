@@ -13,7 +13,7 @@
 ## 功能
 
 - Vue 前端负责游玩、关卡选择、关卡编辑器和个性化配置。
-- FastAPI 后端负责静态前端、关卡目录、关卡保存、审核、开发者验证和在线人数统计。
+- FastAPI 后端负责 API、关卡目录、关卡保存、审核、开发者验证和在线人数统计。
 - 支持方形、直角三角形和正三角形地图。
 - 支持双端连线：同色点对两端可以分别向外画，分支相遇后自动合并。
 - 支持双击未完成路径节点回退，双击端点清空同色路径。
@@ -31,7 +31,7 @@ uv sync
 uv run python -m server.main
 ```
 
-FastAPI 会按 `config/config.yaml` 中的 `server.backendPort` 启动，并直接服务 `webui/dist` 和 `/api/*`。Vite 只用于前端开发和构建，不再注册或响应后端接口。
+FastAPI 会按 `config/config.yaml` 中的 `server.backendPort` 启动，主要提供 `/api/*`。生产环境前端静态文件交给 nginx；Vite 只用于前端开发和构建。
 
 前端开发端口由 `config/config.yaml` 的 `server.frontendDebugPort` 控制，也可以用环境变量覆盖：
 
@@ -80,8 +80,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 - `name`：显示名。
 - `difficulty`：1 到 5 的难度。
 - `gridType`：地图类型，当前支持 `square`、`right-triangle` 和 `equilateral-triangle`。
-- `width` / `height`：方形和直角三角形地图尺寸。
-- `radius`：正三角形地图尺寸；正三角形地图不需要 `width` / `height`。
+- `width` / `height`：地图尺寸。正三角形地图也使用这两个字段，且必须满足 `width > height`；其中 `width` 是水平上顶边长度，`height` 是经过中心的上下边高度线顺时针旋转 30 度后、与正三角形边重合的整数长度。
 - `pairs`：点对端点。`id` 对应点位样式配置中的编号，`points` 是两个端点坐标。
 - `removedEdges`：被移除的边集合，用于制造缺口、墙和非矩形可通行区域。
 
@@ -122,7 +121,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 地图并不局限于完整矩形：
 
 - 方形地图用 `width` / `height` 控制尺寸。
-- 正三角形地图用 `radius` 控制范围。
+- 正三角形地图用 `width` / `height` 控制范围。
 - `removedEdges` 可以移除任意边，用来做墙、缺口、窄通道或局部断开的结构。
 - 点对数量由关卡 `pairs` 决定，显示样式由 `config/settings/styles/points.json` 决定。
 - 胜利条件是所有点对连通，且所有可通行节点被有效路径覆盖。
@@ -135,7 +134,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 - `nodeScale`：普通节点大小。
 - `lineScale`：玩家连线粗细。
 - `gridLineScale`：网格线粗细。
-- `snapPointRadius`：指针吸附半径。
+- `snapPointTolerance`：指针吸附容差。
 
 这些只影响前端显示和操作手感，不改变关卡数据。
 

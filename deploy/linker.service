@@ -18,7 +18,7 @@ TimeoutStopSec=20
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=__ROOT_DIR__/data __ROOT_DIR__/webui/dist
+ReadWritePaths=__ROOT_DIR__/data
 
 [Install]
 WantedBy=multi-user.target

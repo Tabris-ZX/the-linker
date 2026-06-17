@@ -753,7 +753,7 @@ export const methods = {
         nodeScale: clamp(rawStyle.nodeScale, 0.04, 0.5, defaults.nodeScale),
         lineScale: clamp(rawStyle.lineScale, 0.1, 0.8, defaults.lineScale),
         gridLineScale: clamp(rawStyle.gridLineScale, 0.02, 0.2, defaults.gridLineScale),
-        snapPointRadius: clamp(rawStyle.snapPointRadius, 0.1, 0.5, defaults.snapPointRadius)
+        snapPointTolerance: clamp(rawStyle.snapPointTolerance, 0.1, 0.5, defaults.snapPointTolerance)
       };
     },
 
@@ -1119,7 +1119,7 @@ export const methods = {
         nodeScale: style.nodeScale,
         lineScale: style.lineScale,
         gridLineScale: style.gridLineScale,
-        snapPointRadius: style.snapPointRadius
+        snapPointTolerance: style.snapPointTolerance
       };
     },
 
@@ -2137,7 +2137,7 @@ export const methods = {
      * 从事件位置寻找最近的可吸附网格节点。
      *
      * @param {PointerEvent|MouseEvent} event 指针或鼠标事件。
-     * @returns {{ x: number, y: number }|null} 最近节点；超出吸附半径时返回 null。
+     * @returns {{ x: number, y: number }|null} 最近节点；超出吸附容差时返回 null。
      */
     nearestPositionFromEvent(event) {
       const point = this.pointerPositionFromEvent(event);
@@ -2148,7 +2148,7 @@ export const methods = {
      * 从逻辑指针位置寻找最近的可吸附网格节点。
      *
      * @param {{ renderX: number, renderY: number }|null} point 指针逻辑位置。
-     * @returns {{ x: number, y: number }|null} 最近节点；超出吸附半径时返回 null。
+     * @returns {{ x: number, y: number }|null} 最近节点；超出吸附容差时返回 null。
      */
     nearestPositionFromPointer(point) {
       if (!point) return null;
@@ -2161,8 +2161,8 @@ export const methods = {
           nearest = { x: node.x, y: node.y };
         }
       });
-      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
-      if (!nearest || nearestDistance > snapRadius) return null;
+      const snapTolerance = Math.max(this.mapStyle.snapPointTolerance, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      if (!nearest || nearestDistance > snapTolerance) return null;
       return nearest;
     },
 
@@ -2195,7 +2195,7 @@ export const methods = {
       const pointerDistance = Math.hypot(pointerVector[0], pointerVector[1]);
       if (pointerDistance <= 0) return null;
 
-      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      const snapTolerance = Math.max(this.mapStyle.snapPointTolerance, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
       let best = null;
       let bestScore = Infinity;
 
@@ -2211,10 +2211,10 @@ export const methods = {
 
         const perpendicular = Math.abs(pointerVector[0] * edgeVector[1] - pointerVector[1] * edgeVector[0]) / edgeLength;
         const distanceToCandidate = Math.hypot(point.renderX - candidateRender[0], point.renderY - candidateRender[1]);
-        const tolerance = Math.max(snapRadius, edgeLength * 0.24);
+        const tolerance = Math.max(snapTolerance, edgeLength * 0.24);
         if (perpendicular > tolerance && distanceToCandidate > edgeLength * 0.65) return;
 
-        const score = distanceToCandidate + Math.max(0, perpendicular - snapRadius) * 0.65;
+        const score = distanceToCandidate + Math.max(0, perpendicular - snapTolerance) * 0.65;
         if (score < bestScore) {
           bestScore = score;
           best = candidate;

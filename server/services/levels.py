@@ -11,7 +11,8 @@ from typing import Any
 
 from server.config import get_settings
 from server.paths import normalize_path, safe_child_path
-from server.services import level_db
+from server.repositories import level_repository as level_db
+from server.models import LevelData, LevelIndexItem, ReviewData
 from server.services.level_hash import (
     add_level_hash_to_index,
     create_empty_levels_hash_index,
@@ -28,12 +29,14 @@ LEVEL_FILE_RE = re.compile(r"^(?:[1-5]\d{3}(?:-tmp)?|level-\d+)\.json$")
 CATEGORY_ORDER = {"stable": 0, "alpha": 1, "removed": 2}
 LEVELS_CACHE_TTL_SECONDS = 30
 LEVEL_INDEX_VERSION = 1
+EQUILATERAL_MAX_WIDTH = 12
+EQUILATERAL_MAX_HEIGHT = 8
 
 last_level_saved_at = 0.0
 levels_cache_signature: tuple[tuple[str, int, int], ...] | None = None
-levels_cache: list[dict[str, Any]] | None = None
+levels_cache: list[LevelData] | None = None
 levels_cache_checked_at = 0.0
-level_index_cache: list[dict[str, Any]] | None = None
+level_index_cache: list[LevelIndexItem] | None = None
 level_index_cache_signature: tuple[int, int] | None = None
 
 
@@ -98,7 +101,7 @@ def get_default_level_name(level_id: str, category: str = "stable") -> str:
     return f"{prefix} {level_id}"
 
 
-def get_answer_file_path(level: dict[str, Any] | None = None, *, source_path: str = "", level_id: str = "", category: str = "") -> Path:
+def get_answer_file_path(level: LevelData | None = None, *, source_path: str = "", level_id: str = "", category: str = "") -> Path:
     """按关卡对象、sourcePath 或 id/category 计算答案文件路径。"""
     if source_path:
         normalized_source_path = normalize_path(source_path)
@@ -111,14 +114,14 @@ def get_answer_file_path(level: dict[str, Any] | None = None, *, source_path: st
     return get_answers_dir() / source_category / f"{source_level_id}.json"
 
 
-def split_level_answers(level: dict[str, Any]) -> tuple[dict[str, Any], list[Any]]:
+def split_level_answers(level: LevelData) -> tuple[LevelData, list[Any]]:
     """从关卡载荷中拆出 answers 字段。"""
     level_payload = dict(level)
     answers = level_payload.pop("answers", [])
     return level_payload, answers if isinstance(answers, list) else []
 
 
-def read_level_answers(level: dict[str, Any]) -> list[Any]:
+def read_level_answers(level: LevelData) -> list[Any]:
     """读取关卡答案，兼容文件和 SQLite 存储。"""
     if use_sqlite_storage():
         return level_db.read_answers(
@@ -135,12 +138,12 @@ def read_level_answers(level: dict[str, Any]) -> list[Any]:
     return payload if isinstance(payload, list) else []
 
 
-def read_level_with_answers(level: dict[str, Any]) -> dict[str, Any]:
+def read_level_with_answers(level: LevelData) -> LevelData:
     """返回包含 answers 的关卡对象。"""
     return {**level, "answers": read_level_answers(level)}
 
 
-def write_answer_file(level: dict[str, Any], answers: list[Any]) -> None:
+def write_answer_file(level: LevelData, answers: list[Any]) -> None:
     """写入关卡答案。"""
     if use_sqlite_storage():
         level_db.write_answers(
@@ -191,7 +194,7 @@ def sync_answer_level_id(level_id: str, category: str) -> None:
         write_json_file(answer_path, payload)
 
 
-def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
+def strip_level_runtime_only_fields(level: LevelData) -> LevelData:
     """移除只在运行时使用、不应保存的关卡字段。"""
     payload = dict(level)
     payload.pop("sourcePath", None)
@@ -200,9 +203,13 @@ def strip_level_runtime_only_fields(level: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def normalize_level_for_storage(level: dict[str, Any]) -> dict[str, Any]:
+def normalize_level_for_storage(level: LevelData) -> LevelData:
     """把关卡对象规范为可持久化结构。"""
     payload = strip_level_runtime_only_fields(level)
+    if str(payload.get("gridType") or "square") == "equilateral-triangle":
+        payload["width"] = clamp_int(payload.get("width", 6), 2, EQUILATERAL_MAX_WIDTH)
+        payload["height"] = clamp_int(payload.get("height", 3), 1, EQUILATERAL_MAX_HEIGHT)
+        payload["width"] = min(EQUILATERAL_MAX_WIDTH, max(payload["width"], payload["height"] + 1))
     pairs = payload.get("pairs")
     if isinstance(pairs, list):
         payload["pairs"] = [
@@ -214,6 +221,15 @@ def normalize_level_for_storage(level: dict[str, Any]) -> dict[str, Any]:
             if isinstance(pair, dict)
         ]
     return payload
+
+
+def clamp_int(value: Any, minimum: int, maximum: int) -> int:
+    """把数值约束在指定范围内。"""
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        number = minimum
+    return min(maximum, max(minimum, number))
 
 
 def list_files(directory: Path) -> list[Path]:
@@ -234,7 +250,7 @@ def is_level_json_file(file_path: Path) -> bool:
     return file_path.suffix.lower() == ".json" and bool(LEVEL_FILE_RE.match(file_path.name))
 
 
-def read_levels() -> list[dict[str, Any]]:
+def read_levels() -> list[LevelData]:
     """读取全部关卡完整内容。"""
     if use_sqlite_storage():
         return level_db.read_levels()
@@ -243,14 +259,14 @@ def read_levels() -> list[dict[str, Any]]:
     return [dict(level) for level in get_cached_levels()]
 
 
-def read_level_index() -> list[dict[str, Any]]:
+def read_level_index() -> list[LevelIndexItem]:
     """读取关卡目录，只返回列表展示和筛选所需的轻量字段。"""
     if use_sqlite_storage():
         return level_db.read_level_index()
     return [dict(level) for level in read_level_index_cache()]
 
 
-def read_level_by_id(level_id: str) -> dict[str, Any]:
+def read_level_by_id(level_id: str) -> LevelData:
     """按 id 读取完整关卡内容。"""
     if not LEVEL_ID_RE.match(level_id):
         raise http_error(404, "Not Found", f"找不到关卡 {level_id}")
@@ -265,7 +281,7 @@ def read_level_by_id(level_id: str) -> dict[str, Any]:
     return read_level_file(file_path)
 
 
-def read_level_by_source_path(source_path: str) -> dict[str, Any]:
+def read_level_by_source_path(source_path: str) -> LevelData:
     """按目录中的相对路径读取完整关卡内容。"""
     if use_sqlite_storage():
         level = level_db.read_level_by_source_path(source_path)
@@ -288,7 +304,7 @@ def get_sorted_level_files() -> list[Path]:
     )
 
 
-def get_cached_levels() -> list[dict[str, Any]]:
+def get_cached_levels() -> list[LevelData]:
     """读取带短 TTL 和文件签名校验的关卡缓存。"""
     global levels_cache
     global levels_cache_checked_at
@@ -307,7 +323,7 @@ def get_cached_levels() -> list[dict[str, Any]]:
     return levels_cache
 
 
-def read_level_index_cache() -> list[dict[str, Any]]:
+def read_level_index_cache() -> list[LevelIndexItem]:
     """读取内存或磁盘中的关卡目录缓存。"""
     global level_index_cache
     global level_index_cache_signature
@@ -344,7 +360,7 @@ def is_valid_level_index_cache(payload: dict[str, Any] | None) -> bool:
     return isinstance(payload.get("levels"), list)
 
 
-def write_level_index_file(index_file: Path, levels: list[dict[str, Any]]) -> None:
+def write_level_index_file(index_file: Path, levels: list[LevelIndexItem]) -> None:
     """把轻量关卡目录写入索引文件。"""
     payload = {
         "version": LEVEL_INDEX_VERSION,
@@ -354,7 +370,7 @@ def write_level_index_file(index_file: Path, levels: list[dict[str, Any]]) -> No
     write_json_file(index_file, payload)
 
 
-def refresh_level_index() -> list[dict[str, Any]]:
+def refresh_level_index() -> list[LevelIndexItem]:
     """重新扫描关卡并刷新目录索引。"""
     global level_index_cache
     global level_index_cache_signature
@@ -432,7 +448,7 @@ def create_file_signature(file_path: Path) -> tuple[int, int] | None:
     return (stat.st_mtime_ns, stat.st_size)
 
 
-def read_level_file(file_path: Path) -> dict[str, Any]:
+def read_level_file(file_path: Path) -> LevelData:
     """读取单个关卡文件并补充来源字段。"""
     levels_dir = get_levels_dir()
     level = json.loads(file_path.read_text(encoding="utf-8"))
@@ -445,7 +461,7 @@ def read_level_file(file_path: Path) -> dict[str, Any]:
     return level
 
 
-def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
+def create_level_index_item(level: LevelData) -> LevelIndexItem:
     """从完整关卡提取目录索引项。"""
     item = {
         "id": level.get("id"),
@@ -457,7 +473,7 @@ def create_level_index_item(level: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
-def save_level(level: dict[str, Any]) -> dict[str, Any]:
+def save_level(level: LevelData) -> LevelData:
     """保存新关卡或更新已有关卡。"""
     if use_sqlite_storage():
         return save_level_to_sqlite(level)
@@ -494,7 +510,7 @@ def save_level(level: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
+def update_existing_level(level: LevelData) -> LevelData:
     """更新文件存储中的已有关卡。"""
     if use_sqlite_storage():
         return update_existing_level_in_sqlite(level)
@@ -553,7 +569,7 @@ def update_existing_level(level: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
+def review_test_level(review: ReviewData) -> LevelData:
     """审核文件存储中的测试关卡，收录或移入 removed。"""
     if use_sqlite_storage():
         return review_test_level_in_sqlite(review)
@@ -605,7 +621,7 @@ def review_test_level(review: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def save_level_to_sqlite(level: dict[str, Any]) -> dict[str, Any]:
+def save_level_to_sqlite(level: LevelData) -> LevelData:
     """保存新关卡到 SQLite。"""
     if level.get("saveMode") == "update":
         return update_existing_level_in_sqlite(level)
@@ -635,7 +651,7 @@ def save_level_to_sqlite(level: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def update_existing_level_in_sqlite(level: dict[str, Any]) -> dict[str, Any]:
+def update_existing_level_in_sqlite(level: LevelData) -> LevelData:
     """更新 SQLite 中的已有关卡。"""
     level_id = str(level.get("id") or "")
     if not LEVEL_ID_RE.match(level_id):
@@ -682,7 +698,7 @@ def update_existing_level_in_sqlite(level: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def review_test_level_in_sqlite(review: dict[str, Any]) -> dict[str, Any]:
+def review_test_level_in_sqlite(review: ReviewData) -> LevelData:
     """审核 SQLite 中的测试关卡。"""
     level_id = str(review.get("levelId") or "")
     source_path_value = str(review.get("sourcePath") or "")
@@ -718,7 +734,7 @@ def review_test_level_in_sqlite(review: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def strip_sqlite_private_fields(level: dict[str, Any]) -> dict[str, Any]:
+def strip_sqlite_private_fields(level: LevelData) -> LevelData:
     """移除 SQLite 内部哈希字段后返回给 API。"""
     payload = dict(level)
     payload.pop("levelHash", None)

@@ -82,14 +82,7 @@ def canonicalize_variant(level: dict[str, Any], grid_type: str, transform: Any) 
 def get_level_transforms(level: dict[str, Any], grid_type: str) -> list[Any]:
     """列出当前网格类型支持的等价变换。"""
     if grid_type == "equilateral-triangle":
-        return [
-            lambda point: [point[0], point[1]],
-            lambda point: [-point[1], point[0] + point[1]],
-            lambda point: [-point[0] - point[1], point[0]],
-            lambda point: [-point[0], -point[1]],
-            lambda point: [point[1], -point[0] - point[1]],
-            lambda point: [point[0] + point[1], -point[0]],
-        ]
+        return [lambda point: [point[0], point[1]]]
 
     width = number(level.get("width", 0))
     height = number(level.get("height", 0))
@@ -112,10 +105,10 @@ def get_level_transforms(level: dict[str, Any], grid_type: str) -> list[Any]:
 
 def get_transformed_size(level: dict[str, Any], grid_type: str, transform: Any) -> dict[str, Any]:
     """计算变换后的关卡尺寸。"""
-    if grid_type == "equilateral-triangle":
-        return {"radius": number(level.get("radius", level.get("width", 0)))}
     width = number(level.get("width", 0))
     height = number(level.get("height", 0))
+    if grid_type == "equilateral-triangle":
+        return {"width": width, "height": height}
     next_width, next_height = getattr(transform, "size", [width, height])
     return {"width": next_width, "height": next_height}
 
