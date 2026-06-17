@@ -494,6 +494,49 @@ export const computed = {
     },
 
     /**
+     * 获取编辑器当前可通行边集合。
+     *
+     * @returns {Set<string>} 可通行边 key 集合。
+     */
+    editorAvailableEdgeSet() {
+      const removedEdges = new Set(this.editorState.removedEdges ?? []);
+      return new Set(getAllGridEdges(this.editorState).filter((edge) => !removedEdges.has(edge)));
+    },
+
+    /**
+     * 获取编辑器可通行邻接表，用于拖拽方向吸附。
+     *
+     * @returns {Map<string, Array<[number, number]>>} 节点 key 到相邻节点列表的映射。
+     */
+    editorNeighborMap() {
+      const map = new Map();
+      this.editorAvailableEdgeSet.forEach((edge) => {
+        const points = pointsFromEdgeKey(edge);
+        if (!points) return;
+        const [from, to] = points;
+        const fromKey = keyOf(from[0], from[1]);
+        const toKey = keyOf(to[0], to[1]);
+        if (!map.has(fromKey)) map.set(fromKey, []);
+        if (!map.has(toKey)) map.set(toKey, []);
+        map.get(fromKey).push(to);
+        map.get(toKey).push(from);
+      });
+      return map;
+    },
+
+    /**
+     * 获取编辑器节点渲染坐标缓存，用于指针吸附。
+     *
+     * @returns {Array<{ x: number, y: number, renderX: number, renderY: number }>} 节点坐标列表。
+     */
+    editorSnapNodes() {
+      return getGridNodes(this.editorState).map(([x, y]) => {
+        const [renderX, renderY] = this.toEditorDisplayPoint([x, y]);
+        return { x, y, renderX, renderY };
+      });
+    },
+
+    /**
      * 获取编辑器基础网格的合并 path。
      *
      * @returns {string} SVG path d 属性。
@@ -560,6 +603,24 @@ export const computed = {
         color,
         d: linePathD(edges)
       })).filter((group) => group.d);
+    },
+
+    /**
+     * 获取编辑器拖拽预览线。
+     *
+     * @returns {{ d: string, color: string }|null} 预览线渲染数据。
+     */
+    editorPointerPreviewLine() {
+      if (!this.editorDragState?.last || !this.editorDragState?.preview) return null;
+      const last = this.editorDragState.last;
+      const preview = this.editorDragState.preview;
+      if (last[0] === preview.x && last[1] === preview.y) return null;
+      const [x1, y1] = this.toEditorDisplayPoint(last);
+      const [x2, y2] = this.toEditorDisplayPoint([preview.x, preview.y]);
+      return {
+        d: linePathD([{ attrs: { x1, y1, x2, y2 } }]),
+        color: this.pointDefinitions[this.editorDragState.pairId]?.color ?? "var(--accent)"
+      };
     },
 
     /**

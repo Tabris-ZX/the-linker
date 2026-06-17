@@ -32,7 +32,7 @@
 
 .editor-form {
   display: grid;
-  grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr) minmax(230px, 0.72fr);
+  grid-template-columns: minmax(280px, 0.8fr) minmax(520px, 1.4fr) minmax(230px, 0.72fr);
   gap: 12px;
   align-items: stretch;
   margin-bottom: 12px;
@@ -59,7 +59,7 @@
 }
 
 .editor-form-group-main {
-  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.8fr);
+  grid-template-columns: minmax(180px, 1fr);
 }
 
 .editor-form-group-main .editor-level-select {
@@ -71,7 +71,32 @@
 }
 
 .editor-form-group-grid {
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  gap: 11px 10px;
+}
+
+.editor-form-group-grid .editor-grid-type-field {
+  grid-column: 1 / span 3;
+  grid-row: 2;
+}
+
+.editor-form-group-grid .editor-size-field,
+.editor-form-group-grid .editor-pair-count-field,
+.editor-form-group-grid .editor-difficulty-field {
+  grid-column: span 2;
+  grid-row: 1;
+}
+
+.editor-form-group-grid .editor-mode-field {
+  grid-column: 4 / span 3;
+  grid-row: 2;
+}
+
+.editor-form-group-grid .editor-grid-type-field,
+.editor-form-group-grid .editor-mode-field {
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
 }
 
 .editor-form label {
@@ -141,7 +166,7 @@
 }
 
 .editor-form:not(:has(.editor-generator-panel)) {
-  grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr);
+  grid-template-columns: minmax(280px, 0.8fr) minmax(520px, 1.4fr);
 }
 
 .editor-generator-panel {
@@ -320,7 +345,7 @@ textarea:focus {
   border: 0;
   background: transparent;
   filter: drop-shadow(0 14px 18px color-mix(in srgb, var(--shadow-color) 42%, transparent));
-  touch-action: auto;
+  touch-action: none;
   overflow: visible;
 }
 
@@ -380,6 +405,10 @@ textarea:focus {
   stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
   vector-effect: non-scaling-stroke;
   opacity: 0.99;
+}
+
+.preview-answer-layer .preview-drag-line {
+  opacity: 0.62;
 }
 
 .preview-hit-layer line {
@@ -468,6 +497,22 @@ textarea:focus {
 
   .editor-form-actions {
     grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+
+  .editor-form-group-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .editor-form-group-grid .editor-size-field,
+  .editor-form-group-grid .editor-pair-count-field,
+  .editor-form-group-grid .editor-difficulty-field {
+    grid-column: span 2;
+  }
+
+  .editor-form-group-grid .editor-grid-type-field,
+  .editor-form-group-grid .editor-mode-field {
+    grid-column: span 2;
+    grid-row: auto;
   }
 }
 

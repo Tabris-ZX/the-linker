@@ -133,6 +133,12 @@ export default {
       },
       isEditorCheckingGood: false,
       isEditorGenerating: false,
+      editorPointerGeometry: null,
+      editorDragState: null,
+      editorPointerMoved: false,
+      editorLastPointerNodeKey: "",
+      pendingEditorDragPosition: null,
+      editorDragFrameId: 0,
       editorState: {
         name: "",
         gridType: "square",
@@ -148,7 +154,7 @@ export default {
         answers: {}
       },
       editorEditingLevelId: "",
-      previewHint: "点交点可放置或删除色点；标记模式：点击格子边标出答案线路。",
+      previewHint: "点交点可放置或删除色点；标记模式：按住节点拖动标出答案线路。",
       isLevelOutputVisible: false,
       levelOutput: ""
     };

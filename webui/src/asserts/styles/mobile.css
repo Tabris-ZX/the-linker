@@ -185,6 +185,15 @@
     grid-template-columns: 1fr;
   }
 
+  .editor-form-group-grid .editor-grid-type-field,
+  .editor-form-group-grid .editor-size-field,
+  .editor-form-group-grid .editor-pair-count-field,
+  .editor-form-group-grid .editor-difficulty-field,
+  .editor-form-group-grid .editor-mode-field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
   .editor-form-actions {
     grid-column: 1;
     grid-template-columns: 1fr;

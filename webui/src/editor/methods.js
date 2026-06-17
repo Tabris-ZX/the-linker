@@ -1,7 +1,7 @@
 import { isEditorEdgeInBounds, validateEditorLevelAnswer } from "./checker.js";
 import { checkLevelGoodRequest, generateLevelRequest } from "../router/levels.js";
 import { hydrateLevel, loadLevelAnswers, saveLevelFile } from "../services/levels.js";
-import { getGridBounds, getGridNodes, getGridRadius, keyOf, lineAttrs, normalizeGridType, pointFromKey, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
+import { edgeKey, fromRenderPoint, getGridBounds, getGridNodes, getGridRadius, isAdjacent, keyOf, lineAttrs, normalizeGridType, pointFromKey, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
 import { clampNumber, omitKey } from "../utils/object.js";
 
 export const editorMethods = {
@@ -13,6 +13,23 @@ export const editorMethods = {
         renderPoint[1] - bounds.minY,
         bounds.minX + bounds.width - renderPoint[0]
       ];
+    },
+
+    /**
+     * 将编辑器显示坐标反推为逻辑坐标。
+     *
+     * @param {[number, number]} point 显示坐标。
+     * @param {object} [bounds] 网格边界。
+     * @returns {[number, number]} 逻辑坐标。
+     */
+    fromEditorDisplayPoint(point, bounds = getGridBounds(this.editorState)) {
+      const renderPoint = this.editorShouldRotateDisplay
+        ? [
+            bounds.minX + bounds.width - point[1],
+            bounds.minY + point[0]
+          ]
+        : point;
+      return fromRenderPoint(renderPoint, this.editorState.gridType);
     },
 
     editorEdgeDisplayRenderData(edge) {
@@ -76,8 +93,9 @@ export const editorMethods = {
       );
       this.editorState.removedEdges = this.editorState.removedEdges.filter((edge) => this.isEditorEdgeInBounds(edge));
       this.editorState.answers = Object.fromEntries(
-        Object.entries(this.editorState.answers).filter(([, pairId]) => this.editorState.pairIds.includes(pairId))
+        Object.entries(this.editorState.answers).filter(([edge, pairId]) => this.editorState.pairIds.includes(pairId) && this.isEditorEdgeInBounds(edge))
       );
+      this.stopEditorDrag(false);
       this.writeLevelTemplate(false);
     },
 
@@ -397,6 +415,7 @@ export const editorMethods = {
      * @returns {void}
      */
     selectEditorPair(pairId) {
+      this.stopEditorDrag(false);
       this.editorState.activePairId = pairId;
       this.setEditorModeHint();
     },
@@ -410,27 +429,105 @@ export const editorMethods = {
       this.editorState.points = {};
       this.editorState.removedEdges = [];
       this.editorState.answers = {};
+      this.stopEditorDrag(false);
       this.previewHint = "已清空当前所有点位和连线";
       this.writeLevelTemplate(false);
     },
 
     /**
-     * 处理编辑器预览区域点击，切换节点或边状态。
+     * 处理编辑器预览区按下事件，开始拖动答案线或准备点击操作。
      *
-     * @param {MouseEvent} event 鼠标事件。
+     * @param {PointerEvent} event 指针事件。
      * @returns {void}
      */
-    handleEditorPreviewClick(event) {
+    handleEditorPreviewPointerDown(event) {
+      this.cacheEditorPointerGeometry(event.currentTarget);
       const node = event.target.closest("[data-preview-node]");
       if (node) {
         const [x, y] = pointFromKey(node.dataset.previewNode);
-        this.toggleEditorPoint(x, y);
+        this.startEditorDrag([x, y]);
+        event.currentTarget?.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
         return;
       }
 
+      if (this.editorState.mode !== "edge") return;
       const edge = event.target.closest("[data-preview-edge]");
       if (!edge) return;
-      this.toggleEditorEdge(edge.dataset.previewEdge);
+      this.editorDragState = {
+        mode: "edge-click",
+        edge: edge.dataset.previewEdge
+      };
+      event.currentTarget?.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    },
+
+    /**
+     * 处理编辑器预览区移动事件，拖动标记答案线。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
+    handleEditorPreviewPointerMove(event) {
+      if (!this.editorDragState || this.editorDragState.mode !== "mark") return;
+      const pointerPosition = this.editorPointerPositionFromEvent(event);
+      if (pointerPosition) {
+        this.editorDragState.preview = pointerPosition;
+      }
+      this.queueEditorDragPosition(pointerPosition);
+      event.preventDefault();
+    },
+
+    /**
+     * 处理编辑器预览区抬起事件，提交点击或结束拖拽。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
+    handleEditorPreviewPointerUp(event) {
+      const dragState = this.editorDragState;
+      this.cancelEditorDragFrame();
+      if (!dragState) {
+        this.releaseEditorPointer(event);
+        return;
+      }
+
+      if (dragState.mode === "mark") {
+        const finalPosition = this.editorDragPositionFromPointer(this.editorPointerPositionFromEvent(event));
+        if (finalPosition && dragState.last) {
+          const finalNodeKey = keyOf(finalPosition.x, finalPosition.y);
+          const lastNodeKey = keyOf(dragState.last[0], dragState.last[1]);
+          if (finalNodeKey !== lastNodeKey && this.addEditorAnswerStep(finalPosition)) {
+            this.editorPointerMoved = true;
+            this.editorLastPointerNodeKey = finalNodeKey;
+          }
+        }
+        if (!this.editorPointerMoved && dragState.start) {
+          this.toggleEditorPoint(dragState.start[0], dragState.start[1]);
+        } else if (this.editorPointerMoved) {
+          this.previewHint = `已绘制 ${this.getPointLabel(dragState.pairId)} 号答案线路`;
+          this.writeLevelTemplate(false);
+        }
+      } else if (dragState.mode === "edge-click" && !this.editorPointerMoved && dragState.edge) {
+        this.toggleEditorEdge(dragState.edge);
+      } else if (dragState.mode === "point-click" && dragState.start) {
+        this.toggleEditorPoint(dragState.start[0], dragState.start[1]);
+      }
+
+      this.stopEditorDrag(false);
+      event.preventDefault();
+      this.releaseEditorPointer(event);
+    },
+
+    /**
+     * 处理编辑器预览区指针取消事件。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
+    handleEditorPreviewPointerCancel(event) {
+      this.stopEditorDrag(false);
+      this.releaseEditorPointer(event);
     },
 
     /**
@@ -464,7 +561,6 @@ export const editorMethods = {
      * @returns {void}
      */
     toggleEditorEdge(edge) {
-      // Edge mode removes travel; mark mode records the puzzle answer.
       if (!this.isEditorEdgeInBounds(edge)) return;
 
       if (this.editorState.mode === "edge") {
@@ -480,22 +576,299 @@ export const editorMethods = {
         return;
       }
 
-      if (this.editorState.removedEdges.includes(edge)) {
-        this.previewHint = "被移除的边不能标记为答案线路";
+      this.previewHint = "标记模式：请按住节点拖动来绘制答案线路";
+    },
+
+    /**
+     * 开始编辑器答案线拖拽。
+     *
+     * @param {[number, number]} point 起点。
+     * @returns {void}
+     */
+    startEditorDrag(point) {
+      this.cancelEditorDragFrame();
+      this.editorPointerMoved = false;
+      this.editorLastPointerNodeKey = keyOf(point[0], point[1]);
+      if (this.editorState.mode !== "mark") {
+        this.editorDragState = {
+          mode: "point-click",
+          start: point
+        };
         return;
       }
 
-      if (this.editorState.answers[edge] === this.editorState.activePairId) {
+      this.editorDragState = {
+        mode: "mark",
+        pairId: this.editorState.activePairId,
+        start: point,
+        last: point,
+        preview: null
+      };
+    },
+
+    /**
+     * 给当前答案拖拽追加一步。
+     *
+     * @param {{ x: number, y: number }} position 目标节点。
+     * @returns {boolean} 是否追加成功。
+     */
+    addEditorAnswerStep(position) {
+      const dragState = this.editorDragState;
+      if (!dragState || dragState.mode !== "mark" || !dragState.pairId || !dragState.last) return false;
+      const next = [position.x, position.y];
+      const last = dragState.last;
+      if (last[0] === next[0] && last[1] === next[1]) return true;
+      if (!isAdjacent(last, next, this.editorState.gridType)) {
+        return this.addEditorAnswerStepsToward(next);
+      }
+      const edge = edgeKey(last, next);
+      if (!this.editorAvailableEdgeSet.has(edge)) {
+        this.previewHint = "被移除的边不能标记为答案线路";
+        return false;
+      }
+
+      if (this.editorState.answers[edge] === dragState.pairId) {
         this.editorState.answers = omitKey(this.editorState.answers, edge);
-        this.previewHint = `已取消 ${this.getPointLabel(this.editorState.activePairId)} 号线标记`;
       } else {
         this.editorState.answers = {
           ...this.editorState.answers,
-          [edge]: this.editorState.activePairId
+          [edge]: dragState.pairId
         };
-        this.previewHint = `已标记 ${this.getPointLabel(this.editorState.activePairId)} 号答案线路`;
       }
-      this.writeLevelTemplate(false);
+      dragState.last = next;
+      return true;
+    },
+
+    /**
+     * 快速拖拽到较远节点时，沿可通行邻边向目标补齐中间步骤。
+     *
+     * @param {[number, number]} target 目标节点。
+     * @returns {boolean} 是否至少移动了一步。
+     */
+    addEditorAnswerStepsToward(target) {
+      const dragState = this.editorDragState;
+      if (!dragState?.last) return false;
+      const targetRender = this.toEditorDisplayPoint(target);
+      const maxSteps = this.editorSnapNodes.length + 1;
+      let current = dragState.last;
+      let moved = false;
+
+      for (let step = 0; step < maxSteps && (current[0] !== target[0] || current[1] !== target[1]); step += 1) {
+        const currentRender = this.toEditorDisplayPoint(current);
+        const currentDistance = Math.hypot(targetRender[0] - currentRender[0], targetRender[1] - currentRender[1]);
+        let best = null;
+        let bestDistance = currentDistance;
+
+        (this.editorNeighborMap.get(keyOf(current[0], current[1])) ?? []).forEach((candidate) => {
+          const candidateRender = this.toEditorDisplayPoint(candidate);
+          const distance = Math.hypot(targetRender[0] - candidateRender[0], targetRender[1] - candidateRender[1]);
+          if (distance < bestDistance - 0.000001) {
+            bestDistance = distance;
+            best = candidate;
+          }
+        });
+
+        if (!best) return moved;
+        if (!this.addEditorAnswerStep({ x: best[0], y: best[1] })) return moved;
+        current = dragState.last;
+        moved = true;
+      }
+
+      return moved;
+    },
+
+    /**
+     * 缓存编辑器预览区尺寸和网格边界。
+     *
+     * @param {HTMLElement|null} editorElement 编辑器预览元素。
+     * @returns {void}
+     */
+    cacheEditorPointerGeometry(editorElement) {
+      if (!editorElement) {
+        this.editorPointerGeometry = null;
+        return;
+      }
+      const rect = editorElement.getBoundingClientRect();
+      this.editorPointerGeometry = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width || 1,
+        height: rect.height || 1,
+        bounds: this.editorDisplayBounds,
+        sourceBounds: getGridBounds(this.editorState)
+      };
+    },
+
+    /**
+     * 将指针事件转换为编辑器逻辑位置。
+     *
+     * @param {PointerEvent|MouseEvent} event 指针事件。
+     * @returns {{ x: number, y: number, renderX: number, renderY: number }|null} 逻辑位置。
+     */
+    editorPointerPositionFromEvent(event) {
+      if (!this.editorPointerGeometry) {
+        this.cacheEditorPointerGeometry(event.currentTarget);
+      }
+      const geometry = this.editorPointerGeometry;
+      if (!geometry) return null;
+      const bounds = geometry.bounds;
+      const renderX = bounds.minX + ((event.clientX - geometry.left) / geometry.width) * bounds.width;
+      const renderY = bounds.minY + ((event.clientY - geometry.top) / geometry.height) * bounds.height;
+      const [x, y] = this.fromEditorDisplayPoint([renderX, renderY], geometry.sourceBounds);
+      if (Number.isNaN(x) || Number.isNaN(y)) return null;
+      return { x, y, renderX, renderY };
+    },
+
+    /**
+     * 拖拽时解析编辑器目标节点。
+     *
+     * @param {{ x: number, y: number, renderX: number, renderY: number }|null} point 指针逻辑位置。
+     * @returns {{ x: number, y: number }|null} 目标节点。
+     */
+    editorDragPositionFromPointer(point) {
+      if (!point) return null;
+      const direct = this.nearestEditorPositionFromPointer(point);
+      if (direct) return direct;
+      return this.directionalEditorDragPositionFromPointer(point);
+    },
+
+    /**
+     * 从逻辑指针位置寻找最近的编辑器节点。
+     *
+     * @param {{ renderX: number, renderY: number }|null} point 指针逻辑位置。
+     * @returns {{ x: number, y: number }|null} 最近节点。
+     */
+    nearestEditorPositionFromPointer(point) {
+      if (!point) return null;
+      let nearest = null;
+      let nearestDistance = Infinity;
+      this.editorSnapNodes.forEach((node) => {
+        const distance = Math.hypot(point.renderX - node.renderX, point.renderY - node.renderY);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = { x: node.x, y: node.y };
+        }
+      });
+      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      if (!nearest || nearestDistance > snapRadius) return null;
+      return nearest;
+    },
+
+    /**
+     * 指针未命中节点时，根据拖拽方向选择相邻节点。
+     *
+     * @param {{ renderX: number, renderY: number }|null} point 指针逻辑位置。
+     * @returns {{ x: number, y: number }|null} 目标节点。
+     */
+    directionalEditorDragPositionFromPointer(point) {
+      const dragState = this.editorDragState;
+      if (!point || !dragState?.last) return null;
+      const current = dragState.last;
+      const currentRender = this.toEditorDisplayPoint(current);
+      const pointerVector = [point.renderX - currentRender[0], point.renderY - currentRender[1]];
+      const pointerDistance = Math.hypot(pointerVector[0], pointerVector[1]);
+      if (pointerDistance <= 0) return null;
+
+      const snapRadius = Math.max(this.mapStyle.snapPointRadius, this.mapStyle.dotScale * 0.55, this.mapStyle.lineScale * 0.45);
+      let best = null;
+      let bestScore = Infinity;
+
+      (this.editorNeighborMap.get(keyOf(current[0], current[1])) ?? []).forEach((candidate) => {
+        const candidateRender = this.toEditorDisplayPoint(candidate);
+        const edgeVector = [candidateRender[0] - currentRender[0], candidateRender[1] - currentRender[1]];
+        const edgeLength = Math.hypot(edgeVector[0], edgeVector[1]);
+        if (edgeLength <= 0 || pointerDistance < edgeLength * 0.68) return;
+
+        const projection = (pointerVector[0] * edgeVector[0] + pointerVector[1] * edgeVector[1]) / (edgeLength * edgeLength);
+        if (projection < 0.63) return;
+
+        const perpendicular = Math.abs(pointerVector[0] * edgeVector[1] - pointerVector[1] * edgeVector[0]) / edgeLength;
+        const distanceToCandidate = Math.hypot(point.renderX - candidateRender[0], point.renderY - candidateRender[1]);
+        const tolerance = Math.max(snapRadius, edgeLength * 0.24);
+        if (perpendicular > tolerance && distanceToCandidate > edgeLength * 0.65) return;
+
+        const score = distanceToCandidate + Math.max(0, perpendicular - snapRadius) * 0.65;
+        if (score < bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
+      });
+
+      return best ? { x: best[0], y: best[1] } : null;
+    },
+
+    /**
+     * 将编辑器拖拽节点计算合并到下一帧。
+     *
+     * @param {{ x: number, y: number, renderX: number, renderY: number }|null} point 指针位置。
+     * @returns {void}
+     */
+    queueEditorDragPosition(point) {
+      this.pendingEditorDragPosition = point;
+      if (this.editorDragFrameId) return;
+      this.editorDragFrameId = window.requestAnimationFrame(() => {
+        this.editorDragFrameId = 0;
+        this.processQueuedEditorDragPosition();
+      });
+    },
+
+    /**
+     * 处理当前帧最后一次编辑器拖拽位置。
+     *
+     * @returns {void}
+     */
+    processQueuedEditorDragPosition() {
+      const pointerPosition = this.pendingEditorDragPosition;
+      this.pendingEditorDragPosition = null;
+      if (!this.editorDragState || this.editorDragState.mode !== "mark" || !pointerPosition) return;
+
+      const position = this.editorDragPositionFromPointer(pointerPosition);
+      if (!position) return;
+      const nodeKey = keyOf(position.x, position.y);
+      if (nodeKey === this.editorLastPointerNodeKey) return;
+      if (this.addEditorAnswerStep(position)) {
+        this.editorPointerMoved = true;
+        this.editorLastPointerNodeKey = nodeKey;
+      }
+    },
+
+    /**
+     * 取消挂起的编辑器拖拽计算帧。
+     *
+     * @returns {void}
+     */
+    cancelEditorDragFrame() {
+      if (this.editorDragFrameId) {
+        window.cancelAnimationFrame(this.editorDragFrameId);
+        this.editorDragFrameId = 0;
+      }
+      this.pendingEditorDragPosition = null;
+    },
+
+    /**
+     * 清理编辑器拖拽状态。
+     *
+     * @param {boolean} [keepGeometry=false] 是否保留几何缓存。
+     * @returns {void}
+     */
+    stopEditorDrag(keepGeometry = false) {
+      this.cancelEditorDragFrame();
+      this.editorDragState = null;
+      this.editorPointerMoved = false;
+      this.editorLastPointerNodeKey = "";
+      if (!keepGeometry) this.editorPointerGeometry = null;
+    },
+
+    /**
+     * 释放编辑器指针捕获。
+     *
+     * @param {PointerEvent} event 指针事件。
+     * @returns {void}
+     */
+    releaseEditorPointer(event) {
+      if (event.currentTarget?.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
     },
 
     /**
@@ -532,7 +905,7 @@ export const editorMethods = {
       const label = this.pointDefinitions[this.editorState.activePairId]?.label ?? "";
       const hints = {
         edge: "移除模式：点击格子边切换禁用，挑战地图中会显示为空白。",
-        mark: `标记模式：当前颜色为 ${label} 号，点击格子边标出答案线路。`
+        mark: `标记模式：当前颜色为 ${label} 号，按住节点拖动标出答案线路。`
       };
       this.previewHint = `点交点可放置或删除色点；${hints[this.editorState.mode] ?? hints.edge}`;
     },

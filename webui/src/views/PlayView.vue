@@ -139,7 +139,7 @@
           </template>
         </div>
       </div>
-      <div class="game-watermark" aria-hidden="true">@Tabris_ZX</div>
+      <div class="game-watermark" aria-hidden="true">v1.0.1@Tabris_ZX</div>
 
       <div v-if="app.isWon && !app.isVictoryDismissed" class="victory-mark" role="status" aria-live="polite" aria-label="胜利">
         <div class="victory-main">

@@ -5,9 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBUI_DIR="$ROOT_DIR/webui"
 UV_BIN="${UV_BIN:-}"
 INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-0}"
-RESTART_SERVICE="${RESTART_SERVICE:-0}"
+RESTART_SERVICE="${RESTART_SERVICE:-1}"
+RESTART_REQUESTED=0
+NO_RESTART_SERVICE="${NO_RESTART_SERVICE:-0}"
 SERVICE_NAME="${SERVICE_NAME:-linker}"
-LOG_DIR="$ROOT_DIR/.setup-logs"
+DEPLOY_STATIC="${DEPLOY_STATIC:-auto}"
+DEPLOY_WEB_ROOT="${DEPLOY_WEB_ROOT:-/var/www/linker}"
+LOG_DIR="$ROOT_DIR/logs"
 
 usage() {
   cat <<'EOF'
@@ -16,6 +20,10 @@ usage() {
 选项:
   --install-systemd   安装并启用 systemd 服务
   --restart           构建、同步后重启 systemd 服务
+  --no-restart        构建、同步后不重启 systemd 服务
+  --deploy-static     构建后同步 webui/dist 到静态站点目录
+  --no-deploy-static  构建后不同步静态站点目录
+  --web-root <path>   静态站点目录，默认 /var/www/linker
   --service <name>    systemd 服务名，默认 linker
   -h, --help          显示帮助
 
@@ -24,6 +32,9 @@ usage() {
   SERVICE_NAME=linker
   INSTALL_SYSTEMD=1
   RESTART_SERVICE=1
+  NO_RESTART_SERVICE=0
+  DEPLOY_STATIC=auto
+  DEPLOY_WEB_ROOT=/var/www/linker
 EOF
 }
 
@@ -35,7 +46,29 @@ while (($# > 0)); do
       ;;
     --restart)
       RESTART_SERVICE=1
+      RESTART_REQUESTED=1
+      NO_RESTART_SERVICE=0
       shift
+      ;;
+    --no-restart)
+      NO_RESTART_SERVICE=1
+      shift
+      ;;
+    --deploy-static)
+      DEPLOY_STATIC=1
+      shift
+      ;;
+    --no-deploy-static)
+      DEPLOY_STATIC=0
+      shift
+      ;;
+    --web-root)
+      DEPLOY_WEB_ROOT="${2:-}"
+      if [[ -z "$DEPLOY_WEB_ROOT" ]]; then
+        echo "--web-root 需要静态站点目录" >&2
+        exit 1
+      fi
+      shift 2
       ;;
     --service|-ser)
       SERVICE_NAME="${2:-}"
@@ -90,6 +123,15 @@ echo "2/4 构建前端"
 run_quiet "构建前端" "$LOG_DIR/webui-build.log" npm run build --silent
 cd "$ROOT_DIR"
 
+if [[ "$DEPLOY_STATIC" == "1" ]] || { [[ "$DEPLOY_STATIC" == "auto" ]] && [[ -d "$DEPLOY_WEB_ROOT" ]]; }; then
+  echo "同步前端静态文件到: $DEPLOY_WEB_ROOT"
+  mkdir -p "$DEPLOY_WEB_ROOT"
+  find "$DEPLOY_WEB_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  run_quiet "同步前端静态文件" "$LOG_DIR/deploy-static.log" cp -a "$WEBUI_DIR/dist/." "$DEPLOY_WEB_ROOT/"
+elif [[ "$DEPLOY_STATIC" == "auto" ]]; then
+  echo "未找到静态站点目录 $DEPLOY_WEB_ROOT，跳过同步"
+fi
+
 echo "3/4 同步后端依赖"
 run_quiet "同步后端依赖" "$LOG_DIR/uv-sync.log" "$UV_BIN" sync --frozen --quiet
 
@@ -101,15 +143,17 @@ if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
   UV_BIN="$UV_BIN" SERVICE_NAME="$SERVICE_NAME" bash "$ROOT_DIR/deploy/install-systemd.sh"
 fi
 
-if [[ "$RESTART_SERVICE" == "1" ]]; then
-  if ! systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then
+if [[ "$NO_RESTART_SERVICE" != "1" ]] && systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then
+  echo "重启 systemd 服务: $SERVICE_NAME"
+  sudo systemctl restart "$SERVICE_NAME"
+  sudo systemctl --no-pager --full status "$SERVICE_NAME"
+elif [[ "$RESTART_SERVICE" == "1" ]] && [[ "$NO_RESTART_SERVICE" != "1" ]]; then
+  if [[ "$RESTART_REQUESTED" == "1" ]] || [[ "$INSTALL_SYSTEMD" == "1" ]]; then
     echo "找不到 systemd 服务: ${SERVICE_NAME}.service" >&2
     echo "请先安装: ./setup.sh --install-systemd" >&2
     exit 1
   fi
-  echo "重启 systemd 服务: $SERVICE_NAME"
-  sudo systemctl restart "$SERVICE_NAME"
-  sudo systemctl --no-pager --full status "$SERVICE_NAME"
+  echo "未找到 systemd 服务 ${SERVICE_NAME}.service，跳过重启"
 fi
 
 echo "完成"

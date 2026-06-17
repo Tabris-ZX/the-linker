@@ -20,7 +20,10 @@
             名称
             <input v-model.trim="app.editorState.name" type="text" placeholder="默认名字" :disabled="Boolean(app.editorEditingLevelId)" @input="app.syncEditorName">
           </label>
-          <label>
+        </fieldset>
+        <fieldset class="editor-form-group editor-form-group-grid">
+          <legend>地图参数</legend>
+          <label class="editor-grid-type-field">
             格子类型
             <select v-model="app.editorState.gridType" @change="app.syncEditorBounds">
               <option value="square">方形</option>
@@ -28,30 +31,27 @@
               <option value="equilateral-triangle">正三角形</option>
             </select>
           </label>
-        </fieldset>
-        <fieldset class="editor-form-group editor-form-group-grid">
-          <legend>地图参数</legend>
-          <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
+          <label v-if="app.editorState.gridType !== 'equilateral-triangle'" class="editor-size-field">
             宽度
             <input v-model.number="app.editorState.width" type="number" min="2" max="19" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'width', app.syncEditorBounds)">
           </label>
-          <label v-if="app.editorState.gridType !== 'equilateral-triangle'">
+          <label v-if="app.editorState.gridType !== 'equilateral-triangle'" class="editor-size-field">
             高度
             <input v-model.number="app.editorState.height" type="number" min="2" max="15" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'height', app.syncEditorBounds)">
           </label>
-          <label v-if="app.editorState.gridType === 'equilateral-triangle'">
+          <label v-if="app.editorState.gridType === 'equilateral-triangle'" class="editor-size-field">
             半径
             <input v-model.number="app.editorState.radius" type="number" min="1" max="6" @input="app.syncEditorBounds" @wheel.prevent="app.handleEditorNumberWheel($event, 'radius', app.syncEditorBounds)">
           </label>
-          <label>
+          <label class="editor-pair-count-field">
             点对数量
             <input v-model.number="app.editorPairCount" type="number" min="1" :max="app.editorPairLimit" @input="app.syncEditorPairCount" @wheel.prevent="app.handleEditorNumberWheel($event, 'pairCount', app.syncEditorPairCount)">
           </label>
-          <label>
+          <label class="editor-difficulty-field">
             难度
             <input v-model.number="app.editorState.difficulty" type="number" min="1" max="5" @input="app.syncEditorDifficulty" @wheel.prevent="app.handleEditorNumberWheel($event, 'difficulty', app.syncEditorDifficulty)">
           </label>
-          <label>
+          <label class="editor-mode-field">
             编辑模式
             <select v-model="app.editorState.mode" @change="app.setEditorModeHint">
               <option value="mark">标记模式</option>
@@ -98,7 +98,15 @@
       <div class="editor-workspace">
         <section class="preview-panel" aria-label="关卡预览">
           <div class="preview-board-wrap">
-            <div class="preview-board" :style="app.editorPreviewStyle" @click="app.handleEditorPreviewClick">
+            <div
+              class="preview-board"
+              :style="app.editorPreviewStyle"
+              @pointerdown="app.handleEditorPreviewPointerDown"
+              @pointermove="app.handleEditorPreviewPointerMove"
+              @pointerup="app.handleEditorPreviewPointerUp"
+              @pointercancel="app.handleEditorPreviewPointerCancel"
+              @click.prevent
+            >
               <svg class="preview-grid" :viewBox="app.editorViewBox" preserveAspectRatio="none">
                 <path v-if="app.editorGridPathD" :d="app.editorGridPathD"></path>
               </svg>
@@ -111,6 +119,12 @@
                   :key="group.key"
                   :d="group.d"
                   :style="{ '--answer-color': group.color }"
+                ></path>
+                <path
+                  v-if="app.editorPointerPreviewLine"
+                  :d="app.editorPointerPreviewLine.d"
+                  :style="{ '--answer-color': app.editorPointerPreviewLine.color }"
+                  class="preview-drag-line"
                 ></path>
               </svg>
               <svg class="preview-hit-layer" :viewBox="app.editorViewBox" preserveAspectRatio="none">
