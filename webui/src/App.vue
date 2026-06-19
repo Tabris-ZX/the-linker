@@ -16,10 +16,25 @@
     @toggle-personalization="togglePersonalization"
   />
 
-  <main class="app-shell" :class="{ 'has-sidebar-nav': navLayout === 'sidebar' }">
+  <GameModeRail
+    v-if="activeView === 'play' || activeView === 'weave-total'"
+    :active-view="activeView"
+    :is-developer-mode="isDeveloperMode"
+    :can-use-weave-mode="canUseWeaveMode"
+    @select-game-mode="selectGameMode"
+  />
+
+  <main
+    class="app-shell"
+    :class="{
+      'has-sidebar-nav': navLayout === 'sidebar',
+      'is-weave-active': isWeaveModeEnabled
+    }"
+  >
     <RuleView v-if="isRulePanelOpen" />
     <PersonalizationView v-if="isPersonalizationOpen" />
     <PlayView />
+    <WeaveView />
     <EditorView />
   </main>
 

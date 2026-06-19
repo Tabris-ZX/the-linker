@@ -53,8 +53,8 @@
     display: contents;
   }
 
-  .app-topbar:not(.is-play) .game-timer,
-  .app-topbar:not(.is-play) .play-actions {
+  .app-topbar:not(.is-play):not(.is-weave-total) .game-timer,
+  .app-topbar:not(.is-play):not(.is-weave-total) .play-actions {
     display: none;
   }
 
@@ -119,7 +119,7 @@
   .play-actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: auto minmax(48px, 78px) auto;
+    grid-template-columns: minmax(78px, auto) minmax(48px, 1fr) auto;
     gap: 5px;
     align-items: center;
     justify-content: stretch;
@@ -135,7 +135,7 @@
 
   .current-level-label {
     width: 100%;
-    max-width: 78px;
+    max-width: none;
     min-width: 0;
     padding: 5px 4px;
     text-align: center;
@@ -146,6 +146,51 @@
     min-height: 32px;
     padding: 4px 7px;
     font-size: 0.8rem;
+  }
+
+  .game-mode-rail {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 9;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: calc(100% - 16px);
+    margin: 7px 8px 0;
+    padding: 4px;
+    overflow: visible;
+    transition: none;
+  }
+
+  .game-mode-rail:hover,
+  .game-mode-rail:focus-within {
+    width: calc(100% - 16px);
+    box-shadow: 5px 5px 0 var(--shadow-color-soft);
+  }
+
+  .game-mode-rail-item {
+    grid-template-columns: 28px minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+  }
+
+  .game-mode-rail-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.74rem;
+  }
+
+  .game-mode-rail-label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .game-mode-rail-label strong {
+    font-size: 0.74rem;
+  }
+
+  .game-mode-rail-label small {
+    display: none;
   }
 
   .app-shell {
@@ -161,6 +206,96 @@
   .view-editor {
     height: calc(100dvh - var(--topbar-height));
     overflow: auto;
+  }
+
+  .board-wrap.weave-workspace {
+    width: calc(100vw - 18px);
+    max-width: calc(100vw - 18px);
+    max-height: none;
+    padding: 6px 0 14px;
+    overflow: visible;
+  }
+
+  .weave-main-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    width: 100%;
+    max-width: calc(100vw - 18px);
+    gap: 12px;
+    overflow-x: visible;
+    padding: 0 0 8px;
+  }
+
+  .weave-side-panel {
+    position: static;
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    gap: 0;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .weave-console-title {
+    gap: 3px;
+  }
+
+  .weave-console-title strong {
+    font-size: 0.9rem;
+  }
+
+  .weave-panel-section {
+    gap: 8px;
+    padding: 12px 10px;
+  }
+
+  .weave-tool-row {
+    grid-template-columns: repeat(5, minmax(38px, 1fr));
+    gap: 7px;
+  }
+
+  .weave-pair-chip,
+  .weave-submit-row button,
+  .weave-console-stats {
+    min-height: 40px;
+  }
+
+  .weave-submit-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .weave-board-shell {
+    --weave-clue-size: 2rem;
+    --board-max-width: clamp(200px, calc(100vw - 52px), 100vw);
+    --board-max-height: clamp(160px, calc(100dvh - var(--topbar-height) - 120px), 100dvh);
+    --weave-mobile-shell-pad: 0.4rem;
+    grid-template-columns: var(--weave-clue-size) minmax(0, calc(var(--node-cols) * var(--cell-size)));
+    grid-template-rows: var(--weave-clue-size) minmax(0, calc(var(--node-rows) * var(--cell-size)));
+    width: fit-content;
+    max-width: 100%;
+    max-height: none;
+    padding: 10px var(--weave-mobile-shell-pad) 12px;
+    overflow-x: visible;
+    overflow-y: visible;
+  }
+
+  .weave-board-shell .board {
+    --board-max-width: calc(100vw - 64px);
+    --board-max-height: calc(100dvh - var(--topbar-height) - 128px);
+  }
+
+  .weave-left-clues {
+    width: var(--weave-clue-size);
+  }
+
+  .weave-clue-cell {
+    padding: 3px 2px;
+    overflow: visible;
+  }
+
+  .weave-clue-item {
+    font-size: 0.82rem;
   }
 
   .editor-panel {
@@ -282,10 +417,28 @@
     inset: 0;
   }
 
+  body.is-weave-active {
+    position: relative;
+    inset: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  body.is-weave-active #app {
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .app-shell {
     height: calc(100dvh - var(--topbar-height));
     min-height: calc(100dvh - var(--topbar-height));
     overflow: hidden;
+  }
+
+  .app-shell.is-weave-active {
+    height: auto;
+    min-height: calc(100dvh - var(--topbar-height));
+    overflow: visible;
   }
 
   .view-play {
@@ -297,6 +450,15 @@
     overflow: hidden;
   }
 
+  .view-weave {
+    height: auto;
+    min-height: calc(100dvh - var(--topbar-height));
+    align-items: start;
+    justify-items: center;
+    padding: 42px 14px max(18px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
   .game-panel {
     width: 100%;
     height: 100%;
@@ -304,12 +466,19 @@
     transform: none;
   }
 
+  .view-weave .game-panel {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+  }
+
   .board-wrap {
     align-self: start;
-    width: calc(100vw - 78px);
-    max-width: var(--board-max-width);
+    width: 100%;
+    max-width: calc(100vw - 18px);
     max-height: var(--board-max-height);
     padding: 0;
+    overflow: auto;
   }
 
   .board {

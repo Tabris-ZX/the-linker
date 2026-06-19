@@ -28,7 +28,9 @@ export const computed = {
      * @returns {Array<object>} 当前可显示的标签页。
      */
     visibleViewTabs() {
-      return this.viewTabs.filter((tab) => tab.id !== "editor" || this.canUseLevelEditor);
+      return this.viewTabs
+        .filter((tab) => !tab.developerOnly || this.isDeveloperMode)
+        .filter((tab) => tab.id !== "editor" || this.canUseLevelEditor);
     },
 
     onlineCountText() {
@@ -60,7 +62,63 @@ export const computed = {
      * @returns {string} 通关用时文本。
      */
     victoryTimeText() {
-      return this.formatElapsedTime(this.timerElapsedMs);
+      return this.formatElapsedTime(this.getVictoryElapsedMs());
+    },
+
+    weavePenaltyText() {
+      return this.formatElapsedTime(this.weavePenaltyMs);
+    },
+
+    weaveTotalTimeText() {
+      return this.formatElapsedTime(this.getVictoryElapsedMs());
+    },
+
+    canUseWeaveMode() {
+      return Boolean(this.isDeveloperMode && this.currentLevel?.gridType === "square");
+    },
+
+    isWeaveModeEnabled() {
+      return this.activeView === "weave-total";
+    },
+
+    weaveModeTitle() {
+      return "织链：色点总数";
+    },
+
+    weaveModeSubtitle() {
+      return "每行/列提示剩余未填隐藏色点数";
+    },
+
+    weaveModeUnavailableText() {
+      if (!this.isDeveloperMode) return "";
+      if (!this.currentLevel) return "请先选择关卡";
+      if (this.currentLevel.gridType !== "square") return "织链模式暂只支持方形地图";
+      return "";
+    },
+
+    weavePairOptions() {
+      if (!this.currentLevel) return [];
+      return this.currentLevel.pairs.map((pair) => ({
+        id: pair.id,
+        label: pair.label ?? this.pointDefinitions[pair.id]?.label ?? pair.id,
+        color: pair.color ?? this.pointDefinitions[pair.id]?.color ?? "var(--accent)"
+      }));
+    },
+
+    weaveClueRows() {
+      return this.buildWeaveClueLines("row");
+    },
+
+    weaveClueColumns() {
+      return this.buildWeaveClueLines("column");
+    },
+
+    weaveHiddenEndpointCount() {
+      return this.currentLevel?.pairs?.length ?? 0;
+    },
+
+    weaveMarkedEndpointCount() {
+      return Object.keys(this.weaveMarkedEndpoints ?? {}).length;
     },
 
     /**
@@ -221,12 +279,14 @@ export const computed = {
       };
 
       if (!this.currentLevel) {
-        return {
-          ...mapStyleVariables,
-          "--cols": 1,
-          "--rows": 1,
-          "--cell-size": "calc(min(var(--board-max-width), var(--board-max-height)) * var(--map-board-scale))"
-        };
+      return {
+        ...mapStyleVariables,
+        "--cols": 1,
+        "--rows": 1,
+        "--node-cols": 2,
+        "--node-rows": 2,
+        "--cell-size": "calc(min(var(--board-max-width), var(--board-max-height)) * var(--map-board-scale))"
+      };
       }
 
       const bounds = this.boardDisplayBounds;
@@ -234,6 +294,8 @@ export const computed = {
         ...mapStyleVariables,
         "--cols": bounds.cols,
         "--rows": bounds.rows,
+        "--node-cols": Math.round(bounds.cols) + 1,
+        "--node-rows": Math.round(bounds.rows) + 1,
         "--cell-size": `calc(min(calc(var(--board-max-width) / ${bounds.cols}), calc(var(--board-max-height) / ${bounds.rows})) * var(--map-board-scale))`
       };
     },
@@ -413,21 +475,32 @@ export const computed = {
         const key = keyOf(x, y);
         const pairId = this.endpoints[key];
         const endpoint = pairId ? this.getPair(pairId) : null;
+        const weaveMarkPairId = this.weaveMarkedEndpoints[key] ?? "";
+        const weaveMarkPoint = weaveMarkPairId ? this.getPair(weaveMarkPairId) : null;
+        const isHiddenEndpointInWeave = Boolean(endpoint && this.canEnterWeaveMode() && this.isWeaveModeEnabled && this.isWeaveHiddenEndpoint(pairId, [x, y]));
+        const isWeaveCorrectMark = Boolean(weaveMarkPairId && weaveMarkPairId === pairId);
+        const renderedEndpoint = isHiddenEndpointInWeave ? null : endpoint;
+        const renderedWeaveMark = !renderedEndpoint && weaveMarkPoint ? weaveMarkPoint : null;
         if (!endpoint && !requiredNodes.has(key)) continue;
         const [renderX, renderY] = this.toBoardDisplayPoint([x, y]);
         nodes.push({
           key,
           x,
           y,
-          endpoint,
+          endpoint: renderedEndpoint,
+          weaveMark: renderedWeaveMark,
           style: {
             "--node-x": renderX - bounds.minX,
             "--node-y": renderY - bounds.minY
           },
           classes: {
-            "endpoint-node": Boolean(endpoint),
+            "endpoint-node": Boolean(renderedEndpoint),
             "path-node": filledNodes.has(key),
-            target: activeTargetKey === key
+            target: activeTargetKey === key,
+            "weave-hidden-endpoint": isHiddenEndpointInWeave,
+            "weave-hidden-target": Boolean(isHiddenEndpointInWeave && !weaveMarkPairId),
+            "weave-marked-node": Boolean(weaveMarkPairId),
+            "weave-mark-correct": isWeaveCorrectMark
           }
         });
       }

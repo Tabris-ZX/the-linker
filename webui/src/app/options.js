@@ -3,7 +3,9 @@ import { computed } from "./computed.js";
 import { editorMethods } from "../editor/methods.js";
 import { methods } from "./methods.js";
 import AppNav from "../components/AppNav.vue";
+import GameModeRail from "../components/GameModeRail.vue";
 import PlayView from "../views/PlayView.vue";
+import WeaveView from "../views/WeaveView.vue";
 import EditorView from "../views/EditorView.vue";
 import PersonalizationView from "../views/PersonalizationView.vue";
 import RuleView from "../views/RuleView.vue";
@@ -18,7 +20,9 @@ const viewTabs = [
 export default {
   components: {
     AppNav,
+    GameModeRail,
     PlayView,
+    WeaveView,
     EditorView,
     PersonalizationView,
     RuleView
@@ -85,6 +89,14 @@ export default {
       isHintAnswerLoading: false,
       isHintModeEnabled: false,
       hintStatusText: "",
+      weaveActivePairId: "",
+      weaveMarkedEndpoints: {},
+      weaveEndpointFeedback: [],
+      weavePenaltyMs: 0,
+      weaveSubmitSummary: "",
+      weaveStatusText: "",
+      isWeaveAnswerLoading: false,
+      weaveAnswerCacheKey: "",
       isLinkedBlinkEnabled: false,
       isLinkedBlinkActive: false,
       linkedBlinkTimerId: null,
@@ -169,6 +181,7 @@ export default {
     this.loadPersonalizationSettings();
     this.applyBackgroundConfig();
     this.applyTheme(this.selectedTheme);
+    this.updateBodyViewState();
     this.setupBoardOrientationWatcher();
     this.loadCompletedLevels();
     this.loadDeveloperTokenCooldown();
@@ -188,6 +201,7 @@ export default {
    * @returns {void}
    */
   beforeUnmount() {
+    document.body.classList.remove("is-weave-active");
     this.cancelLinkedBlinkTimer();
     this.cancelPointerPreviewFrame();
     this.stopBoardOrientationWatcher();
@@ -210,6 +224,15 @@ export default {
         this.activeView = "play";
         return;
       }
+      if (view === "weave-id") {
+        this.activeView = this.isDeveloperMode ? "weave-total" : "play";
+        return;
+      }
+      if (view === "weave-total" && !this.isDeveloperMode) {
+        this.activeView = "play";
+        return;
+      }
+      this.updateBodyViewState();
     },
     /**
      * 主题选择变化时立即应用主题。

@@ -52,8 +52,8 @@
     <section class="style-controls" aria-label="样式设置">
       <h3>样式</h3>
       <label>
-        导航位置
-        <select v-model="app.navLayout" aria-label="导航位置">
+        主导航位置
+        <select v-model="app.navLayout" aria-label="主导航位置">
           <option value="top">顶部</option>
           <option value="sidebar">侧边</option>
         </select>

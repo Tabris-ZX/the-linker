@@ -1,5 +1,6 @@
 /* Play page and reusable square-board rendering styles. */
-.view-play {
+.view-play,
+.view-weave {
   height: auto;
   min-height: calc(var(--page-height) - var(--topbar-height));
   align-items: start;
@@ -7,6 +8,17 @@
   align-content: start;
   padding: 43px 28px 56px;
   overflow: visible;
+}
+
+@media (min-width: 641px) {
+  .view-play,
+  .view-weave {
+    padding-left: 76px;
+  }
+}
+
+.view-weave {
+  padding-top: 18px;
 }
 
 .game-panel {
@@ -681,6 +693,24 @@
 .board-wrap {
   position: relative;
   padding: clamp(12px, 2.5vw, 28px);
+  border: 1px solid color-mix(in srgb, var(--button-ink) 46%, var(--line) 54%);
+  border-radius: calc(var(--radius-panel) + 8px);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 8%, transparent), transparent 42%),
+    color-mix(in srgb, var(--surface-glass) 16%, transparent);
+  box-shadow:
+    0 28px 72px -50px var(--shadow-color),
+    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 32%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 12%, transparent);
+  backdrop-filter: blur(10px) saturate(1.03);
+}
+
+.board-wrap.weave-workspace {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .board {
