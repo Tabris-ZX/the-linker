@@ -696,13 +696,13 @@
   border: 1px solid color-mix(in srgb, var(--button-ink) 46%, var(--line) 54%);
   border-radius: calc(var(--radius-panel) + 8px);
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 8%, transparent), transparent 42%),
-    color-mix(in srgb, var(--surface-glass) 16%, transparent);
+    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 4%, transparent), transparent 42%),
+    rgb(from var(--surface-soft) r g b / 0.0);
   box-shadow:
     0 28px 72px -50px var(--shadow-color),
-    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 32%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--line) 12%, transparent);
-  backdrop-filter: blur(10px) saturate(1.03);
+    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 18%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 8%, transparent);
+  backdrop-filter: blur(7px) saturate(1.01);
 }
 
 .board-wrap.weave-workspace {

@@ -22,8 +22,8 @@
     </div>
     <section class="game-controls" aria-label="游戏设置">
       <h3>游戏</h3>
-      <label class="assist-mode-toggle">
-        辅助模式
+      <div class="setting-toggle-row">
+        <span>辅助模式</span>
         <button
           type="button"
           class="setting-toggle-button"
@@ -34,9 +34,9 @@
         >
           {{ app.isHintModeEnabled ? "开" : "关" }}
         </button>
-      </label>
-      <label>
-        关联闪烁
+      </div>
+      <div class="setting-toggle-row">
+        <span>关联闪烁</span>
         <button
           type="button"
           class="setting-toggle-button"
@@ -47,7 +47,7 @@
         >
           {{ app.isLinkedBlinkEnabled ? "开" : "关" }}
         </button>
-      </label>
+      </div>
     </section>
     <section class="style-controls" aria-label="样式设置">
       <h3>样式</h3>

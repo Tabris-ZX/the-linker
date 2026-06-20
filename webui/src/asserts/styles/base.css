@@ -33,6 +33,8 @@
   --background-image: none;
   --background-opacity: 0;
   --background-blur: 0px;
+  --weave-unknown-color: #8a8f98;
+  --weave-excluded-color: #535a64;
 }
 
 :root[data-theme="night"] {
@@ -282,8 +284,14 @@ h2 {
 }
 
 .developer-button {
+  position: relative;
+  z-index: 8;
+  min-width: 42px;
+  min-height: 38px;
+  padding-inline: 11px;
   color: var(--ink);
   background: #d1d5db;
+  touch-action: manipulation;
 }
 
 .developer-button:hover {
@@ -350,43 +358,58 @@ h2 {
   left: 10px;
   z-index: 11;
   display: grid;
-  gap: 8px;
-  width: 48px;
-  padding: 6px;
-  border: 2px solid var(--ink);
-  border-radius: 8px;
-  background: var(--surface-raised);
-  box-shadow: 5px 5px 0 var(--shadow-color-soft);
-  backdrop-filter: blur(10px);
+  gap: 7px;
+  width: 52px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--button-ink) 42%, var(--line) 58%);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--button-ink) 18%, transparent), transparent),
+    rgb(from var(--surface-soft) r g b / 0.42);
+  box-shadow: 0 18px 42px -30px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 42%, transparent);
+  backdrop-filter: blur(14px) saturate(1.06);
   overflow: hidden;
-  transition: width 180ms ease, box-shadow 180ms ease;
+  transition: width 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
 .game-mode-rail:hover,
 .game-mode-rail:focus-within {
-  width: 206px;
-  box-shadow: 8px 8px 0 var(--shadow-color-soft);
+  width: 220px;
+  box-shadow: 0 22px 50px -32px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 48%, transparent);
 }
 
 .game-mode-rail-item {
   display: grid;
-  grid-template-columns: 32px minmax(136px, 1fr);
+  grid-template-columns: 36px minmax(142px, 1fr);
   align-items: center;
-  gap: 8px;
-  width: 190px;
-  min-height: 40px;
+  gap: 9px;
+  width: 204px;
+  min-height: 42px;
   padding: 3px;
   border-width: 0;
   color: var(--ink);
   background: transparent;
   box-shadow: none;
   text-align: left;
+  border-radius: 12px;
+  transition: background 160ms ease, color 160ms ease, transform 140ms ease;
 }
 
-.game-mode-rail-item:hover,
+.game-mode-rail-item:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 46%, transparent);
+}
+
 .game-mode-rail-item.is-active {
-  color: var(--button-ink);
-  background: var(--accent);
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-mode-rail:hover .game-mode-rail-item.is-active,
+.game-mode-rail:focus-within .game-mode-rail-item.is-active {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .game-mode-rail-item:disabled {
@@ -397,11 +420,19 @@ h2 {
 .game-mode-rail-icon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 2px solid currentColor;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+  border-radius: 999px;
   font: 900 0.82rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 30%, transparent);
+}
+
+.game-mode-rail-item.is-active .game-mode-rail-icon {
+  color: var(--button-ink);
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 8px 18px -14px color-mix(in srgb, var(--accent) 70%, var(--shadow-color) 30%);
 }
 
 .game-mode-rail-label {
@@ -440,6 +471,18 @@ h2 {
 .view-tab.is-active {
   color: var(--button-ink);
   background: var(--accent);
+}
+
+.view-tab:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  cursor: not-allowed;
+}
+
+.view-tab:disabled:hover {
+  color: var(--muted);
+  background: transparent;
 }
 
 .view-tab:active {
@@ -624,14 +667,20 @@ h2 {
   font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.personalization-panel label span {
+.personalization-panel label span,
+.setting-toggle-row span {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 .game-controls label,
+.setting-toggle-row,
 .style-controls label {
+  display: grid;
   grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 7px 10px;
+  align-items: center;
+  color: var(--muted);
   font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
   font-weight: 900;
 }
@@ -939,16 +988,16 @@ textarea,
   border: 1px solid color-mix(in srgb, var(--button-ink) 50%, var(--line) 50%);
   border-radius: calc(var(--radius-panel) + 6px);
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 8%, transparent), transparent 44%),
-    color-mix(in srgb, var(--surface-glass) 18%, transparent);
+    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 4%, transparent), transparent 44%),
+    rgb(from var(--surface-soft) r g b / 0.15);
   overflow: visible;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   box-shadow:
     0 28px 70px -48px var(--shadow-color),
-    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 32%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--line) 12%, transparent);
-  backdrop-filter: blur(11px) saturate(1.04);
+    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 20%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 8%, transparent);
+  backdrop-filter: blur(8px) saturate(1.02);
 }
 
 .weave-corner {
@@ -1001,19 +1050,11 @@ textarea,
   place-items: center;
   padding: 0 2px;
   border: 0;
-  color: var(--ink);
+  color: #111;
   background: none;
-  font: 900 1.05rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font: 900 2.1rem/1 Georgia, "Times New Roman", "Noto Serif SC", serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-/* 织链标记确认正确：实线边框 */
-.weave-mark-correct .dot.weave-mark-dot {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--dot-color) 80%, var(--success) 20%);
-  background: color-mix(in srgb, var(--dot-color) 32%, var(--paper) 68%);
-  box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.025), 3px) color-mix(in srgb, var(--success) 35%, transparent);
 }
 
 .weave-total-clue {
@@ -1021,11 +1062,11 @@ textarea,
 }
 
 .weave-clue-item.is-met {
-  color: var(--muted);
+  color: var(--success);
 }
 
 .weave-clue-item.is-under {
-  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  color: #111;
 }
 
 .weave-clue-item.is-over {
@@ -1039,10 +1080,11 @@ textarea,
   z-index: 4;
   display: grid;
   align-content: start;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 0;
   width: 318px;
   max-height: calc(100dvh - var(--topbar-height) - 30px);
-  overflow: auto;
+  overflow: hidden;
   padding: 10px;
   border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   border-radius: calc(var(--radius-panel) + 6px);
@@ -1061,12 +1103,18 @@ textarea,
   align-content: start;
   min-width: 0;
   min-inline-size: 0;
+  min-height: 0;
   margin: 0;
   padding: 14px 12px;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.weave-feedback-section {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .weave-panel-section + .weave-panel-section {
@@ -1107,19 +1155,37 @@ textarea,
 
 .weave-tool-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(46px, 1fr));
-  gap: 9px;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 44px));
+  justify-content: start;
+  align-items: start;
+  gap: 10px 9px;
+}
+
+.weave-pair-option {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 44px;
+  min-width: 0;
+}
+
+.weave-tool-row-meta {
+  margin-top: -2px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 42%, transparent);
 }
 
 .weave-pair-chip {
   min-width: 0;
+  width: 44px;
+  height: 44px;
   min-height: 44px;
-  padding: 7px 8px;
+  padding: 0;
   color: var(--ink);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 62%, transparent));
   border: 1px solid color-mix(in srgb, var(--pair-color) 54%, var(--line) 46%);
-  border-radius: 10px;
+  border-radius: 999px;
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 52%, transparent), 0 10px 20px -18px var(--shadow-color);
   font: 900 0.92rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   transition: transform 140ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
@@ -1140,9 +1206,58 @@ textarea,
   box-shadow: 0 12px 24px -18px color-mix(in srgb, var(--pair-color) 70%, var(--shadow-color) 30%), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 34%, transparent);
 }
 
+.weave-pair-chip.is-unknown.is-active,
+.weave-pair-chip.is-unknown:hover,
+.weave-pair-chip.is-excluded.is-active,
+.weave-pair-chip.is-excluded:hover {
+  color: #fff;
+}
+
+.weave-pair-distance {
+  display: block;
+  min-height: 1em;
+  color: #111;
+  font: 900 0.72rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.weave-pair-distance.is-empty {
+  color: #111;
+}
+
+.weave-pair-distance.is-met {
+  color: var(--success);
+}
+
+.weave-pair-distance.is-miss {
+  color: var(--danger);
+}
+
+.weave-clear-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weave-clear-row button {
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
+  border-radius: 8px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 36%, transparent);
+  font: 900 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-clear-row button:hover {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line) 44%);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+}
+
 .weave-submit-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 9px;
 }
@@ -1191,8 +1306,13 @@ textarea,
 
 .weave-feedback {
   display: grid;
-  gap: 6px;
+  align-content: start;
+  gap: 5px;
   min-height: 54px;
+  max-height: clamp(96px, calc(100dvh - var(--topbar-height) - 460px), 260px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
 }
 
 .weave-feedback strong {
@@ -1201,10 +1321,14 @@ textarea,
 
 .weave-feedback p {
   margin: 0;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface) 48%, transparent);
-  font: 800 0.8rem/1.3 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
+  border-radius: 0;
+  background: transparent;
+  font: 800 0.8rem/1.25 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
 .weave-feedback p.is-correct {
@@ -1216,11 +1340,23 @@ textarea,
 }
 
 .dot.weave-mark-dot {
-  background: color-mix(in srgb, var(--dot-color) 20%, var(--paper) 80%);
-  border-color: color-mix(in srgb, var(--dot-color) 65%, var(--ink) 35%);
+  background: var(--dot-color);
+  border-color: var(--ink);
   border-style: dashed;
   color: var(--ink);
   box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.025), 3px) color-mix(in srgb, var(--dot-color) 28%, transparent);
+}
+
+.weave-mark-unknown .dot.weave-mark-dot {
+  background: color-mix(in srgb, var(--weave-unknown-color) 26%, var(--paper) 74%);
+  border-color: color-mix(in srgb, var(--weave-unknown-color) 72%, var(--ink) 28%);
+  color: var(--ink);
+}
+
+.weave-mark-excluded .dot.weave-mark-dot {
+  background: color-mix(in srgb, var(--weave-excluded-color) 18%, var(--paper) 82%);
+  border-color: color-mix(in srgb, var(--weave-excluded-color) 72%, var(--ink) 28%);
+  color: var(--ink);
 }
 
 @media (max-width: 1100px) {
@@ -1528,8 +1664,8 @@ button:active,
 
 :root[data-theme="night"] .weave-board-shell {
   background:
-    linear-gradient(145deg, color-mix(in srgb, #ffffff 4%, transparent), transparent 46%),
-    color-mix(in srgb, var(--surface-glass) 16%, transparent);
+    linear-gradient(145deg, color-mix(in srgb, #ffffff 2%, transparent), transparent 46%),
+    rgb(from var(--surface-soft) r g b / 0.15);
   box-shadow:
     0 30px 76px -48px var(--shadow-color),
     inset 0 1px 0 color-mix(in srgb, #ffffff 10%, transparent),

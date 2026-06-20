@@ -89,6 +89,8 @@ export default {
       isHintAnswerLoading: false,
       isHintModeEnabled: false,
       hintStatusText: "",
+      weaveUnknownPairId: "__unknown__",
+      weaveExcludedPairId: "__excluded__",
       weaveActivePairId: "",
       weaveMarkedEndpoints: {},
       weaveEndpointFeedback: [],

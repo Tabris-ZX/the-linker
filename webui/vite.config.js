@@ -15,7 +15,6 @@ export default defineConfig({
     host: "0.0.0.0",
     port: devFrontendPort,
     strictPort: false,
-    hmr: false,
     proxy: {
       "/api": {
         target: devBackendTarget,
@@ -24,7 +23,6 @@ export default defineConfig({
     }
   },
   plugins: [
-    stripViteClientPlugin(),
     vue()
   ],
   build: {
@@ -32,19 +30,6 @@ export default defineConfig({
     emptyOutDir: true
   }
 });
-
-function stripViteClientPlugin() {
-  return {
-    name: "the-linker-strip-vite-client",
-    transformIndexHtml(html, context) {
-      if (context?.server?.config?.server?.hmr !== false) return html;
-      return html.replace(
-        /\s*<script\b[^>]*\bsrc=["']\/@vite\/client["'][^>]*>\s*<\/script>\s*/g,
-        "\n"
-      );
-    }
-  };
-}
 
 function readConfiguredBackendPort() {
   return readConfiguredServerPort("backendPort");

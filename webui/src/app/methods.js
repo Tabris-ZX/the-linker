@@ -4,7 +4,7 @@ import { fetchPresenceStats, reviewLevelRequest, sendPresenceHeartbeat, setDevel
 import { cloneLevel, hydrateLevel, hydrateLevelIndexItem, loadLevelAnswers, loadLevelDetail, loadLevelIndex } from "../services/levels.js";
 import { edgeKey, fromRenderPoint, getGridBounds, isAdjacent, keyOf, lineAttrs, positionToArray, samePoint, toRenderPoint } from "../utils/geometry.js";
 import { clampNumber } from "../utils/object.js";
-import { buildWeaveSubmissionResult, isWeaveVisibleEndpoint } from "./weaveRules.js";
+import { buildWeaveClueLinesFromBuckets, buildWeaveSubmissionResult } from "./weaveRules.js";
 
 const COMPLETED_LEVELS_STORAGE_KEY = "the-linker-completed-levels";
 const LAST_LEVEL_STORAGE_KEY = "the-linker-last-level-id";
@@ -80,10 +80,10 @@ export const methods = {
      * @returns {[number, number]} 显示坐标。
      */
     toBoardDisplayPoint(point) {
-      if (!this.currentLevel) return point;
-      const renderPoint = toRenderPoint(point, this.currentLevel.gridType);
+      if (!this.activeBoardLevel) return point;
+      const renderPoint = toRenderPoint(point, this.activeBoardLevel.gridType);
       if (!this.shouldRotateBoardDisplay) return renderPoint;
-      const bounds = getGridBounds(this.currentLevel);
+      const bounds = getGridBounds(this.activeBoardLevel);
       return [
         renderPoint[1] - bounds.minY,
         bounds.minX + bounds.width - renderPoint[0]
@@ -97,15 +97,15 @@ export const methods = {
      * @param {object} [bounds] 网格边界。
      * @returns {[number, number]} 逻辑坐标。
      */
-    fromBoardDisplayPoint(point, bounds = getGridBounds(this.currentLevel)) {
-      if (!this.currentLevel) return point;
+    fromBoardDisplayPoint(point, bounds = getGridBounds(this.activeBoardLevel)) {
+      if (!this.activeBoardLevel) return point;
       const renderPoint = this.shouldRotateBoardDisplay
         ? [
             bounds.minX + bounds.width - point[1],
             bounds.minY + point[0]
           ]
         : point;
-      return fromRenderPoint(renderPoint, this.currentLevel.gridType);
+      return fromRenderPoint(renderPoint, this.activeBoardLevel.gridType);
     },
 
     /**
@@ -986,17 +986,16 @@ export const methods = {
     },
 
     /**
-     * 将毫秒数格式化为 mm:ss.cc。
+     * 将毫秒数格式化为 mm:ss。
      *
      * @param {number} milliseconds 毫秒数。
      * @returns {string} 计时文本。
      */
     formatElapsedTime(milliseconds) {
-      const totalCentiseconds = Math.floor(Math.max(0, milliseconds) / 10);
-      const minutes = String(Math.floor(totalCentiseconds / 6000)).padStart(2, "0");
-      const seconds = String(Math.floor((totalCentiseconds % 6000) / 100)).padStart(2, "0");
-      const centiseconds = String(totalCentiseconds % 100).padStart(2, "0");
-      return `${minutes}:${seconds}:${centiseconds}`;
+      const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${minutes}:${seconds}`;
     },
 
     /**
@@ -1066,12 +1065,14 @@ export const methods = {
     buildVictoryShareText() {
       const levelName = this.currentLevel?.name || this.currentLevel?.id || "未选择";
       const levelId = this.currentLevel?.id ? `（${this.currentLevel.id}）` : "";
+      const gameMode = this.isWeaveModeEnabled ? "数寻" : "数链";
       const elapsedText = this.formatElapsedTime(this.getVictoryElapsedMs());
       const completedCount = this.getCompletedLevelCount();
       const gameUrl = window.location.href;
 
       return [
         `游戏链接：${gameUrl}`,
+        `游戏模式：${gameMode}`,
         `通关关卡：${levelName}${levelId}`,
         `用时：${elapsedText}`,
         `总通关数：${completedCount}`
@@ -1291,10 +1292,10 @@ export const methods = {
      * @returns {void}
      */
     resetPaths() {
-      if (!this.currentLevel) return;
+      if (!this.activeBoardLevel) return;
       // Reset each pair to its first endpoint, matching the normal puzzle start state.
       const paths = {};
-      this.currentLevel.pairs.forEach((pair) => {
+      this.activeBoardLevel.pairs.forEach((pair) => {
         paths[pair.id] = { branches: [[pair.points[0]]], completed: false };
       });
       this.paths = paths;
@@ -1326,9 +1327,9 @@ export const methods = {
      * @returns {void}
      */
     clearPaths() {
-      if (!this.currentLevel) return;
+      if (!this.activeBoardLevel) return;
       const paths = {};
-      this.currentLevel.pairs.forEach((pair) => {
+      this.activeBoardLevel.pairs.forEach((pair) => {
         paths[pair.id] = { branches: [], completed: false };
       });
       this.paths = paths;
@@ -1416,10 +1417,12 @@ export const methods = {
         if (!this.weaveStatusText || this.weaveStatusText === "已进入织链模式") {
           this.activeView = "weave-total";
           this.isLevelPickerOpen = false;
+          this.resetPaths();
         }
         return;
       }
       await this.toggleWeaveMode(false);
+      this.resetPaths();
     },
 
     /**
@@ -1486,14 +1489,12 @@ export const methods = {
     buildWeaveHiddenEndpointBuckets(axis) {
       const buckets = new Map();
       if (!this.currentLevel || this.currentLevel.gridType !== "square") return buckets;
-      this.currentLevel.pairs.forEach((pair) => {
-        const hidden = pair.points?.[1];
-        if (!hidden) return;
-        const displayPoint = this.toBoardDisplayPoint(hidden);
+      this.weaveHiddenEndpoints.forEach((endpoint) => {
+        const displayPoint = this.toBoardDisplayPoint(endpoint.point);
         const slot = Math.round(axis === "row" ? displayPoint[1] : displayPoint[0]);
         if (!buckets.has(slot)) buckets.set(slot, new Map());
         const row = buckets.get(slot);
-        row.set(pair.id, (row.get(pair.id) ?? 0) + 1);
+        row.set(endpoint.pairId, (row.get(endpoint.pairId) ?? 0) + 1);
       });
       return buckets;
     },
@@ -1509,6 +1510,7 @@ export const methods = {
       Object.entries(this.weaveMarkedEndpoints ?? {}).forEach(([nodeKey, pairId]) => {
         const [x, y] = nodeKey.split(",").map(Number);
         if (!Number.isFinite(x) || !Number.isFinite(y) || !pairId) return;
+        if (pairId === this.weaveExcludedPairId) return;
         const displayPoint = this.toBoardDisplayPoint([x, y]);
         const slot = Math.round(axis === "row" ? displayPoint[1] : displayPoint[0]);
         if (!buckets.has(slot)) buckets.set(slot, new Map());
@@ -1530,27 +1532,7 @@ export const methods = {
       const limit = axis === "row" ? Math.round(bounds.rows) + 1 : Math.round(bounds.cols) + 1;
       const targetBuckets = this.buildWeaveHiddenEndpointBuckets(axis);
       const currentBuckets = this.buildWeaveMarkedEndpointBuckets(axis);
-
-      return Array.from({ length: limit }, (_, index) => {
-        const targetItems = targetBuckets.get(index) ?? new Map();
-        const currentItems = currentBuckets.get(index) ?? new Map();
-        const targetTotal = [...targetItems.values()].reduce((sum, value) => sum + value, 0);
-        const currentTotal = [...currentItems.values()].reduce((sum, value) => sum + value, 0);
-        const remaining = Math.max(targetTotal - currentTotal, 0);
-        const status = currentTotal > targetTotal ? "over" : remaining === 0 ? "met" : "under";
-        return {
-          index,
-          mode: "total",
-          total: {
-            label: "色点",
-            target: targetTotal,
-            current: currentTotal,
-            remaining,
-            status
-          },
-          items: []
-        };
-      });
+      return buildWeaveClueLinesFromBuckets(targetBuckets, currentBuckets, limit);
     },
 
     /**
@@ -1561,6 +1543,27 @@ export const methods = {
      */
     selectWeavePair(pairId) {
       this.weaveActivePairId = this.weaveActivePairId === pairId ? "" : pairId;
+    },
+
+    /**
+     * 清除指定类型的织链辅助标记。
+     *
+     * @param {string} pairId 辅助标记 id。
+     * @returns {void}
+     */
+    clearWeaveMarksByPairId(pairId) {
+      this.weaveMarkedEndpoints = Object.fromEntries(
+        Object.entries(this.weaveMarkedEndpoints ?? {}).filter(([, markPairId]) => markPairId !== pairId)
+      );
+      if (this.weaveActivePairId === pairId) this.weaveActivePairId = "";
+    },
+
+    clearWeaveUnknownMarks() {
+      this.clearWeaveMarksByPairId(this.weaveUnknownPairId);
+    },
+
+    clearWeaveExcludedMarks() {
+      this.clearWeaveMarksByPairId(this.weaveExcludedPairId);
     },
 
     /**
@@ -1583,14 +1586,17 @@ export const methods = {
 
       // 未选中色点 → 无法放置新标记
       if (!this.weaveActivePairId) return;
-      const pair = this.getPair(this.weaveActivePairId);
-      if (!pair) return;
-      if (isWeaveVisibleEndpoint(this.currentLevel, clickedKey)) return;
+      const isMetaMark = this.weaveActivePairId === this.weaveUnknownPairId || this.weaveActivePairId === this.weaveExcludedPairId;
+      const pair = isMetaMark ? null : this.getPair(this.weaveActivePairId);
+      if (!isMetaMark && !pair) return;
+      if (this.weaveVisibleEndpointKeys.has(clickedKey)) return;
 
-      // 移除该点对之前的标记（一个点对只能标记一个位置），放置新标记
-      const nextMarks = Object.fromEntries(
-        Object.entries(this.weaveMarkedEndpoints).filter(([, pairId]) => pairId !== this.weaveActivePairId)
-      );
+      // 真实色点一个 id 只能标记一个位置；问号和排除标记只是辅助标记，可以放多个。
+      const nextMarks = isMetaMark
+        ? { ...this.weaveMarkedEndpoints }
+        : Object.fromEntries(
+          Object.entries(this.weaveMarkedEndpoints).filter(([, pairId]) => pairId !== this.weaveActivePairId)
+        );
       this.weaveMarkedEndpoints = {
         ...nextMarks,
         [clickedKey]: this.weaveActivePairId
@@ -1608,7 +1614,11 @@ export const methods = {
         return;
       }
 
-      const result = buildWeaveSubmissionResult(this.currentLevel, this.weaveMarkedEndpoints);
+      const result = buildWeaveSubmissionResult(
+        this.weaveHiddenEndpoints,
+        this.weaveKnownMarkedEndpoints,
+        this.normalizeLevelDifficulty(this.currentLevel?.difficulty)
+      );
       this.weaveEndpointFeedback = result.feedback;
       this.weavePenaltyMs += result.penaltyMs;
       this.weaveSubmitSummary = result.wrongCount === 0 ? "已标记的端点均正确" : `本次提交有 ${result.wrongCount} 个错点`;
@@ -1629,61 +1639,7 @@ export const methods = {
     },
 
     /**
-     * 通过直接连线抵达隐藏端点时同步标记。
-     *
-     * @param {string} pairId 点对 id。
-     * @returns {void}
-     */
-    revealWeaveEndpointForPair(pairId) {
-      if (!this.isWeaveModeEnabled) return;
-      const pair = this.getPair(pairId);
-      if (!pair?.points?.[1]) return;
-      const hiddenKey = keyOf(pair.points[1][0], pair.points[1][1]);
-      this.weaveMarkedEndpoints = {
-        ...this.weaveMarkedEndpoints,
-        [hiddenKey]: pairId
-      };
-    },
-
-    /**
-     * 判断某个节点是否是织链模式隐藏端点。
-     *
-     * @param {string} pairId 点对 id。
-     * @param {[number, number]} point 节点坐标。
-     * @returns {boolean} 是否为隐藏端点。
-     */
-    isWeaveHiddenEndpoint(pairId, point) {
-      const pair = this.getPair(pairId);
-      return Boolean(pair?.points?.[1] && samePoint(pair.points[1], point));
-    },
-
-    /**
-     * 判断织链隐藏端点是否已经被玩家显式标记为对应色点。
-     *
-     * @param {string} pairId 点对 id。
-     * @param {[number, number]} point 节点坐标。
-     * @returns {boolean} 是否已标记。
-     */
-    isWeaveHiddenEndpointMarked(pairId, point) {
-      if (!this.isWeaveModeEnabled || !this.isWeaveHiddenEndpoint(pairId, point)) return true;
-      return this.weaveMarkedEndpoints[keyOf(point[0], point[1])] === pairId;
-    },
-
-    /**
-     * 判断隐藏端点是否应当按已显露端点处理。
-     *
-     * @param {string} pairId 点对 id。
-     * @param {[number, number]} point 节点坐标。
-     * @returns {boolean} 是否可作为端点参与交互。
-     */
-    shouldTreatEndpointAsVisible(pairId, point) {
-      return !this.isWeaveModeEnabled || !this.isWeaveHiddenEndpoint(pairId, point) || this.isWeaveHiddenEndpointMarked(pairId, point);
-    },
-
-    /**
      * 判断目标端点是否会阻挡当前路径。
-     *
-     * 未被正确标记的织链隐藏端点对其它颜色表现为普通网格点，避免通过撞墙泄露答案。
      *
      * @param {string|undefined} endpointOwner 目标端点所属点对。
      * @param {[number, number]} point 目标节点坐标。
@@ -1691,7 +1647,7 @@ export const methods = {
      */
     isEndpointBlockingPath(endpointOwner, point) {
       if (!endpointOwner || endpointOwner === this.activePair) return false;
-      return this.shouldTreatEndpointAsVisible(endpointOwner, point);
+      return true;
     },
 
     /**
@@ -1721,7 +1677,7 @@ export const methods = {
      * @returns {void}
      */
     handleBoardPointerDown(event) {
-      if (!this.currentLevel) return;
+      if (!this.activeBoardLevel) return;
       this.startGameTimer();
       this.cacheBoardPointerGeometry(event.currentTarget);
       const position = this.positionFromEvent(event);
@@ -1736,6 +1692,12 @@ export const methods = {
         return;
       }
       this.rememberBoardTap(event, position);
+
+      if (this.isWeaveModeEnabled && this.weaveMarkedEndpoints[keyOf(position.x, position.y)]) {
+        this.handleWeaveNodeClick(position);
+        event.preventDefault();
+        return;
+      }
 
       const startInfo = this.getPathStartInfo(position);
       if (!startInfo) {
@@ -1816,7 +1778,7 @@ export const methods = {
      * @returns {void}
      */
     handleBoardDoubleClick(event) {
-      if (!this.currentLevel) return;
+      if (!this.activeBoardLevel) return;
       if (event.timeStamp - this.lastBoardDoubleClickAt >= 0 && event.timeStamp - this.lastBoardDoubleClickAt < 160) return;
       const position = this.positionFromEvent(event);
       if (!position) return;
@@ -1832,7 +1794,7 @@ export const methods = {
     handleBoardDoubleClickAtPosition(position) {
       const point = positionToArray(position);
       const pairId = this.endpoints[keyOf(position.x, position.y)];
-      if (pairId && this.shouldTreatEndpointAsVisible(pairId, point)) {
+      if (pairId) {
         if (this.isPairHintLocked(pairId)) return;
         this.clearPairPath(pairId);
         return;
@@ -1962,7 +1924,7 @@ export const methods = {
         return false;
       }
 
-      if (!isAdjacent(last, next, this.currentLevel.gridType)) {
+      if (!isAdjacent(last, next, this.activeBoardLevel.gridType)) {
         const routed = this.addStepsToward(next);
         if (routed) return true;
         return false;
@@ -1987,9 +1949,9 @@ export const methods = {
 
       if (mergeIndex >= 0) {
         const merged = this.mergeBranchesAtPoint(state.branches[branchIndex], state.branches[mergeIndex], next);
-        if (!merged || !this.pathTouchesBothEndpoints(this.activePair, merged)) return false;
-        this.paths[this.activePair] = { branches: [merged], completed: true };
-        this.revealWeaveEndpointForPair(this.activePair);
+        if (!merged) return false;
+        if (!this.isWeaveModeEnabled && !this.pathTouchesBothEndpoints(this.activePair, merged)) return false;
+        this.paths[this.activePair] = { branches: [merged], completed: !this.isWeaveModeEnabled };
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
@@ -2001,13 +1963,12 @@ export const methods = {
       }
 
       const pair = this.getPair(this.activePair);
-      const isOwnEndpoint = pair.points.some((point) => samePoint(point, next));
+      const isOwnEndpoint = pair.points.length > 1 && pair.points.some((point) => samePoint(point, next));
       const isStartingEndpoint = samePoint(branch[0], next);
       if (isOwnEndpoint && !isStartingEndpoint) {
         const completed = [...branch, next];
         if (!this.pathTouchesBothEndpoints(this.activePair, completed)) return false;
         this.paths[this.activePair] = { branches: [completed], completed: true };
-        this.revealWeaveEndpointForPair(this.activePair);
         this.evaluateBoard();
         this.isDrawing = false;
         this.activePair = null;
@@ -2171,7 +2132,7 @@ export const methods = {
      */
     pathTouchesBothEndpoints(pairId, path) {
       const pair = this.getPair(pairId);
-      return Boolean(pair && pair.points.every((endpoint) => path.some((point) => samePoint(point, endpoint))));
+      return Boolean(pair && pair.points.length >= 2 && pair.points.every((endpoint) => path.some((point) => samePoint(point, endpoint))));
     },
 
     /**
@@ -2226,7 +2187,9 @@ export const methods = {
       return Object.fromEntries(
         Object.entries(this.paths).map(([pairId]) => {
           const state = this.readPairPathState(pairId);
-          const completed = state.branches.find((branch) => this.pathTouchesBothEndpoints(pairId, branch));
+          const completed = this.isWeaveModeEnabled
+            ? state.branches[0]
+            : state.branches.find((branch) => this.pathTouchesBothEndpoints(pairId, branch));
           return [pairId, completed ?? []];
         })
       );
@@ -2461,18 +2424,6 @@ export const methods = {
         this.isVictoryDismissed = false;
         this.shareStatusText = "分享";
         this.nextLevelStatusText = "";
-        // 清理织链标记：断开后若路径不再触及隐藏端点，清除对应标记
-        if (this.isWeaveModeEnabled) {
-          const brokenPair = this.getPair(pairId);
-          if (brokenPair?.points?.[1]) {
-            const hiddenKey = keyOf(brokenPair.points[1][0], brokenPair.points[1][1]);
-            if (!nextBranch.some((item) => keyOf(item[0], item[1]) === hiddenKey)) {
-              const nextMarks = { ...this.weaveMarkedEndpoints };
-              delete nextMarks[hiddenKey];
-              this.weaveMarkedEndpoints = nextMarks;
-            }
-          }
-        }
         return true;
       }
       return false;
@@ -2499,7 +2450,7 @@ export const methods = {
         return;
       }
 
-      const allConnected = this.currentLevel.pairs.every((pair) => this.isPairConnected(pair));
+      const allConnected = this.activeBoardLevel.pairs.every((pair) => this.isPairConnected(pair));
       const allFilled = this.isBoardFilled();
       const weaveCluesSatisfied = this.isWeavePathClueSatisfied();
       const wasWon = this.isWon;
@@ -2654,7 +2605,7 @@ export const methods = {
 
       const previousIndex = branch.findIndex((point) => samePoint(point, next));
       if (previousIndex >= 0) return previousIndex === branch.length - 2;
-      if (!isAdjacent(last, next, this.currentLevel.gridType)) return false;
+      if (!isAdjacent(last, next, this.activeBoardLevel.gridType)) return false;
       if (!this.availableEdgeSet.has(edgeKey(last, next))) return false;
 
       const edgeOccupant = this.getEdgeOccupant(last, next);
@@ -2703,12 +2654,9 @@ export const methods = {
     getPathStartInfo(position) {
       const endpointPairId = this.endpoints[keyOf(position.x, position.y)];
       if (endpointPairId) {
-        const point = positionToArray(position);
-        if (this.shouldTreatEndpointAsVisible(endpointPairId, point)) {
-          const endpointMode = this.getEndpointStartMode(endpointPairId, position);
-          if (endpointMode) {
-            return { pairId: endpointPairId, mode: endpointMode };
-          }
+        const endpointMode = this.getEndpointStartMode(endpointPairId, position);
+        if (endpointMode) {
+          return { pairId: endpointPairId, mode: endpointMode };
         }
       }
 
@@ -2781,18 +2729,6 @@ export const methods = {
       this.isVictoryDismissed = false;
       this.shareStatusText = "分享";
       this.nextLevelStatusText = "";
-      // 清理织链标记：清除路径时同步移除该点对的标记
-      if (this.isWeaveModeEnabled) {
-        const clearedPair = this.getPair(pairId);
-        if (clearedPair?.points?.[1]) {
-          const hiddenKey = keyOf(clearedPair.points[1][0], clearedPair.points[1][1]);
-          if (this.weaveMarkedEndpoints[hiddenKey] === pairId) {
-            const nextMarks = { ...this.weaveMarkedEndpoints };
-            delete nextMarks[hiddenKey];
-            this.weaveMarkedEndpoints = nextMarks;
-          }
-        }
-      }
     },
 
     /**
@@ -2850,7 +2786,7 @@ export const methods = {
       this.timerElapsedMs = 0;
       this.timerIntervalId = window.setInterval(() => {
         this.updateGameTimer();
-      }, 10);
+      }, 250);
     },
 
     /**
@@ -2926,7 +2862,7 @@ export const methods = {
      * @returns {void}
      */
     cacheBoardPointerGeometry(boardElement) {
-      if (!boardElement || !this.currentLevel) {
+      if (!boardElement || !this.activeBoardLevel) {
         this.boardPointerGeometry = null;
         return;
       }
@@ -2937,7 +2873,7 @@ export const methods = {
         width: rect.width || 1,
         height: rect.height || 1,
         bounds: this.boardDisplayBounds,
-        sourceBounds: getGridBounds(this.currentLevel)
+        sourceBounds: getGridBounds(this.activeBoardLevel)
       };
     },
 
@@ -3106,7 +3042,7 @@ export const methods = {
      * @returns {object|null} 点对配置。
      */
     getPair(pairId) {
-      return this.currentLevel?.pairs.find((pair) => pair.id === pairId) ?? null;
+      return this.activeBoardLevel?.pairs.find((pair) => pair.id === pairId) ?? null;
     },
 
     /**
@@ -3149,7 +3085,7 @@ export const methods = {
      * @returns {boolean} 是否移除。
      */
     isLevelEdgeRemoved(edge) {
-      return new Set(this.currentLevel?.removedEdges ?? []).has(edge);
+      return new Set(this.activeBoardLevel?.removedEdges ?? []).has(edge);
     },
 
     /**
@@ -3212,7 +3148,7 @@ export const methods = {
      * @returns {boolean} 是否全部有效。
      */
     areAllPathsStructurallyValid() {
-      return areAllPathsStructurallyValid(this.currentLevel, this.getCompletedPathView(), this.endpoints);
+      return areAllPathsStructurallyValid(this.activeBoardLevel, this.getCompletedPathView(), this.endpoints);
     },
 
     /**
@@ -3243,7 +3179,7 @@ export const methods = {
      * @returns {boolean} 路径结构是否有效。
      */
     isPathStructurallyValid(pairId, path) {
-      return isPathStructurallyValid(this.currentLevel, pairId, path, this.endpoints);
+      return isPathStructurallyValid(this.activeBoardLevel, pairId, path, this.endpoints);
     },
 
     /**
@@ -3252,7 +3188,7 @@ export const methods = {
      * @returns {boolean} 是否满足填充条件。
      */
     isBoardFilled() {
-      return isLevelAnswerFilled(this.currentLevel, this.getCompletedPathView());
+      return isLevelAnswerFilled(this.activeBoardLevel, this.getCompletedPathView());
     },
 
     /**
@@ -3294,7 +3230,7 @@ export const methods = {
      * @returns {string[]} 必需节点 key 列表。
      */
     getRequiredNodes() {
-      return getRequiredNodes(this.currentLevel);
+      return getRequiredNodes(this.activeBoardLevel);
     },
 
     /**

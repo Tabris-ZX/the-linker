@@ -45,20 +45,20 @@ export default {
         {
           id: "play",
           action: "normal",
-          icon: "连",
-          label: "标准连接",
-          description: "连接同色端点",
-          hint: "标准连接",
+          icon: "链",
+          label: "数链",
+          description: "连接所有相同色点",
+          hint: "数链",
           disabled: false,
           isActive: this.activeView !== "weave-total"
         },
         {
           id: "weave-total",
           action: "weave-total",
-          icon: "织",
-          label: "织链：色点总数",
-          description: this.isDeveloperMode ? "提交隐藏色点" : "开发中",
-          hint: weaveDisabled ? "织链模式暂不可用" : "织链：色点总数",
+          icon: "寻",
+          label: "数寻",
+          description: this.isDeveloperMode ? "找出隐藏色点" : "前面的玩法以后再来探索吧~",
+          hint: weaveDisabled ? "前面的玩法以后再来探索吧~" : "找出隐藏色点",
           disabled: weaveDisabled,
           isActive: this.activeView === "weave-total"
         }

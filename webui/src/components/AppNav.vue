@@ -10,9 +10,11 @@
           v-for="tab in viewTabs"
           :key="tab.id"
           class="view-tab"
-          :class="{ 'is-active': activeView === tab.id }"
+          :class="{ 'is-active': isTabActive(tab.id) }"
           type="button"
-          :aria-selected="String(activeView === tab.id)"
+          :disabled="isTabDisabled(tab.id)"
+          :aria-selected="String(isTabActive(tab.id))"
+          :title="isTabDisabled(tab.id) ? '仅开发者可打开' : tab.label"
           @click="$emit('update:activeView', tab.id)"
         >
           {{ tab.label }}
@@ -84,6 +86,10 @@ export default {
       type: Boolean,
       default: true
     },
+    canUseLevelEditor: {
+      type: Boolean,
+      default: false
+    },
     isDeveloperMode: {
       type: Boolean,
       default: false
@@ -101,6 +107,15 @@ export default {
       default: "top"
     }
   },
-  emits: ["update:activeView", "toggleLevelPicker", "resetPaths", "unlockDeveloperMode", "toggleRulePanel", "togglePersonalization"]
+  emits: ["update:activeView", "toggleLevelPicker", "resetPaths", "unlockDeveloperMode", "toggleRulePanel", "togglePersonalization"],
+  methods: {
+    isTabActive(tabId) {
+      if (tabId === "play") return this.activeView === "play" || this.activeView === "weave-total";
+      return this.activeView === tabId;
+    },
+    isTabDisabled(tabId) {
+      return tabId === "editor" && !this.canUseLevelEditor;
+    }
+  }
 };
 </script>

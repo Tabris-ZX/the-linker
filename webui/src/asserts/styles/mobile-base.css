@@ -21,12 +21,11 @@
   }
 
   .topbar-left {
-    grid-area: brand;
-    justify-content: flex-start;
-    min-width: 0;
+    display: contents;
   }
 
   .brand {
+    grid-area: brand;
     min-width: 0;
     gap: 6px;
     font-size: 0.9rem;
@@ -156,7 +155,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: calc(100% - 16px);
     margin: 7px 8px 0;
-    padding: 4px;
+    padding: 5px;
+    border-radius: 14px;
     overflow: visible;
     transition: none;
   }
@@ -164,19 +164,26 @@
   .game-mode-rail:hover,
   .game-mode-rail:focus-within {
     width: calc(100% - 16px);
-    box-shadow: 5px 5px 0 var(--shadow-color-soft);
+    box-shadow: 0 16px 36px -28px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 42%, transparent);
   }
 
   .game-mode-rail-item {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 30px minmax(0, 1fr);
     width: 100%;
     min-width: 0;
-    min-height: 36px;
+    min-height: 38px;
+    border-radius: 11px;
+  }
+
+  .game-mode-rail-item.is-active {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
   }
 
   .game-mode-rail-icon {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
     font-size: 0.74rem;
   }
 
@@ -206,96 +213,6 @@
   .view-editor {
     height: calc(100dvh - var(--topbar-height));
     overflow: auto;
-  }
-
-  .board-wrap.weave-workspace {
-    width: calc(100vw - 18px);
-    max-width: calc(100vw - 18px);
-    max-height: none;
-    padding: 6px 0 14px;
-    overflow: visible;
-  }
-
-  .weave-main-panel {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    width: 100%;
-    max-width: calc(100vw - 18px);
-    gap: 12px;
-    overflow-x: visible;
-    padding: 0 0 8px;
-  }
-
-  .weave-side-panel {
-    position: static;
-    grid-template-columns: 1fr;
-    width: 100%;
-    max-height: none;
-    overflow: visible;
-    gap: 0;
-    padding: 8px;
-    border-radius: 14px;
-  }
-
-  .weave-console-title {
-    gap: 3px;
-  }
-
-  .weave-console-title strong {
-    font-size: 0.9rem;
-  }
-
-  .weave-panel-section {
-    gap: 8px;
-    padding: 12px 10px;
-  }
-
-  .weave-tool-row {
-    grid-template-columns: repeat(5, minmax(38px, 1fr));
-    gap: 7px;
-  }
-
-  .weave-pair-chip,
-  .weave-submit-row button,
-  .weave-console-stats {
-    min-height: 40px;
-  }
-
-  .weave-submit-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .weave-board-shell {
-    --weave-clue-size: 2rem;
-    --board-max-width: clamp(200px, calc(100vw - 52px), 100vw);
-    --board-max-height: clamp(160px, calc(100dvh - var(--topbar-height) - 120px), 100dvh);
-    --weave-mobile-shell-pad: 0.4rem;
-    grid-template-columns: var(--weave-clue-size) minmax(0, calc(var(--node-cols) * var(--cell-size)));
-    grid-template-rows: var(--weave-clue-size) minmax(0, calc(var(--node-rows) * var(--cell-size)));
-    width: fit-content;
-    max-width: 100%;
-    max-height: none;
-    padding: 10px var(--weave-mobile-shell-pad) 12px;
-    overflow-x: visible;
-    overflow-y: visible;
-  }
-
-  .weave-board-shell .board {
-    --board-max-width: calc(100vw - 64px);
-    --board-max-height: calc(100dvh - var(--topbar-height) - 128px);
-  }
-
-  .weave-left-clues {
-    width: var(--weave-clue-size);
-  }
-
-  .weave-clue-cell {
-    padding: 3px 2px;
-    overflow: visible;
-  }
-
-  .weave-clue-item {
-    font-size: 0.82rem;
   }
 
   .editor-panel {
@@ -400,8 +317,6 @@
   :root {
     --topbar-height: 88px;
     --page-height: 100dvh;
-    --board-max-width: calc(100vw - 78px);
-    --board-max-height: calc(100dvh - var(--topbar-height) - 112px);
   }
 
   html,
@@ -417,46 +332,10 @@
     inset: 0;
   }
 
-  body.is-weave-active {
-    position: relative;
-    inset: auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  body.is-weave-active #app {
-    min-height: 100dvh;
-    overflow: visible;
-  }
-
   .app-shell {
     height: calc(100dvh - var(--topbar-height));
     min-height: calc(100dvh - var(--topbar-height));
     overflow: hidden;
-  }
-
-  .app-shell.is-weave-active {
-    height: auto;
-    min-height: calc(100dvh - var(--topbar-height));
-    overflow: visible;
-  }
-
-  .view-play {
-    height: calc(100dvh - var(--topbar-height));
-    min-height: calc(100dvh - var(--topbar-height));
-    align-items: center;
-    justify-items: center;
-    padding: 0 14px max(12px, env(safe-area-inset-bottom));
-    overflow: hidden;
-  }
-
-  .view-weave {
-    height: auto;
-    min-height: calc(100dvh - var(--topbar-height));
-    align-items: start;
-    justify-items: center;
-    padding: 42px 14px max(18px, env(safe-area-inset-bottom));
-    overflow: visible;
   }
 
   .game-panel {
@@ -464,37 +343,6 @@
     height: 100%;
     padding: 34px 0 17px;
     transform: none;
-  }
-
-  .view-weave .game-panel {
-    height: auto;
-    min-height: 0;
-    padding: 0;
-  }
-
-  .board-wrap {
-    align-self: start;
-    width: 100%;
-    max-width: calc(100vw - 18px);
-    max-height: var(--board-max-height);
-    padding: 0;
-    overflow: auto;
-  }
-
-  .board {
-    margin: auto;
-  }
-
-  .edge-grid path {
-    stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
-  }
-
-  .edge-lines path {
-    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
-  }
-
-  .edge-lines .preview-line {
-    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
   }
 
   .level-picker-panel {

@@ -1,4 +1,5 @@
 import { edgeKey, getAllGridEdges, getGridBounds, getGridNodes, keyOf, lineAttrs, linePathD, pointsFromEdgeKey, toRenderPoint } from "../utils/geometry.js";
+import { buildWeaveHiddenEndpoints, buildWeavePairDistanceMap, buildWeaveVisibleLevel } from "./weaveRules.js";
 
 export const computed = {
     /**
@@ -29,8 +30,7 @@ export const computed = {
      */
     visibleViewTabs() {
       return this.viewTabs
-        .filter((tab) => !tab.developerOnly || this.isDeveloperMode)
-        .filter((tab) => tab.id !== "editor" || this.canUseLevelEditor);
+        .filter((tab) => !tab.developerOnly || this.isDeveloperMode);
     },
 
     onlineCountText() {
@@ -81,6 +81,28 @@ export const computed = {
       return this.activeView === "weave-total";
     },
 
+    weaveVisibleLevel() {
+      return this.isWeaveModeEnabled ? buildWeaveVisibleLevel(this.currentLevel) : null;
+    },
+
+    weaveHiddenEndpoints() {
+      return this.isWeaveModeEnabled ? buildWeaveHiddenEndpoints(this.currentLevel) : [];
+    },
+
+    weaveVisibleEndpointKeys() {
+      return new Set((this.weaveVisibleLevel?.pairs ?? [])
+        .flatMap((pair) => pair.points ?? [])
+        .map(([x, y]) => keyOf(x, y)));
+    },
+
+    weavePairDistances() {
+      return buildWeavePairDistanceMap(this.weaveHiddenEndpoints, this.weaveKnownMarkedEndpoints);
+    },
+
+    activeBoardLevel() {
+      return this.weaveVisibleLevel ?? this.currentLevel;
+    },
+
     weaveModeTitle() {
       return "织链：色点总数";
     },
@@ -96,13 +118,47 @@ export const computed = {
       return "";
     },
 
-    weavePairOptions() {
+    weavePrimaryPairOptions() {
       if (!this.currentLevel) return [];
       return this.currentLevel.pairs.map((pair) => ({
         id: pair.id,
         label: pair.label ?? this.pointDefinitions[pair.id]?.label ?? pair.id,
-        color: pair.color ?? this.pointDefinitions[pair.id]?.color ?? "var(--accent)"
+        color: pair.color ?? this.pointDefinitions[pair.id]?.color ?? "var(--accent)",
+        distance: this.weavePairDistances[pair.id]?.distance ?? null,
+        distanceStatus: this.weavePairDistances[pair.id]?.status ?? "empty"
       }));
+    },
+
+    weaveMetaPairOptions() {
+      return [
+        {
+          id: this.weaveUnknownPairId,
+          label: "?",
+          color: "var(--weave-unknown-color)",
+          isUnknown: true
+        },
+        {
+          id: this.weaveExcludedPairId,
+          label: "×",
+          color: "var(--weave-excluded-color)",
+          isExcluded: true
+        }
+      ];
+    },
+
+    weavePairOptions() {
+      return [
+        ...this.weavePrimaryPairOptions,
+        ...this.weaveMetaPairOptions
+      ];
+    },
+
+    weaveKnownMarkedEndpoints() {
+      const metaPairIds = new Set([this.weaveUnknownPairId, this.weaveExcludedPairId]);
+      return Object.fromEntries(
+        Object.entries(this.weaveMarkedEndpoints ?? {})
+          .filter(([, pairId]) => pairId && !metaPairIds.has(pairId))
+      );
     },
 
     weaveClueRows() {
@@ -114,11 +170,11 @@ export const computed = {
     },
 
     weaveHiddenEndpointCount() {
-      return this.currentLevel?.pairs?.length ?? 0;
+      return this.weaveHiddenEndpoints.length;
     },
 
     weaveMarkedEndpointCount() {
-      return Object.keys(this.weaveMarkedEndpoints ?? {}).length;
+      return Object.keys(this.weaveKnownMarkedEndpoints).length;
     },
 
     /**
@@ -226,7 +282,7 @@ export const computed = {
      * @returns {string} SVG viewBox 字符串。
      */
     boardViewBox() {
-      if (!this.currentLevel) return "0 0 1 1";
+      if (!this.activeBoardLevel) return "0 0 1 1";
       const bounds = this.boardDisplayBounds;
       return `${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`;
     },
@@ -237,8 +293,8 @@ export const computed = {
      * @returns {boolean} 是否使用旋转后的显示坐标。
      */
     shouldRotateBoardDisplay() {
-      if (!this.currentLevel) return false;
-      const bounds = getGridBounds(this.currentLevel);
+      if (!this.activeBoardLevel) return false;
+      const bounds = getGridBounds(this.activeBoardLevel);
       const isWide = bounds.cols > bounds.rows;
       const isTall = bounds.rows > bounds.cols;
       if (!isWide && !isTall) return false;
@@ -251,8 +307,8 @@ export const computed = {
      * @returns {{ minX: number, minY: number, width: number, height: number, cols: number, rows: number }}
      */
     boardDisplayBounds() {
-      if (!this.currentLevel) return { minX: 0, minY: 0, width: 1, height: 1, cols: 1, rows: 1 };
-      const bounds = getGridBounds(this.currentLevel);
+      if (!this.activeBoardLevel) return { minX: 0, minY: 0, width: 1, height: 1, cols: 1, rows: 1 };
+      const bounds = getGridBounds(this.activeBoardLevel);
       if (!this.shouldRotateBoardDisplay) return bounds;
       return {
         minX: 0,
@@ -278,7 +334,7 @@ export const computed = {
         "--map-grid-line-scale": this.mapStyle.gridLineScale
       };
 
-      if (!this.currentLevel) {
+      if (!this.activeBoardLevel) {
       return {
         ...mapStyleVariables,
         "--cols": 1,
@@ -307,8 +363,8 @@ export const computed = {
      */
     endpoints() {
       const endpoints = {};
-      if (!this.currentLevel) return endpoints;
-      this.currentLevel.pairs.forEach((pair) => {
+      if (!this.activeBoardLevel) return endpoints;
+      this.activeBoardLevel.pairs.forEach((pair) => {
         pair.points.forEach(([x, y]) => {
           endpoints[keyOf(x, y)] = pair.id;
         });
@@ -322,9 +378,9 @@ export const computed = {
      * @returns {Array<object>} 网格线渲染数据。
      */
     gridLines() {
-      if (!this.currentLevel) return [];
-      const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
-      return getAllGridEdges(this.currentLevel)
+      if (!this.activeBoardLevel) return [];
+      const removedEdges = new Set(this.activeBoardLevel.removedEdges ?? []);
+      return getAllGridEdges(this.activeBoardLevel)
         .filter((edge) => !removedEdges.has(edge))
         .map((edge) => this.edgeDisplayRenderData(edge))
         .filter(Boolean);
@@ -336,9 +392,9 @@ export const computed = {
      * @returns {Set<string>} 可通行边 key 集合。
      */
     availableEdgeSet() {
-      if (!this.currentLevel) return new Set();
-      const removedEdges = new Set(this.currentLevel.removedEdges ?? []);
-      return new Set(getAllGridEdges(this.currentLevel).filter((edge) => !removedEdges.has(edge)));
+      if (!this.activeBoardLevel) return new Set();
+      const removedEdges = new Set(this.activeBoardLevel.removedEdges ?? []);
+      return new Set(getAllGridEdges(this.activeBoardLevel).filter((edge) => !removedEdges.has(edge)));
     },
 
     /**
@@ -348,7 +404,7 @@ export const computed = {
      */
     boardNeighborMap() {
       const map = new Map();
-      if (!this.currentLevel) return map;
+      if (!this.activeBoardLevel) return map;
       this.availableEdgeSet.forEach((edge) => {
         const points = pointsFromEdgeKey(edge);
         if (points.length !== 2) return;
@@ -369,8 +425,8 @@ export const computed = {
      * @returns {Array<{ x: number, y: number, renderX: number, renderY: number }>} 节点坐标列表。
      */
     boardSnapNodes() {
-      if (!this.currentLevel) return [];
-      return getGridNodes(this.currentLevel).map(([x, y]) => {
+      if (!this.activeBoardLevel) return [];
+      return getGridNodes(this.activeBoardLevel).map(([x, y]) => {
         const [renderX, renderY] = this.toBoardDisplayPoint([x, y]);
         return { x, y, renderX, renderY };
       });
@@ -391,7 +447,7 @@ export const computed = {
      * @returns {Array<object>} 路径线渲染数据。
      */
     renderedPathLines() {
-      if (!this.currentLevel) return [];
+      if (!this.activeBoardLevel) return [];
       const lines = [];
       const renderedEdges = new Set();
       this.getPathSegments().forEach((segment) => {
@@ -415,7 +471,7 @@ export const computed = {
      * @returns {{ d: string, color: string }|null} 预览线渲染数据。
      */
     pointerPreviewLine() {
-      if (!this.currentLevel || !this.activePair || !this.pointerPreview) return null;
+      if (!this.activeBoardLevel || !this.activePair || !this.pointerPreview) return null;
       const path = this.getActiveBranch();
       const last = path[path.length - 1];
       const pair = this.getPair(this.activePair);
@@ -464,24 +520,31 @@ export const computed = {
      * @returns {Array<object>} 节点渲染数据。
      */
     boardNodes() {
-      if (!this.currentLevel) return [];
+      if (!this.activeBoardLevel) return [];
       const nodes = [];
       const filledNodes = this.getFilledNodes();
       const activeTargetKey = this.isLinkedBlinkEnabled && this.isLinkedBlinkActive ? this.getActiveTargetKey() : "";
       const requiredNodes = new Set(this.getRequiredNodes());
       const bounds = this.boardDisplayBounds;
 
-      for (const [x, y] of getGridNodes(this.currentLevel)) {
+      for (const [x, y] of getGridNodes(this.activeBoardLevel)) {
         const key = keyOf(x, y);
         const pairId = this.endpoints[key];
         const endpoint = pairId ? this.getPair(pairId) : null;
         const weaveMarkPairId = this.weaveMarkedEndpoints[key] ?? "";
-        const weaveMarkPoint = weaveMarkPairId ? this.getPair(weaveMarkPairId) : null;
-        const isHiddenEndpointInWeave = Boolean(endpoint && this.canEnterWeaveMode() && this.isWeaveModeEnabled && this.isWeaveHiddenEndpoint(pairId, [x, y]));
-        const isWeaveCorrectMark = Boolean(weaveMarkPairId && weaveMarkPairId === pairId);
-        const renderedEndpoint = isHiddenEndpointInWeave ? null : endpoint;
+        const isUnknownWeaveMark = weaveMarkPairId === this.weaveUnknownPairId;
+        const isExcludedWeaveMark = weaveMarkPairId === this.weaveExcludedPairId;
+        const weaveMarkPoint = isUnknownWeaveMark || isExcludedWeaveMark
+          ? {
+              id: weaveMarkPairId,
+              label: isExcludedWeaveMark ? "×" : "?",
+              color: isExcludedWeaveMark ? "var(--weave-excluded-color)" : "var(--weave-unknown-color)"
+            }
+          : weaveMarkPairId ? this.getPair(weaveMarkPairId) : null;
+        const renderedEndpoint = endpoint;
         const renderedWeaveMark = !renderedEndpoint && weaveMarkPoint ? weaveMarkPoint : null;
-        if (!endpoint && !requiredNodes.has(key)) continue;
+        const shouldRenderPathNode = requiredNodes.has(key);
+        if (!endpoint && !shouldRenderPathNode && !weaveMarkPairId) continue;
         const [renderX, renderY] = this.toBoardDisplayPoint([x, y]);
         nodes.push({
           key,
@@ -497,10 +560,11 @@ export const computed = {
             "endpoint-node": Boolean(renderedEndpoint),
             "path-node": filledNodes.has(key),
             target: activeTargetKey === key,
-            "weave-hidden-endpoint": isHiddenEndpointInWeave,
-            "weave-hidden-target": Boolean(isHiddenEndpointInWeave && !weaveMarkPairId),
+            "weave-hidden-endpoint": false,
+            "weave-hidden-target": false,
             "weave-marked-node": Boolean(weaveMarkPairId),
-            "weave-mark-correct": isWeaveCorrectMark
+            "weave-mark-unknown": isUnknownWeaveMark,
+            "weave-mark-excluded": isExcludedWeaveMark
           }
         });
       }

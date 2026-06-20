@@ -1,0 +1,157 @@
+@media (max-width: 640px) {
+  .board-wrap.weave-workspace {
+    width: calc(100vw - 18px);
+    max-width: calc(100vw - 18px);
+    max-height: none;
+    padding: 6px 0 14px;
+    overflow: visible;
+  }
+
+  .weave-main-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    width: 100%;
+    max-width: calc(100vw - 18px);
+    gap: 12px;
+    overflow-x: visible;
+    padding: 0 0 8px;
+  }
+
+  .weave-side-panel {
+    position: static;
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    gap: 0;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .weave-console-title {
+    gap: 3px;
+  }
+
+  .weave-console-title strong {
+    font-size: 0.9rem;
+  }
+
+  .weave-panel-section {
+    gap: 8px;
+    padding: 12px 10px;
+  }
+
+  .weave-tool-row {
+    grid-template-columns: repeat(5, 40px);
+    gap: 7px;
+  }
+
+  .weave-tool-row-meta {
+    grid-template-columns: repeat(2, 40px);
+    padding-top: 8px;
+  }
+
+  .weave-pair-chip {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    border-radius: 999px;
+  }
+
+  .weave-submit-row button,
+  .weave-console-stats {
+    min-height: 40px;
+  }
+
+  .weave-submit-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .weave-board-shell {
+    --weave-clue-size: 2rem;
+    --board-max-width: calc(100vw - 150px);
+    --board-max-height: calc(100dvh - var(--topbar-height) - 210px);
+    --weave-node-width: calc(var(--node-cols) * var(--cell-size));
+    --weave-node-height: calc(var(--node-rows) * var(--cell-size));
+    grid-template-columns: var(--weave-clue-size) var(--weave-node-width);
+    grid-template-rows: var(--weave-clue-size) var(--weave-node-height);
+    width: fit-content;
+    max-width: 100%;
+    max-height: none;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .weave-board-shell .board {
+    --board-max-width: calc(100vw - 150px);
+    --board-max-height: calc(100dvh - var(--topbar-height) - 210px);
+    margin: calc(var(--cell-size) / 2) 0 0 calc(var(--cell-size) / 2);
+  }
+
+  .weave-left-clues {
+    width: var(--weave-clue-size);
+  }
+
+  .weave-clue-cell {
+    padding: 3px 2px;
+    overflow: visible;
+  }
+
+  .weave-clue-item {
+    font: 900 1.55rem/1 Georgia, "Times New Roman", "Noto Serif SC", serif;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  body.is-weave-active {
+    position: relative;
+    inset: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  body.is-weave-active #app {
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .app-shell.is-weave-active {
+    height: auto;
+    min-height: calc(100dvh - var(--topbar-height));
+    overflow: visible;
+  }
+
+  .view-weave {
+    height: auto;
+    min-height: calc(100dvh - var(--topbar-height));
+    align-items: start;
+    justify-items: center;
+    padding: 42px 14px max(18px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .view-weave .game-panel {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .board-wrap.weave-workspace {
+    max-height: none;
+    padding: 6px 0 14px;
+    overflow: visible;
+  }
+
+  .weave-board-shell .board {
+    margin: calc(var(--cell-size) / 2) 0 0 calc(var(--cell-size) / 2);
+  }
+
+  .weave-board-shell .edge-grid path {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
+  }
+
+  .weave-board-shell .edge-lines path,
+  .weave-board-shell .edge-lines .preview-line {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  }
+}

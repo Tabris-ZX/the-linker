@@ -6,15 +6,8 @@
       <div v-if="!app.isInitialLevelLoading && !app.isLevelsLoading && !app.isLevelDetailLoading && !app.currentLevel" class="play-status" role="status" aria-live="polite">
         {{ app.developerStatusText || "暂无关卡" }}
       </div>
-      <div
-        v-if="app.isInitialLevelLoading || app.isLevelsLoading || app.isLevelDetailLoading || app.currentLevel"
-        class="board-wrap"
-        :class="{ 'is-loading': app.isInitialLevelLoading || app.isLevelsLoading || app.isLevelDetailLoading || !app.currentLevel }"
-        :aria-busy="app.isInitialLevelLoading || app.isLevelsLoading || app.isLevelDetailLoading ? 'true' : 'false'"
-      >
-        <GameBoard />
-      </div>
-      <div class="game-watermark" aria-hidden="true">v1.0.1@Tabris_ZX</div>
+      <PlayBoardStage />
+      <div class="game-watermark" aria-hidden="true">v0.2.2@Tabris_ZX</div>
 
       <div v-if="app.isWon && !app.isVictoryDismissed" class="victory-mark" role="status" aria-live="polite" aria-label="胜利">
         <div class="victory-main">
@@ -45,14 +38,14 @@
 </template>
 
 <script>
-import GameBoard from "../components/GameBoard.vue";
 import LevelPickerPanel from "../components/LevelPickerPanel.vue";
+import PlayBoardStage from "../components/play/PlayBoardStage.vue";
 
 export default {
   name: "PlayView",
   components: {
-    GameBoard,
-    LevelPickerPanel
+    LevelPickerPanel,
+    PlayBoardStage
   },
   inject: ["app"]
 };

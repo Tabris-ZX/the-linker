@@ -5,6 +5,7 @@
     :timer-text="timerText"
     :current-level-label="currentLevelLabel"
     :can-reset-level="Boolean(currentLevel) && !isLevelsLoading"
+    :can-use-level-editor="canUseLevelEditor"
     :is-developer-mode="isDeveloperMode"
     :online-count-text="onlineCountText"
     :favicon-url="faviconUrl"
@@ -72,7 +73,9 @@ import appOptions from "./app/options.js";
 import "./asserts/styles/base.css";
 import "./asserts/styles/play.css";
 import "./asserts/styles/editor.css";
-import "./asserts/styles/mobile.css";
+import "./asserts/styles/mobile-base.css";
+import "./asserts/styles/mobile-play.css";
+import "./asserts/styles/mobile-weave.css";
 
 export default appOptions;
 </script>
