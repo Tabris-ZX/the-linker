@@ -1,5 +1,5 @@
 [Unit]
-Description=The Linker FastAPI server
+Description=THER Puzzles FastAPI server
 After=network-online.target
 Wants=network-online.target
 

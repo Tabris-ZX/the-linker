@@ -1,7 +1,7 @@
 [project]
 name = "the-linker-server"
 version = "0.1.0"
-description = "FastAPI backend for The Linker."
+description = "FastAPI backend for THER puzzles."
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1.0",

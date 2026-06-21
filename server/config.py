@@ -32,6 +32,8 @@ class AppSettings:
     answers_dir: Path
     storage_method: str
     sqlite_database_file: Path
+    linker_sqlite_database_file: Path
+    bridger_sqlite_database_file: Path
 
 
 def get_settings() -> AppSettings:
@@ -40,11 +42,41 @@ def get_settings() -> AppSettings:
     server_config = config.get("server", {})
     path_config = config.get("path", {})
     storage_config = config.get("storage", {})
+    linker_config = object_config(config.get("linker"))
+    finder_config = object_config(config.get("finder"))
+    bridger_config = object_config(config.get("bridger"))
     storage_method = normalize_storage_method(
-        storage_config.get("method")
+        linker_config.get("storageMethod")
+        or storage_config.get("method")
         or storage_config.get("type")
         or server_config.get("saveData")
     )
+    linker_game_config = get_game_path_config(path_config, "linker")
+    bridger_game_config = get_game_path_config(path_config, "bridger")
+    linker_database_file = resolve_config_path(
+        linker_config.get("database")
+        or linker_config.get("sqlitePath")
+        or linker_game_config.get("database")
+        or storage_config.get("linkerSqlitePath")
+        or storage_config.get("sqlitePath")
+        or storage_config.get("database")
+        or path_config.get("database")
+        or "data/db/linker.db"
+    )
+    bridger_database_file = resolve_config_path(
+        bridger_config.get("database")
+        or bridger_config.get("sqlitePath")
+        or bridger_game_config.get("database")
+        or storage_config.get("bridgerSqlitePath")
+        or "data/db/bridger.db"
+    )
+    linker_levels_dir = linker_config.get("levels") or path_config.get("levels") or "data/levels"
+    linker_answers_dir = linker_config.get("answers") or path_config.get("answers") or "data/answers"
+    linker_hash_file = linker_config.get("levelsHash") or path_config.get("levelsHash") or "data/levels-hash.json"
+    linker_index_file = linker_config.get("levelsIndex") or path_config.get("levelsIndex") or "data/levels-index.json"
+    # Finder currently uses the same map data model as Linker. Reading it here makes the
+    # root config field explicit while keeping the runtime data source shared.
+    _finder_database_file = finder_config.get("database") or finder_config.get("sqlitePath")
     return AppSettings(
         backend_port=clamp_integer(
             server_config.get("backendPort"),
@@ -77,17 +109,14 @@ def get_settings() -> AppSettings:
             0,
             30 * 24 * 60 * 60,
         ),
-        levels_dir=resolve_config_path(path_config.get("levels") or "data/levels"),
-        levels_hash_file=resolve_config_path(path_config.get("levelsHash") or "data/levels-hash.json"),
-        levels_index_file=resolve_config_path(path_config.get("levelsIndex") or "data/levels-index.json"),
-        answers_dir=resolve_config_path(path_config.get("answers") or "data/answers"),
+        levels_dir=resolve_config_path(linker_levels_dir),
+        levels_hash_file=resolve_config_path(linker_hash_file),
+        levels_index_file=resolve_config_path(linker_index_file),
+        answers_dir=resolve_config_path(linker_answers_dir),
         storage_method=storage_method,
-        sqlite_database_file=resolve_config_path(
-            storage_config.get("sqlitePath")
-            or storage_config.get("database")
-            or path_config.get("database")
-            or "data/db/linker.db"
-        ),
+        sqlite_database_file=linker_database_file,
+        linker_sqlite_database_file=linker_database_file,
+        bridger_sqlite_database_file=bridger_database_file,
     )
 
 
@@ -106,6 +135,20 @@ def resolve_config_path(value: Any) -> Path:
     if path.is_absolute():
         return path.resolve()
     return (PROJECT_ROOT / path).resolve()
+
+
+def get_game_path_config(path_config: dict[str, Any], game_id: str) -> dict[str, Any]:
+    """读取 path.games.<game_id> 配置；不存在时返回空映射。"""
+    games_config = path_config.get("games")
+    if not isinstance(games_config, dict):
+        return {}
+    game_config = games_config.get(game_id)
+    return game_config if isinstance(game_config, dict) else {}
+
+
+def object_config(value: Any) -> dict[str, Any]:
+    """把配置块规范为字典。"""
+    return value if isinstance(value, dict) else {}
 
 
 def normalize_storage_method(value: Any) -> str:

@@ -9,7 +9,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from server.config import get_settings
-from server.services.levels import refresh_all_level_indexes
+from server.games.linker.services.levels import refresh_all_level_indexes
 
 
 def main() -> None:

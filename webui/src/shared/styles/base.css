@@ -1,0 +1,1702 @@
+/* base */
+
+:root {
+  /* Global shell, typography, nav, and shared component tokens. */
+  --paper: #f7f3ea;
+  --ink: #202124;
+  --muted: #6f6a60;
+  --line: #d7cfc1;
+  --grid-line: #161616;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --danger: #b91c1c;
+  --success: #047857;
+  --surface: #fff;
+  --surface-soft: #fffdfa;
+  --surface-raised: rgba(255, 255, 255, 0.92);
+  --topbar-surface: rgba(255, 253, 250, 0.94);
+  --button-ink: #fff;
+  --shadow-color: rgba(32, 33, 36, 0.18);
+  --shadow-color-soft: rgba(32, 33, 36, 0.14);
+  --body-grid-color: rgba(15, 118, 110, 0.08);
+  --body-glow-danger: rgba(239, 68, 68, 0.14);
+  --body-glow-warm: rgba(245, 158, 11, 0.16);
+  --completed-surface: #dcfce7;
+  --completed-ink: #166534;
+  --dot-border: #fff;
+  --topbar-height: 60px;
+  --page-height: 810px;
+  --cell-size: 88px;
+  --map-board-scale: 1;
+  --board-max-width: 1200px;
+  --board-max-height: 600px;
+  --background-image: none;
+  --background-opacity: 0;
+  --background-blur: 0px;
+  --weave-unknown-color: #8a8f98;
+  --weave-excluded-color: #535a64;
+}
+
+:root[data-theme="night"] {
+  --surface: #151d23;
+  --surface-soft: #11181e;
+  --surface-raised: rgba(17, 24, 30, 0.94);
+  --topbar-surface: rgba(12, 18, 23, 0.94);
+  --button-ink: #f5fbff;
+  --shadow-color: rgba(0, 0, 0, 0.44);
+  --shadow-color-soft: rgba(0, 0, 0, 0.28);
+  --body-grid-color: rgba(104, 120, 132, 0.055);
+  --body-glow-danger: rgba(240, 113, 120, 0.04);
+  --body-glow-warm: rgba(56, 183, 164, 0.055);
+  --completed-surface: #142b24;
+  --completed-ink: #8fdcb5;
+  --dot-border: #0b1116;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  position: relative;
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--ink);
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, system-ui, sans-serif;
+  background: #f6f8f5;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--background-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: var(--background-opacity);
+  filter: blur(var(--background-blur));
+  transform: scale(1.03);
+  pointer-events: none;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: var(--page-height);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+.editor-form .editor-import-button {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: var(--button-ink);
+  background: var(--accent);
+  box-shadow: 4px 4px 0 var(--shadow-color);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+}
+
+button:disabled:hover {
+  background: var(--accent);
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(2rem, 6vw, 4.2rem);
+  line-height: 0.95;
+}
+
+h2 {
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: var(--topbar-height);
+  padding: 6px 12px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--topbar-surface);
+  backdrop-filter: blur(10px);
+}
+
+.topbar-left,
+.topbar-center,
+.topbar-right {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar-left {
+  z-index: 2;
+  justify-content: flex-start;
+}
+
+.topbar-right {
+  z-index: 2;
+  justify-content: flex-end;
+}
+
+.topbar-center {
+  z-index: 1;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: 9px;
+  color: var(--ink);
+  font: 900 1.16rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-decoration: none;
+}
+
+.brand-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.github-link svg {
+  width: 21px;
+  height: 21px;
+  fill: currentColor;
+}
+
+.github-link:hover {
+  color: var(--button-ink);
+  background: var(--accent);
+}
+
+.game-timer {
+  min-width: 72px;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  font: 900 1rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-align: center;
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
+}
+
+.view-tabs {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 1;
+  gap: 4px;
+  padding: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.level-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.current-level-label {
+  max-width: 140px;
+  overflow: hidden;
+  padding: 5px 8px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  font: 900 0.95rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.view-tab {
+  min-width: 0;
+  padding-inline: 10.5px;
+  border: 0;
+  box-shadow: none;
+  color: var(--ink);
+  background: transparent;
+}
+
+.app-topbar button,
+.developer-button,
+.personalize-button,
+.rule-button,
+.play-actions button {
+  padding: 6px 9px;
+  box-shadow: 2px 2px 0 var(--shadow-color);
+  white-space: nowrap;
+}
+
+.developer-button {
+  position: relative;
+  z-index: 8;
+  min-width: 42px;
+  min-height: 38px;
+  padding-inline: 11px;
+  color: var(--ink);
+  background: #d1d5db;
+  touch-action: manipulation;
+}
+
+.developer-button:hover {
+  color: var(--ink);
+  background: #c4cbd4;
+}
+
+.developer-button.is-unlocked {
+  color: var(--button-ink);
+  background: var(--success);
+}
+
+.developer-button.is-unlocked:hover {
+  color: var(--button-ink);
+  background: var(--success);
+}
+
+.close-button {
+  min-height: 0;
+  padding: 4px 8px;
+  border-width: 2px;
+  border-radius: 5px;
+  font: 900 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
+}
+
+.close-button:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--shadow-color-soft);
+}
+
+.play-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.play-toolbar.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.play-actions {
+  position: relative;
+  z-index: 5;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 4px 4px 0 var(--shadow-color-soft);
+}
+
+.game-mode-rail {
+  position: fixed;
+  top: calc(var(--topbar-height) + 16px);
+  left: 10px;
+  z-index: 11;
+  display: grid;
+  gap: 7px;
+  width: 52px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--button-ink) 42%, var(--line) 58%);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--button-ink) 18%, transparent), transparent),
+    rgb(from var(--surface-soft) r g b / 0.42);
+  box-shadow: 0 18px 42px -30px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 42%, transparent);
+  backdrop-filter: blur(14px) saturate(1.06);
+  overflow: hidden;
+  transition: width 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.game-mode-rail:hover,
+.game-mode-rail:focus-within {
+  width: 220px;
+  box-shadow: 0 22px 50px -32px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 48%, transparent);
+}
+
+.game-mode-rail-item {
+  display: grid;
+  grid-template-columns: 36px minmax(142px, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 204px;
+  min-height: 42px;
+  padding: 3px;
+  border-width: 0;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  border-radius: 12px;
+  transition: background 160ms ease, color 160ms ease, transform 140ms ease;
+}
+
+.game-mode-rail-item:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 46%, transparent);
+}
+
+.game-mode-rail-item.is-active {
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-mode-rail:hover .game-mode-rail-item.is-active,
+.game-mode-rail:focus-within .game-mode-rail-item.is-active {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.game-mode-rail-item:disabled {
+  color: var(--muted);
+  background: transparent;
+}
+
+.game-mode-rail-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+  border-radius: 999px;
+  font: 900 0.82rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 30%, transparent);
+}
+
+.game-mode-rail-item.is-active .game-mode-rail-icon {
+  color: var(--button-ink);
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 8px 18px -14px color-mix(in srgb, var(--accent) 70%, var(--shadow-color) 30%);
+}
+
+.game-mode-rail-label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.game-mode-rail:hover .game-mode-rail-label,
+.game-mode-rail:focus-within .game-mode-rail-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.game-mode-rail-label strong,
+.game-mode-rail-label small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-mode-rail-label strong {
+  font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.game-mode-rail-label small {
+  color: currentColor;
+  font: 800 0.72rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  opacity: 0.75;
+}
+
+.view-tab:hover,
+.view-tab.is-active {
+  color: var(--button-ink);
+  background: var(--accent);
+}
+
+.view-tab:disabled {
+  color: var(--muted);
+  background: transparent;
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  cursor: not-allowed;
+}
+
+.view-tab:disabled:hover {
+  color: var(--muted);
+  background: transparent;
+}
+
+.view-tab:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.app-shell {
+  width: 100%;
+  height: auto;
+  min-height: calc(var(--page-height) - var(--topbar-height));
+  margin: 0 auto;
+  padding: 0;
+  overflow: visible;
+}
+
+.view {
+  display: none;
+}
+
+.view.is-active {
+  display: grid;
+}
+
+.app-card {
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  box-shadow: 8px 8px 0 var(--shadow-color-soft);
+}
+
+
+@media (min-width: 641px) and (max-width: 1080px) {
+  .app-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "left right"
+      "center center";
+    height: auto;
+  }
+
+  .topbar-left {
+    grid-area: left;
+  }
+
+  .topbar-center {
+    grid-area: center;
+    justify-content: center;
+  }
+
+  .topbar-right {
+    grid-area: right;
+  }
+
+  .brand span {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.personalization-panel {
+  position: fixed;
+  top: calc(var(--topbar-height) + 18px);
+  right: 18px;
+  z-index: 80;
+  display: grid;
+  gap: 12px;
+  width: min(340px, calc(100vw - 28px));
+  max-height: min(680px, calc(100dvh - var(--topbar-height) - 36px));
+  padding: 14px;
+  overflow: auto;
+}
+
+.rule-panel {
+  position: fixed;
+  top: calc(var(--topbar-height) + 18px);
+  right: 18px;
+  z-index: 81;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(680px, calc(100dvh - var(--topbar-height) - 36px));
+  padding: 14px;
+}
+
+.rule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rule-header h2 {
+  margin: 0;
+}
+
+.rule-content {
+  min-height: 180px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  font: 700 0.9rem/1.65 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.rule-content h1,
+.rule-content h2,
+.rule-content h3 {
+  margin: 0 0 8px;
+  font: 900 1.08rem/1.25 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.rule-content p,
+.rule-content ul {
+  margin: 0 0 10px;
+}
+
+.rule-content ul {
+  padding-left: 20px;
+}
+
+.rule-content li + li {
+  margin-top: 4px;
+}
+
+.rule-content code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--line) 55%, var(--surface) 45%);
+  font: 800 0.86em/1.2 Consolas, "Courier New", monospace;
+}
+
+.personalization-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.personalization-header h2 {
+  margin: 0;
+}
+
+.personalization-panel label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 10px;
+  align-items: center;
+  color: var(--muted);
+  font: 800 0.88rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-select-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.game-controls {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.style-controls {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.game-controls h3,
+.style-controls h3 {
+  margin: 0;
+  color: var(--accent-strong);
+  font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-panel label span,
+.setting-toggle-row span {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.game-controls label,
+.setting-toggle-row,
+.style-controls label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 7px 10px;
+  align-items: center;
+  color: var(--muted);
+  font-family: Georgia, "Noto Serif SC", "Songti SC", serif;
+  font-weight: 900;
+}
+
+.style-controls select,
+.style-controls input[type="number"],
+.setting-toggle-button {
+  grid-column: 2;
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  height: 38px;
+  min-height: 38px;
+  justify-self: end;
+}
+
+.personalization-panel input[type="number"] {
+  padding: 6px 8px;
+}
+
+.personalization-select-row select {
+  grid-column: 1 / -1;
+}
+
+.style-controls input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.setting-toggle-button {
+  padding: 6px 8px;
+  color: var(--ink);
+  background: var(--surface);
+  font: 900 0.88rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.setting-toggle-button.is-enabled {
+  color: var(--button-ink);
+  background: var(--accent);
+}
+
+.personalization-data-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 2px solid var(--line);
+}
+
+.personalization-clear-data-button {
+  padding: 7px 10px;
+  background: var(--danger);
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-clear-data-button:hover {
+  background: #991b1b;
+}
+
+.personalization-confirm-actions {
+  display: inline-flex;
+  gap: 7px;
+}
+
+.personalization-confirm-button,
+.personalization-cancel-button,
+.personalization-reset-settings-button {
+  padding: 7px 10px;
+  font: 900 0.86rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-confirm-button {
+  background: var(--danger);
+}
+
+.personalization-confirm-button:hover {
+  background: #991b1b;
+}
+
+.personalization-cancel-button,
+.personalization-reset-settings-button {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.personalization-cancel-button:hover,
+.personalization-reset-settings-button:hover {
+  color: var(--button-ink);
+  background: var(--accent);
+}
+
+.personalization-data-actions span {
+  margin-left: auto;
+  color: var(--success);
+  font: 900 0.84rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+
+/* Preserve redesign layer */
+:root {
+  --radius-control: 7px;
+  --radius-panel: 10px;
+  --focus-ring: color-mix(in srgb, var(--accent) 30%, transparent);
+  --surface-glass: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  --line-soft: color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+html {
+  color-scheme: light;
+}
+
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --focus-ring: color-mix(in srgb, var(--accent) 42%, transparent);
+  --surface-glass: color-mix(in srgb, var(--surface-soft) 90%, transparent);
+  --line-soft: color-mix(in srgb, var(--line) 66%, transparent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button,
+.github-link,
+.editor-import-button {
+  transition: background 190ms ease, color 190ms ease, border-color 190ms ease, box-shadow 190ms ease, transform 150ms ease, opacity 190ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  filter: grayscale(0.18);
+}
+
+.app-topbar {
+  border-bottom-width: 1px;
+  box-shadow: 0 10px 28px -24px var(--shadow-color);
+}
+
+.brand-icon {
+  filter: drop-shadow(1px 1px 0 var(--line-soft));
+}
+
+.github-link,
+.game-timer,
+.play-actions,
+.view-tabs,
+.app-card,
+.play-status,
+.victory-mark,
+.level-output-panel,
+.rule-content {
+  border-color: var(--ink);
+}
+
+.brand {
+  min-width: max-content;
+}
+
+.app-card {
+  border-radius: var(--radius-panel);
+  background: var(--surface-glass);
+  box-shadow: 6px 6px 0 var(--shadow-color-soft);
+  backdrop-filter: blur(12px);
+}
+
+button,
+.github-link,
+input,
+select,
+textarea,
+.rule-content,
+.level-output-panel {
+  border-radius: var(--radius-control);
+}
+
+.app-topbar button,
+.developer-button,
+.personalize-button,
+.rule-button,
+.game-mode-select,
+.play-actions button,
+.level-picker-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.app-topbar button span[aria-hidden="true"] {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45em;
+  height: 1.45em;
+  border: 1px solid color-mix(in srgb, currentColor 34%, transparent);
+  border-radius: 999px;
+  font-size: 0.72em;
+  line-height: 1;
+}
+
+.developer-button span[aria-hidden="true"] {
+  font-size: 0.66em;
+}
+
+.view-tab {
+  border-radius: calc(var(--radius-control) - 2px);
+}
+
+.view-tab.is-active {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 24%, transparent);
+}
+
+.current-level-label {
+  color: color-mix(in srgb, var(--ink) 88%, var(--accent) 12%);
+}
+
+.game-mode-select {
+  min-width: 214px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line-soft);
+  color: var(--muted);
+  font: 900 0.76rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.game-mode-select span {
+  white-space: nowrap;
+}
+
+.game-mode-select select {
+  min-width: 154px;
+  min-height: 34px;
+  border: 1px solid color-mix(in srgb, var(--ink) 78%, transparent);
+  padding: 5px 28px 5px 8px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 78%, transparent);
+  font: 900 0.8rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.personalization-data-actions span,
+.level-picker-status,
+.victory-status {
+  line-height: 1.35;
+}
+
+.board-wrap.weave-workspace {
+  display: grid;
+  align-items: start;
+  justify-content: center;
+  justify-items: center;
+  width: 100%;
+  max-width: none;
+  padding: 8px 0 28px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.weave-main-panel {
+  display: grid;
+  grid-template-columns: minmax(0, auto) 318px;
+  align-items: start;
+  justify-content: center;
+  gap: 18px;
+  width: fit-content;
+  max-width: min(1360px, calc(100vw - 40px));
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 2px 2px 8px;
+  scrollbar-width: thin;
+}
+
+.weave-board-shell {
+  --weave-clue-size: 2.4rem;
+  --board-max-width: clamp(260px, calc(100vw - 420px), 780px);
+  --board-max-height: clamp(200px, calc(100dvh - var(--topbar-height) - 180px), 520px);
+  display: grid;
+  grid-template-columns: var(--weave-clue-size) minmax(0, calc(var(--node-cols) * var(--cell-size)));
+  grid-template-rows: var(--weave-clue-size) minmax(0, calc(var(--node-rows) * var(--cell-size)));
+  align-items: start;
+  justify-items: start;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 14px 18px 18px;
+  border: 1px solid color-mix(in srgb, var(--button-ink) 50%, var(--line) 50%);
+  border-radius: calc(var(--radius-panel) + 6px);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 4%, transparent), transparent 44%),
+    rgb(from var(--surface-soft) r g b / 0.15);
+  overflow: visible;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  box-shadow:
+    0 28px 70px -48px var(--shadow-color),
+    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 20%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 8%, transparent);
+  backdrop-filter: blur(8px) saturate(1.02);
+}
+
+.weave-corner {
+  width: 100%;
+  height: 100%;
+  border-right: 1px solid color-mix(in srgb, var(--button-ink) 24%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--button-ink) 24%, transparent);
+  background: color-mix(in srgb, var(--surface) 8%, transparent);
+}
+
+.weave-top-clues {
+  display: grid;
+  grid-template-columns: repeat(var(--node-cols), var(--cell-size));
+  align-items: stretch;
+  gap: 0;
+  width: calc(var(--node-cols) * var(--cell-size));
+  min-width: calc(var(--node-cols) * var(--cell-size));
+  margin-left: 0;
+}
+
+.weave-left-clues {
+  display: grid;
+  grid-template-rows: repeat(var(--node-rows), var(--cell-size));
+  gap: 0;
+  width: var(--weave-clue-size);
+  height: calc(var(--node-rows) * var(--cell-size));
+  min-height: calc(var(--node-rows) * var(--cell-size));
+  margin-top: 0;
+}
+
+.weave-board-shell .board {
+  margin: calc(var(--cell-size) / 2) 0 0 calc(var(--cell-size) / 2);
+}
+
+.weave-clue-cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 2px 1px;
+}
+
+.weave-clue-items {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+
+.weave-clue-item {
+  display: grid;
+  place-items: center;
+  padding: 0 2px;
+  border: 0;
+  color: #111;
+  background: none;
+  font: 900 2.1rem/1 Georgia, "Times New Roman", "Noto Serif SC", serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.weave-total-clue {
+  --pair-color: var(--accent);
+}
+
+.weave-clue-item.is-met {
+  color: var(--success);
+}
+
+.weave-clue-item.is-under {
+  color: #111;
+}
+
+.weave-clue-item.is-over {
+  color: var(--danger);
+  font-weight: 900;
+}
+
+.weave-side-panel {
+  position: sticky;
+  top: calc(var(--topbar-height) + 12px);
+  z-index: 4;
+  display: grid;
+  align-content: start;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 0;
+  width: 318px;
+  max-height: calc(100dvh - var(--topbar-height) - 30px);
+  overflow: hidden;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: calc(var(--radius-panel) + 6px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-glass) 94%, var(--button-ink) 6%), var(--surface-glass)),
+    color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: 0 22px 60px -38px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 48%, transparent);
+  backdrop-filter: blur(16px) saturate(1.08);
+  scrollbar-width: thin;
+}
+
+.weave-panel-section {
+  position: relative;
+  display: grid;
+  gap: 11px;
+  align-content: start;
+  min-width: 0;
+  min-inline-size: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.weave-feedback-section {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.weave-panel-section + .weave-panel-section {
+  border-top: 1px solid color-mix(in srgb, var(--line) 48%, transparent);
+}
+
+.weave-panel-section legend {
+  padding: 0;
+  color: color-mix(in srgb, var(--accent-strong) 92%, var(--ink) 8%);
+  font: 900 0.74rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.weave-console-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.weave-console-title small {
+  order: 2;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--accent) 88%, var(--ink) 12%);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font: 900 0.62rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  letter-spacing: 0.1em;
+}
+
+.weave-console-title strong {
+  min-width: 0;
+  font: 900 1.2rem/1.05 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  text-wrap: balance;
+}
+
+.weave-tool-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 44px));
+  justify-content: start;
+  align-items: start;
+  gap: 10px 9px;
+}
+
+.weave-pair-option {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 44px;
+  min-width: 0;
+}
+
+.weave-tool-row-meta {
+  margin-top: -2px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 42%, transparent);
+}
+
+.weave-pair-chip {
+  min-width: 0;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 62%, transparent));
+  border: 1px solid color-mix(in srgb, var(--pair-color) 54%, var(--line) 46%);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 52%, transparent), 0 10px 20px -18px var(--shadow-color);
+  font: 900 0.92rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  transition: transform 140ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.weave-pair-chip:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--pair-color) 76%, var(--ink) 24%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--pair-color) 13%, var(--surface) 87%), color-mix(in srgb, var(--surface) 70%, transparent));
+  transform: translateY(-1px);
+}
+
+.weave-pair-chip.is-active {
+  color: var(--button-ink);
+  border-color: color-mix(in srgb, var(--pair-color) 92%, var(--ink) 8%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pair-color) 88%, var(--button-ink) 12%), var(--pair-color));
+  box-shadow: 0 12px 24px -18px color-mix(in srgb, var(--pair-color) 70%, var(--shadow-color) 30%), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 34%, transparent);
+}
+
+.weave-pair-chip.is-unknown.is-active,
+.weave-pair-chip.is-unknown:hover,
+.weave-pair-chip.is-excluded.is-active,
+.weave-pair-chip.is-excluded:hover {
+  color: #fff;
+}
+
+.weave-pair-distance {
+  display: block;
+  min-height: 1em;
+  color: #111;
+  font: 900 0.72rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.weave-pair-distance.is-empty {
+  color: #111;
+}
+
+.weave-pair-distance.is-met {
+  color: var(--success);
+}
+
+.weave-pair-distance.is-miss {
+  color: var(--danger);
+}
+
+.weave-clear-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weave-clear-row button {
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
+  border-radius: 8px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 36%, transparent);
+  font: 900 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-clear-row button:hover {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line) 44%);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+}
+
+.weave-submit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.weave-submit-row button {
+  min-height: 44px;
+  padding: 9px 16px;
+  color: var(--button-ink);
+  border-radius: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, var(--button-ink) 12%), var(--accent));
+  box-shadow: 0 16px 28px -22px color-mix(in srgb, var(--accent) 74%, var(--shadow-color) 26%), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 28%, transparent);
+  font: 900 0.92rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-submit-row button + button {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 46%, transparent), 0 12px 22px -20px var(--shadow-color);
+}
+
+.weave-console-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--line) 54%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 54%, transparent);
+  color: var(--muted);
+  font: 800 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-console-stats strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92rem;
+}
+
+.weave-status-text {
+  margin: 0;
+  color: var(--muted);
+  font: 800 0.82rem/1.35 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-feedback {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-height: 54px;
+  max-height: clamp(96px, calc(100dvh - var(--topbar-height) - 460px), 260px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.weave-feedback strong {
+  font: 900 0.9rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-feedback p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
+  border-radius: 0;
+  background: transparent;
+  font: 800 0.8rem/1.25 "Trebuchet MS", "Noto Sans SC", sans-serif;
+}
+
+.weave-feedback p.is-correct {
+  color: var(--success);
+}
+
+.weave-feedback p.is-wrong {
+  color: var(--danger);
+}
+
+.dot.weave-mark-dot {
+  background: var(--dot-color);
+  border-color: var(--ink);
+  border-style: dashed;
+  color: var(--ink);
+  box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.025), 3px) color-mix(in srgb, var(--dot-color) 28%, transparent);
+}
+
+.weave-mark-unknown .dot.weave-mark-dot {
+  background: color-mix(in srgb, var(--weave-unknown-color) 26%, var(--paper) 74%);
+  border-color: color-mix(in srgb, var(--weave-unknown-color) 72%, var(--ink) 28%);
+  color: var(--ink);
+}
+
+.weave-mark-excluded .dot.weave-mark-dot {
+  background: color-mix(in srgb, var(--weave-excluded-color) 18%, var(--paper) 82%);
+  border-color: color-mix(in srgb, var(--weave-excluded-color) 72%, var(--ink) 28%);
+  color: var(--ink);
+}
+
+@media (max-width: 1100px) {
+  .weave-main-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    width: 100%;
+    max-width: calc(100vw - 28px);
+    overflow-x: visible;
+  }
+
+  .weave-board-shell {
+    --board-max-width: clamp(240px, calc(100vw - 56px), 720px);
+    --board-max-height: clamp(180px, calc(100dvh - var(--topbar-height) - 140px), 560px);
+  }
+
+  .weave-side-panel {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(720px, 100%);
+    max-height: none;
+    overflow: visible;
+  }
+
+  .weave-feedback-section {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Visible redesign pass */
+:root {
+  --control-shadow: 0 10px 26px -20px var(--shadow-color), 2px 2px 0 var(--shadow-color-soft);
+  --panel-shadow: 0 22px 54px -36px var(--shadow-color), 5px 5px 0 var(--shadow-color-soft);
+}
+
+body {
+  background:
+    linear-gradient(90deg, var(--body-grid-color) 1px, transparent 1px),
+    linear-gradient(var(--body-grid-color) 1px, transparent 1px),
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 31%),
+    radial-gradient(circle at 82% 12%, var(--body-glow-warm), transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--paper) 88%, var(--surface) 12%), var(--paper));
+}
+
+button,
+.editor-form .editor-import-button {
+  border-width: 1px;
+  box-shadow: var(--control-shadow);
+}
+
+button:active,
+.editor-form .editor-import-button:active {
+  transform: translateY(1px) scale(0.99);
+  box-shadow: 0 8px 18px -16px var(--shadow-color), 1px 1px 0 var(--shadow-color-soft);
+}
+
+.app-topbar {
+  min-height: 66px;
+  padding: 9px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 72%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--topbar-surface) 96%, var(--surface) 4%), var(--topbar-surface));
+  box-shadow: 0 18px 48px -34px var(--shadow-color), 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent) inset;
+}
+
+.brand {
+  padding: 5px 8px 5px 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: 1px 1px 0 var(--shadow-color-soft);
+}
+
+.brand-icon {
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.view-tabs,
+.play-actions {
+  border-width: 1px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), 3px 3px 0 var(--shadow-color-soft);
+}
+
+.view-tab,
+.app-topbar button {
+  min-height: 34px;
+}
+
+.view-tab.is-active,
+.view-tab:hover {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 28%, transparent), 2px 2px 0 var(--shadow-color-soft);
+}
+
+.online-count {
+  min-height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  box-shadow: 2px 2px 0 var(--shadow-color-soft);
+  font: 900 0.82rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
+  white-space: nowrap;
+}
+
+.game-timer {
+  border-width: 1px;
+  min-width: 82px;
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface) 92%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 80%, transparent), 2px 2px 0 var(--shadow-color-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.current-level-label {
+  max-width: 168px;
+  padding-inline: 9px;
+  border-left: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+}
+
+.app-card,
+.victory-mark,
+.play-status {
+  box-shadow: var(--panel-shadow);
+}
+
+@media (min-width: 641px) {
+  .app-topbar.layout-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: 108px;
+    height: 100dvh;
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 10px;
+    border-right: 1px solid color-mix(in srgb, var(--ink) 72%, transparent);
+    border-bottom: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .app-topbar.layout-sidebar .topbar-left,
+  .app-topbar.layout-sidebar .topbar-center,
+  .app-topbar.layout-sidebar .topbar-right {
+    width: 100%;
+    display: grid;
+    gap: 8px;
+    justify-content: stretch;
+  }
+
+  .app-topbar.layout-sidebar .brand,
+  .app-topbar.layout-sidebar .view-tabs,
+  .app-topbar.layout-sidebar .play-toolbar,
+  .app-topbar.layout-sidebar .play-actions {
+    width: 100%;
+  }
+
+  .app-topbar.layout-sidebar .brand {
+    justify-content: center;
+    border-radius: var(--radius-control);
+    padding: 5px;
+    font-size: 1rem;
+  }
+
+  .app-topbar.layout-sidebar .brand span {
+    display: none;
+  }
+
+  .app-topbar.layout-sidebar .view-tabs,
+  .app-topbar.layout-sidebar .play-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar.layout-sidebar .play-toolbar {
+    display: grid;
+    gap: 8px;
+  }
+
+  .app-topbar.layout-sidebar .topbar-right {
+    align-content: start;
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar.layout-sidebar .github-link,
+  .app-topbar.layout-sidebar .rule-button,
+  .app-topbar.layout-sidebar .personalize-button,
+  .app-topbar.layout-sidebar .developer-button,
+  .app-topbar.layout-sidebar .online-count,
+  .app-topbar.layout-sidebar .game-timer,
+  .app-topbar.layout-sidebar .game-mode-select,
+  .app-topbar.layout-sidebar .current-level-label,
+  .app-topbar.layout-sidebar .play-actions button {
+    width: 100%;
+  }
+
+  .app-topbar.layout-sidebar .github-link {
+    min-height: 34px;
+  }
+
+  .app-topbar.layout-sidebar .rule-button,
+  .app-topbar.layout-sidebar .personalize-button,
+  .app-topbar.layout-sidebar .view-tab,
+  .app-topbar.layout-sidebar .play-actions button {
+    padding-inline: 6px;
+  }
+
+  .app-topbar.layout-sidebar .current-level-label {
+    max-width: none;
+    text-align: center;
+  }
+
+  .app-topbar.layout-sidebar .game-mode-select {
+    display: grid;
+    justify-items: stretch;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .app-topbar.layout-sidebar .game-mode-select select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-shell.has-sidebar-nav {
+    width: calc(100% - 108px);
+    margin-left: 108px;
+    min-height: var(--page-height);
+  }
+
+  .app-shell.has-sidebar-nav .personalization-panel,
+  .app-shell.has-sidebar-nav .rule-panel {
+    right: 14px;
+  }
+}
+
+:root[data-theme="night"] body {
+  font-family: "Trebuchet MS", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  background:
+    linear-gradient(90deg, var(--body-grid-color) 1px, transparent 1px),
+    linear-gradient(var(--body-grid-color) 1px, transparent 1px),
+    radial-gradient(circle at 22% 14%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 30%),
+    radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--line) 28%, transparent), transparent 25%),
+    linear-gradient(135deg, #0c1217, var(--paper));
+}
+
+:root[data-theme="night"] body::after {
+  opacity: min(var(--background-opacity), 0.26);
+  mix-blend-mode: soft-light;
+}
+
+:root[data-theme="night"] .app-topbar {
+  border-bottom-color: color-mix(in srgb, var(--line) 78%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--topbar-surface) 94%, var(--surface) 6%), var(--topbar-surface));
+  box-shadow: 0 18px 48px -34px var(--shadow-color), 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent) inset;
+}
+
+:root[data-theme="night"] .brand,
+:root[data-theme="night"] .view-tabs,
+:root[data-theme="night"] .play-actions,
+:root[data-theme="night"] .game-timer,
+:root[data-theme="night"] .github-link,
+:root[data-theme="night"] .online-count {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent), 2px 2px 0 var(--shadow-color-soft);
+}
+
+:root[data-theme="night"] .developer-button {
+  color: var(--ink);
+  background: #26333d;
+}
+
+:root[data-theme="night"] .developer-button:hover {
+  background: #30404b;
+}
+
+:root[data-theme="night"] .app-card,
+:root[data-theme="night"] .victory-mark,
+:root[data-theme="night"] .play-status,
+:root[data-theme="night"] .level-picker-panel,
+:root[data-theme="night"] .rule-panel,
+:root[data-theme="night"] .personalization-panel,
+:root[data-theme="night"] .weave-board-shell {
+  border-color: color-mix(in srgb, var(--line) 82%, var(--ink) 18%);
+  box-shadow: 0 22px 58px -38px var(--shadow-color), 4px 4px 0 var(--shadow-color-soft);
+}
+
+:root[data-theme="night"] .app-card,
+:root[data-theme="night"] .victory-mark,
+:root[data-theme="night"] .play-status,
+:root[data-theme="night"] .level-picker-panel,
+:root[data-theme="night"] .rule-panel,
+:root[data-theme="night"] .personalization-panel {
+  background: var(--surface-glass);
+}
+
+:root[data-theme="night"] .weave-board-shell {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, #ffffff 2%, transparent), transparent 46%),
+    rgb(from var(--surface-soft) r g b / 0.15);
+  box-shadow:
+    0 30px 76px -48px var(--shadow-color),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 10%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 20%, transparent);
+}
+
+:root[data-theme="night"] .weave-side-panel {
+  border-color: color-mix(in srgb, var(--line) 78%, var(--ink) 22%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-glass) 88%, #ffffff 2%), var(--surface-glass)),
+    color-mix(in srgb, var(--surface) 78%, transparent);
+  box-shadow: 0 24px 64px -40px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent);
+}
+
+:root[data-theme="night"] .weave-pair-chip,
+:root[data-theme="night"] .weave-console-stats,
+:root[data-theme="night"] .weave-submit-row button + button,
+:root[data-theme="night"] .weave-feedback p {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+:root[data-theme="night"] .current-level-label,
+:root[data-theme="night"] .level-directory-status,
+:root[data-theme="night"] .level-picker-status {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

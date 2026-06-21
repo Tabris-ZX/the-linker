@@ -8,7 +8,7 @@ INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-0}"
 RESTART_SERVICE="${RESTART_SERVICE:-1}"
 RESTART_REQUESTED=0
 NO_RESTART_SERVICE="${NO_RESTART_SERVICE:-0}"
-SERVICE_NAME="${SERVICE_NAME:-linker}"
+SERVICE_NAME="${SERVICE_NAME:-puzzles}"
 DEPLOY_STATIC="${DEPLOY_STATIC:-auto}"
 DEPLOY_WEB_ROOT="${DEPLOY_WEB_ROOT:-/var/www/linker}"
 LOG_DIR="$ROOT_DIR/logs"
@@ -24,12 +24,12 @@ usage() {
   --deploy-static     构建后同步 webui/dist 到静态站点目录
   --no-deploy-static  构建后不同步静态站点目录
   --web-root <path>   静态站点目录，默认 /var/www/linker
-  --service <name>    systemd 服务名，默认 linker
+  --service <name>    systemd 服务名，默认 puzzles
   -h, --help          显示帮助
 
 环境变量:
   UV_BIN=/path/to/uv
-  SERVICE_NAME=linker
+  SERVICE_NAME=puzzles
   INSTALL_SYSTEMD=1
   RESTART_SERVICE=1
   NO_RESTART_SERVICE=0

@@ -6,7 +6,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 
 from server.config import get_settings
-from server.routers import levels, stats, verify
+from server.games.common import stats, verify
+from server.games.bridger import routers as bridger
+from server.games.linker import routers as linker
 from server.utils.http import http_exception_handler
 
 LOGGING_CONFIG = {
@@ -47,7 +49,7 @@ def append_vary_header(current_value: str | None, header_name: str) -> str:
 
 def create_app() -> FastAPI:
     """构建 FastAPI 应用并注册全局中间件、异常处理器和路由。"""
-    app = FastAPI(title="The Linker Server")
+    app = FastAPI(title="The Puzzles Server")
     app.add_exception_handler(HTTPException, http_exception_handler)
 
     @app.middleware("http")
@@ -59,7 +61,8 @@ def create_app() -> FastAPI:
             response.headers["Vary"] = append_vary_header(response.headers.get("Vary"), "Authorization")
         return response
 
-    app.include_router(levels.router)
+    app.include_router(linker.router)
+    app.include_router(bridger.router)
     app.include_router(stats.router)
     app.include_router(verify.router)
     return app

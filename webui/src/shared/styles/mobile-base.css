@@ -1,0 +1,414 @@
+@media (max-width: 640px) {
+  .app-shell.has-sidebar-nav {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .app-topbar {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto auto auto auto;
+    grid-template-areas:
+      "brand developer github rule settings"
+      "online online online online online"
+      "timer timer timer timer timer"
+      "actions actions actions actions actions";
+    align-items: center;
+    gap: 5px 7px;
+    height: auto;
+    min-height: var(--topbar-height);
+    padding: 4px 8px 7px;
+  }
+
+  .topbar-left {
+    display: contents;
+  }
+
+  .brand {
+    grid-area: brand;
+    min-width: 0;
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  .brand-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .brand span {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .view-tabs {
+    display: none;
+  }
+
+  .topbar-center,
+  .play-toolbar,
+  .topbar-right {
+    display: contents;
+  }
+
+  .app-topbar:not(.is-play):not(.is-weave-total):not(.is-bridge) .game-timer,
+  .app-topbar:not(.is-play):not(.is-weave-total):not(.is-bridge) .play-actions {
+    display: none;
+  }
+
+  .online-count {
+    grid-area: online;
+    justify-self: end;
+    min-height: 28px;
+    padding: 4px 8px;
+    font-size: 0.76rem;
+  }
+
+  .game-timer {
+    grid-area: timer;
+    min-width: 70px;
+    padding: 4px 6px;
+    font-size: 0.84rem;
+    white-space: nowrap;
+  }
+
+  .developer-button {
+    grid-area: developer;
+    min-width: 52px;
+    padding-inline: 7px;
+    font-size: 0.76rem;
+  }
+
+  .github-link {
+    grid-area: github;
+    width: 32px;
+    height: 32px;
+  }
+
+  .rule-button {
+    grid-area: rule;
+    min-width: 44px;
+  }
+
+  .personalize-button {
+    grid-area: settings;
+    min-width: 44px;
+  }
+
+  .personalization-panel {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    display: grid;
+    width: min(420px, calc(100vw - 20px));
+    max-height: min(78dvh, 600px);
+    padding: 12px;
+    transform: translate(-50%, -50%);
+  }
+
+  .rule-panel {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    width: min(460px, calc(100vw - 20px));
+    max-height: min(76dvh, 560px);
+    padding: 12px;
+    transform: translate(-50%, -50%);
+  }
+
+  .play-actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: minmax(78px, auto) minmax(48px, 1fr) auto;
+    gap: 5px;
+    align-items: center;
+    justify-content: stretch;
+    width: 100%;
+    min-width: 0;
+    padding: 2px;
+  }
+
+  .level-picker-button {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .current-level-label {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    padding: 5px 4px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+
+  .app-topbar button {
+    min-height: 32px;
+    padding: 4px 7px;
+    font-size: 0.8rem;
+  }
+
+  .game-mode-rail {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 9;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: calc(100% - 16px);
+    margin: 7px 8px 0;
+    padding: 5px;
+    border-radius: 14px;
+    overflow: visible;
+    transition: none;
+  }
+
+  .game-mode-rail:hover,
+  .game-mode-rail:focus-within {
+    width: calc(100% - 16px);
+    box-shadow: 0 16px 36px -28px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 42%, transparent);
+  }
+
+  .game-mode-rail-item {
+    grid-template-columns: 30px minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    border-radius: 11px;
+  }
+
+  .game-mode-rail-item.is-active {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+  }
+
+  .game-mode-rail-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+  }
+
+  .game-mode-rail-label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .game-mode-rail-label strong {
+    font-size: 0.74rem;
+  }
+
+  .game-mode-rail-label small {
+    display: none;
+  }
+
+  .app-shell {
+    width: 100%;
+    padding: 0;
+  }
+
+  .close-button {
+    padding: 4px 7px;
+    font-size: 0.74rem;
+  }
+
+  .view-editor {
+    height: calc(100dvh - var(--topbar-height));
+    overflow: auto;
+  }
+
+  .editor-panel {
+    min-height: 100%;
+    height: auto;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .editor-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-form {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .editor-form-group,
+  .editor-form-group-main,
+  .editor-form-group-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-form-group-grid .editor-grid-type-field,
+  .editor-form-group-grid .editor-size-field,
+  .editor-form-group-grid .editor-pair-count-field,
+  .editor-form-group-grid .editor-difficulty-field,
+  .editor-form-group-grid .editor-mode-field {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .editor-form-actions {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .editor-generator-panel {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .pair-picker {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    grid-column: 1;
+    grid-row: 1;
+    justify-content: start;
+    max-width: calc(100vw - 24px);
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-top: 0;
+    padding-bottom: 6px;
+  }
+
+  .preview-board-wrap {
+    --preview-width-limit: min(100vw - 24px, 640px);
+    --preview-height-limit: min(58dvh, 520px);
+    grid-column: 1;
+    grid-row: 2;
+    width: var(--preview-width-limit);
+    height: var(--preview-height-limit);
+    padding: 18px;
+  }
+
+  .preview-board {
+    max-width: 100%;
+  }
+
+  .level-output-panel {
+    margin-top: 8px;
+  }
+
+  .level-output-textarea {
+    min-height: 150px;
+    max-height: 42dvh;
+  }
+
+  .preview-hint {
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 560px) {
+  .game-panel {
+    padding: 14px;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  :root {
+    --topbar-height: 88px;
+    --page-height: 100dvh;
+  }
+
+  html,
+  body,
+  #app {
+    width: 100%;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  .app-shell {
+    height: calc(100dvh - var(--topbar-height));
+    min-height: calc(100dvh - var(--topbar-height));
+    overflow: hidden;
+  }
+
+  .game-panel {
+    width: 100%;
+    height: 100%;
+    padding: 34px 0 17px;
+    transform: none;
+  }
+
+  .level-picker-panel {
+    position: fixed;
+    inset: calc(var(--topbar-height) + 20px) auto auto 50%;
+    width: min(460px, calc(100vw - 20px));
+    height: auto;
+    max-height: min(calc(100dvh - var(--topbar-height) - 30px), 560px);
+    padding: 12px;
+    transform: translateX(-50%);
+  }
+
+  .level-picker-header,
+  .level-picker-filters {
+    align-items: stretch;
+  }
+
+  .level-picker-filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .level-picker-filters label {
+    grid-template-columns: 1fr;
+  }
+
+  .level-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .level-card {
+    min-height: 74px;
+    padding: 9px;
+  }
+
+  .victory-mark {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    max-width: calc(100vw - 28px);
+    min-width: min(340px, calc(100vw - 28px));
+    padding: 14px;
+    white-space: normal;
+    transform: translate(-50%, -50%);
+  }
+
+  .victory-actions {
+    justify-content: stretch;
+  }
+
+  .victory-actions button {
+    flex: 1 1 0;
+  }
+
+  .victory-mark svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .victory-mark span,
+  .victory-mark strong,
+  .victory-share-button {
+    font-size: 0.82rem;
+  }
+
+  .victory-main {
+    gap: 9px;
+  }
+}

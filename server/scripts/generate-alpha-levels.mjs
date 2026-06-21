@@ -738,7 +738,7 @@ async function readDirectoryNames(dir) {
 }
 
 async function refreshIndexes() {
-  const result = runPython("from server.services.levels import refresh_all_level_indexes; refresh_all_level_indexes()")
+  const result = runPython("from server.games.linker.services.levels import refresh_all_level_indexes; refresh_all_level_indexes()")
   if (result.status !== 0) {
     const message = (result.stderr || result.stdout || "unknown error").trim();
     throw new Error(`Failed to refresh level indexes: ${message}`);
@@ -766,7 +766,7 @@ function detectStorageMethod() {
 function saveLevelToSqlite(level, answers) {
   const source = [
     "import json, sys",
-    "from server.services.levels import save_level",
+    "from server.games.linker.services.levels import save_level",
     "payload = json.load(sys.stdin)",
     "level = dict(payload['level'])",
     "level['answers'] = payload['answers']",
@@ -986,7 +986,7 @@ function parseArgs(args) {
   const parsed = { ...DEFAULTS };
   const provided = new Set();
   parsed.token = process.env.LINKER_DEV_TOKEN ?? "njuit1918";
-  parsed.rebuildUrl = process.env.LINKER_REBUILD_URL ?? "http://127.0.0.1:8081/api/levels/index/rebuild";
+  parsed.rebuildUrl = process.env.LINKER_REBUILD_URL ?? "http://127.0.0.1:8081/api/linker/levels/index/rebuild";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];

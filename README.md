@@ -1,4 +1,4 @@
-# The Linker
+# The
 
 一个用 Vue, Vite 和 FastAPI 制作的连线解谜小游戏. 玩家连接相同点对, 避开被移除的边, 并覆盖所有可通行节点即可胜利.
 
@@ -25,6 +25,12 @@ uv run python -m server.main
 
 FastAPI 按 `config/config.yaml` 中的 `server.backendPort` 启动, 主要提供 `/api/*`. 生产环境前端静态文件交给 nginx. Vite 只用于前端开发和构建.
 
+如果前端出现 `/api/...` 404, 先确认 `server.backendPort` 上运行的是当前代码的后端:
+
+```bash
+python3 scripts/check-api.py
+```
+
 前端开发端口由 `config/config.yaml` 的 `server.frontendDebugPort` 控制, 也可以用环境变量覆盖:
 
 ```bash
@@ -36,10 +42,9 @@ VITE_FRONTEND_PORT=5173 npm run dev
 
 - `webui/src`: 前端源码.
 - `webui/public`: 前端 public 资源, 包含背景图, 图标和点位贴图.
-- `server/routers`: FastAPI 路由.
-- `server/services`: 业务规则和流程.
-- `server/repositories`: 数据读写和持久化操作.
-- `server/models`: 关卡相关数据结构.
+- `server/games/linker`: 数链/数寻共享的后端路由、模型、服务和持久化.
+- `server/games/bridger`: 数桥后端路由、模型、服务和持久化.
+- `server/games/common`: 开发者校验、在线统计等公共 API.
 - `config/config.yaml`: 运行配置, 路径配置和端口配置.
 - `config/settings/styles/map.json`: 棋盘视觉参数.
 - `config/settings/styles/themes.json`: 主题 token.

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node --test src/app/*.test.js"
+    "test": "node --test src/games/linker/app/weaveRules.test.js src/games/bridger/bridgeRules.test.js"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.4",
