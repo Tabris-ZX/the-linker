@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import math
 import re
-import shutil
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -136,11 +135,6 @@ def read_level_answers(level: LevelData) -> list[Any]:
     if isinstance(payload, dict) and isinstance(payload.get("answers"), list):
         return payload["answers"]
     return payload if isinstance(payload, list) else []
-
-
-def read_level_with_answers(level: LevelData) -> LevelData:
-    """返回包含 answers 的关卡对象。"""
-    return {**level, "answers": read_level_answers(level)}
 
 
 def write_answer_file(level: LevelData, answers: list[Any]) -> None:

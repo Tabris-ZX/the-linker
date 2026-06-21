@@ -59,19 +59,6 @@ export function getEquilateralTriangleSize(level) {
 }
 
 /**
- * 生成当前网格所有可渲染边线。
- *
- * @param {object|number} widthOrLevel 关卡配置，或矩形网格宽度。
- * @param {number} [height] 矩形网格高度。
- * @param {string} [gridType="square"] 网格类型。
- * @returns {Array<{ key: string, attrs: object }>} SVG 线段渲染数据。
- */
-export function buildGridLines(widthOrLevel, height, gridType = "square") {
-  const level = normalizeGridArgs(widthOrLevel, height, gridType);
-  return getAllGridEdges(level).map((edge) => edgeRenderData(edge, level.gridType)).filter(Boolean);
-}
-
-/**
  * 枚举网格中的全部合法边。
  *
  * @param {object|number} widthOrLevel 关卡配置，或矩形网格宽度。
@@ -128,22 +115,6 @@ export function getGridNodes(level) {
     }
   }
   return nodes;
-}
-
-/**
- * 将边 key 转换成 SVG 线段渲染数据。
- *
- * @param {string} edge 边 key。
- * @param {string} [gridType="square"] 网格类型。
- * @returns {{ key: string, attrs: object }|null} 可渲染数据；格式无效时返回 null。
- */
-export function edgeRenderData(edge, gridType = "square") {
-  const points = pointsFromEdgeKey(edge);
-  if (!points) return null;
-  return {
-    key: edge,
-    attrs: lineAttrs(toRenderPoint(points[0], gridType), toRenderPoint(points[1], gridType))
-  };
 }
 
 /**

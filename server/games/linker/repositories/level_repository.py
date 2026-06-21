@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from server.config import get_settings
-from server.games.linker.models import AnswerData, LevelData, LevelIndexItem
+from server.games.linker.models import LevelData, LevelIndexItem
 from server.paths import normalize_path
 
 CATEGORIES = {"stable", "alpha", "removed"}
@@ -374,15 +374,6 @@ def move_level(source_category: str, source_id: str, target_category: str, targe
             (source_category, source_id),
         )
     write_level(target_level, target_category, answers)
-
-
-def delete_level(category: str, level_id: str) -> None:
-    """删除指定分类下的关卡。"""
-    with connect() as connection:
-        connection.execute(
-            "DELETE FROM levels WHERE status = ? AND id = ?",
-            (normalize_category(category), level_id),
-        )
 
 
 def level_exists(category: str, level_id: str) -> bool:

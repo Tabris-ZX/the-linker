@@ -33,11 +33,6 @@ class LevelIndexItem(TypedDict):
     sourceCategory: str
 
 
-class AnswerData(TypedDict, total=False):
-    levelId: str
-    answers: list[Any]
-
-
 class ReviewData(TypedDict, total=False):
     levelId: str
     sourcePath: str

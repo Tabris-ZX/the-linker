@@ -90,22 +90,6 @@ export function getAnswerEdges(level) {
 }
 
 /**
- * 获取路径已经覆盖的边。
- *
- * @param {Record<string, Array<[number, number]>>} paths 玩家绘制路径。
- * @returns {Set<string>} 已覆盖边集合。
- */
-export function getFilledEdges(paths) {
-  const edges = new Set();
-  Object.values(paths).forEach((path) => {
-    for (let index = 1; index < path.length; index += 1) {
-      edges.add(edgeKey(path[index - 1], path[index]));
-    }
-  });
-  return edges;
-}
-
-/**
  * 获取路径已经占用的节点。
  *
  * @param {Record<string, Array<[number, number]>>} paths 玩家绘制路径。

@@ -12,13 +12,8 @@ export default {
     title: {
       type: String,
       required: true
-    },
-    timerText: { type: String, default: "" },
-    levelLabel: { type: String, default: "" },
-    canReset: { type: Boolean, default: true },
-    showEditor: { type: Boolean, default: false },
-    isEditorActive: { type: Boolean, default: false }
+    }
   },
-  emits: ["back", "toggle-levels", "reset", "open-editor"]
+  emits: ["back"]
 };
 </script>

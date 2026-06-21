@@ -8,8 +8,7 @@ import {
   calculateManhattanDistance,
   buildWeaveClueLinesFromBuckets,
   buildWeaveSubmissionResult,
-  calculateWeavePenaltyMs,
-  isWeaveVisibleEndpoint
+  calculateWeavePenaltyMs
 } from "./weaveRules.js";
 
 const level = {
@@ -144,12 +143,6 @@ test("all hidden endpoints correct wins only after submission", () => {
   assert.equal(result.correctMarkedCount, 3);
   assert.equal(result.missingCount, 0);
   assert.equal(result.isVictory, true);
-});
-
-test("visible endpoints are identifiable and can be blocked by the UI", () => {
-  assert.equal(isWeaveVisibleEndpoint(level, "0,0"), true);
-  assert.equal(isWeaveVisibleEndpoint(level, "0,1"), true);
-  assert.equal(isWeaveVisibleEndpoint(level, "2,1"), false);
 });
 
 test("weave clue totals include unknown marks and keep negative remaining values", () => {

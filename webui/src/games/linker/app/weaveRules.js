@@ -71,22 +71,6 @@ export function calculateWeavePenaltyMs(wrongCount, difficulty = 1) {
   return (count * (5 * level + (5 * level - count + 1)) / 2) * 1000;
 }
 
-export function getWeaveHiddenEndpointKey(pair) {
-  const hidden = pair?.points?.[1];
-  return Array.isArray(hidden) ? keyOfPoint(hidden) : "";
-}
-
-export function getWeaveVisibleEndpointKeys(level) {
-  return new Set((level?.pairs ?? [])
-    .map((pair) => pair?.points?.[0])
-    .filter(Array.isArray)
-    .map(keyOfPoint));
-}
-
-export function isWeaveVisibleEndpoint(level, nodeKey) {
-  return getWeaveVisibleEndpointKeys(level).has(nodeKey);
-}
-
 export function buildWeaveSubmissionResult(level, markedEndpoints = {}, difficulty = 1) {
   const correctMap = new Map(
     (Array.isArray(level) ? level : buildWeaveHiddenEndpoints(level))

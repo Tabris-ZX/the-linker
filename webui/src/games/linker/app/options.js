@@ -5,8 +5,6 @@ import { methods } from "./methods.js";
 import PlayView from "../views/PlayView.vue";
 import WeaveView from "../views/WeaveView.vue";
 import EditorView from "../views/EditorView.vue";
-import PersonalizationView from "../views/PersonalizationView.vue";
-import RuleView from "../views/RuleView.vue";
 
 export const EDITOR_PAIR_LIMIT = 16;
 
@@ -20,9 +18,7 @@ export default {
   components: {
     PlayView,
     WeaveView,
-    EditorView,
-    PersonalizationView,
-    RuleView
+    EditorView
   },
 
   /**
@@ -121,8 +117,6 @@ export default {
       nextLevelStatusText: "",
       clearDataStatusText: "",
       isClearDataConfirming: false,
-      isRulePanelOpen: false,
-      isPersonalizationOpen: false,
       navLayout: "top",
       mapStyle: { ...appConfig.mapStyle },
       prefersPortraitBoard: false,

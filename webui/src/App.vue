@@ -227,9 +227,6 @@ export default {
     isGlobalDeveloperMode() {
       return Boolean(this.developerToken);
     },
-    canOpenCurrentEditor() {
-      return this.activeGame === "play" || this.activeGame === "bridge";
-    },
     isEditorActive() {
       return this.activeView === "editor-home" || this.activeView === "editor-game";
     },

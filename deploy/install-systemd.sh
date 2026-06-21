@@ -2,8 +2,8 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TEMPLATE_FILE="$ROOT_DIR/deploy/linker.service"
-SERVICE_NAME="${SERVICE_NAME:-linker}"
+TEMPLATE_FILE="$ROOT_DIR/deploy/puzzles.service"
+SERVICE_NAME="${SERVICE_NAME:-puzzles}"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 SERVICE_USER="${SERVICE_USER:-$(id -un)}"
 SERVICE_GROUP="${SERVICE_GROUP:-$(id -gn)}"

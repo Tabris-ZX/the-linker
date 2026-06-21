@@ -683,48 +683,6 @@ export const methods = {
     },
 
     /**
-     * 切换个性化设置面板。
-     *
-     * @returns {void}
-     */
-    togglePersonalization() {
-      this.isPersonalizationOpen = !this.isPersonalizationOpen;
-      if (this.isPersonalizationOpen) {
-        this.isRulePanelOpen = false;
-      }
-    },
-
-    /**
-     * 关闭个性化设置面板。
-     *
-     * @returns {void}
-     */
-    closePersonalization() {
-      this.isPersonalizationOpen = false;
-    },
-
-    /**
-     * 切换玩法说明面板。
-     *
-     * @returns {void}
-     */
-    toggleRulePanel() {
-      this.isRulePanelOpen = !this.isRulePanelOpen;
-      if (this.isRulePanelOpen) {
-        this.isPersonalizationOpen = false;
-      }
-    },
-
-    /**
-     * 关闭玩法说明面板。
-     *
-     * @returns {void}
-     */
-    closeRulePanel() {
-      this.isRulePanelOpen = false;
-    },
-
-    /**
      * 标记胜利提示已被用户关闭。
      *
      * @returns {void}
