@@ -1,0 +1,160 @@
+@media (max-width: 640px) {
+  .board-wrap.finder-workspace {
+    width: calc(100vw - 18px);
+    max-width: calc(100vw - 18px);
+    max-height: none;
+    padding: 1px 0 max(12px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .finder-main-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    width: 100%;
+    max-width: calc(100vw - 18px);
+    gap: 12px;
+    overflow-x: visible;
+    padding: 0;
+  }
+
+  .finder-side-panel {
+    position: static;
+    grid-template-columns: 1fr;
+    width: 100%;
+    max-width: min(100%, calc(100vw - 18px));
+    max-height: none;
+    overflow: visible;
+    gap: 0;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .finder-console-title {
+    gap: 3px;
+  }
+
+  .finder-console-title strong {
+    font-size: 0.9rem;
+  }
+
+  .finder-panel-section {
+    gap: 8px;
+    padding: 12px 10px;
+  }
+
+  .finder-tool-row {
+    grid-template-columns: repeat(5, 40px);
+    gap: 7px;
+  }
+
+  .finder-tool-row-meta {
+    grid-template-columns: repeat(2, 40px);
+    padding-top: 8px;
+  }
+
+  .finder-pair-chip {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    border-radius: 999px;
+  }
+
+  .finder-submit-row button,
+  .finder-console-stats {
+    min-height: 40px;
+  }
+
+  .finder-submit-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .finder-board-shell {
+    --finder-clue-size: 2rem;
+    --board-stage-ratio: 10 / 16;
+    --board-stage-width-limit: calc(100vw - 69px);
+    --board-stage-height-limit: calc(75svh - 96px);
+    --board-max-width: min(var(--board-stage-width-limit), calc(var(--board-stage-height-limit) * 10 / 16));
+    --board-max-height: min(var(--board-stage-height-limit), calc(var(--board-stage-width-limit) * 16 / 10));
+    --finder-node-width: calc(var(--node-cols) * var(--cell-size));
+    --finder-node-height: calc(var(--node-rows) * var(--cell-size));
+    grid-template-columns: var(--finder-clue-size) var(--finder-node-width);
+    grid-template-rows: var(--finder-clue-size) var(--finder-node-height);
+    width: fit-content;
+    max-width: 100%;
+    max-height: none;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .finder-board-shell .board {
+    margin: calc(var(--cell-size) / 2) 0 0 calc(var(--cell-size) / 2);
+  }
+
+  .finder-left-clues {
+    width: var(--finder-clue-size);
+  }
+
+  .finder-clue-cell {
+    padding: 3px 2px;
+    overflow: visible;
+  }
+
+  .finder-clue-item {
+    font: 900 1.55rem/1 Georgia, "Times New Roman", "Noto Serif SC", serif;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  body.is-finder-active {
+    position: relative;
+    inset: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  body.is-finder-active #app {
+    min-height: 100svh;
+    overflow: visible;
+  }
+
+  .app-shell.is-finder-active {
+    height: auto;
+    min-height: calc(100svh - var(--topbar-height));
+    overflow: visible;
+  }
+
+  .view-finder {
+    height: auto;
+    min-height: calc(100svh - var(--topbar-height));
+    align-items: start;
+    align-content: start;
+    justify-items: center;
+    padding: 1px 9px max(12px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .view-finder .game-panel {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .board-wrap.finder-workspace {
+    max-height: none;
+    padding: 1px 0 max(12px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .finder-board-shell .board {
+    margin: calc(var(--cell-size) / 2) 0 0 calc(var(--cell-size) / 2);
+  }
+
+  .finder-board-shell .edge-grid path {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
+  }
+
+  .finder-board-shell .edge-lines path,
+  .finder-board-shell .edge-lines .preview-line {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  }
+}

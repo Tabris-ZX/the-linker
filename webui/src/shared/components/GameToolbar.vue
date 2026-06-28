@@ -1,6 +1,9 @@
 <template>
   <header class="game-local-toolbar" :aria-label="`${title}工具栏`">
-    <button type="button" @click="$emit('back')">返回</button>
+    <button class="game-back-button" type="button" aria-label="返回首页" @click="$emit('back')">
+      <span class="game-back-icon" aria-hidden="true">&lt;</span>
+      <span>返回</span>
+    </button>
     <strong class="toolbar-game-title">{{ title }}</strong>
   </header>
 </template>

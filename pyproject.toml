@@ -1,6 +1,6 @@
 [project]
-name = "the-linker-server"
-version = "0.1.0"
+name = "the-puzzles-server"
+version = "0.2.4"
 description = "FastAPI backend for THER puzzles."
 requires-python = ">=3.12"
 dependencies = [

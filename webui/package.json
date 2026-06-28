@@ -1,12 +1,12 @@
 {
-  "name": "the_linker",
+  "name": "the_puzzles",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node --test src/games/linker/app/weaveRules.test.js src/games/bridger/bridgeRules.test.js"
+    "test": "node --test src/shared/utils/finderRules.test.js src/games/bridger/utils.test.js"
   },
   "dependencies": {
     "vue": "^3.5.16"

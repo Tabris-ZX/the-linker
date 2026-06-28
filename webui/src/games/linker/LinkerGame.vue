@@ -1,12 +1,11 @@
 <template>
-  <div class="linker-game" :class="{ 'is-weave-active': isWeaveModeEnabled }">
+  <div class="linker-game">
     <GameToolbar
       :title="gameLabel"
       @back="$emit('back-home')"
     />
 
     <PlayView />
-    <WeaveView />
     <EditorView />
 
     <div v-if="appDialog.type" class="app-dialog-backdrop">
@@ -40,12 +39,11 @@
 </template>
 
 <script>
-import linkerOptions from "./app/options.js";
+import linkerOptions from "./app.js";
 import EditorView from "./views/EditorView.vue";
 import PlayView from "./views/PlayView.vue";
-import WeaveView from "./views/WeaveView.vue";
 import GameToolbar from "../../shared/components/GameToolbar.vue";
-import { setDeveloperToken } from "./router/levels.js";
+import { setDeveloperToken } from "../../shared/api.js";
 
 export default {
   name: "LinkerGame",
@@ -53,7 +51,7 @@ export default {
   props: {
     initialMode: {
       type: String,
-      default: "play"
+      default: "linker"
     },
     sharedMapStyle: {
       type: Object,
@@ -81,13 +79,12 @@ export default {
     ...linkerOptions.components,
     GameToolbar,
     PlayView,
-    WeaveView,
     EditorView
   },
   data() {
     return {
       ...linkerOptions.data(),
-      activeView: this.initialMode === "weave-total" ? "weave-total" : "play",
+      activeView: "linker",
       viewTabs: []
     };
   },
@@ -95,16 +92,13 @@ export default {
     await linkerOptions.mounted.call(this);
     this.applySharedSettings();
     this.applyGlobalDeveloperMode();
-    if (this.initialMode === "weave-total") {
-      await this.selectGameMode("weave-total");
-    }
     if (this.startInEditor) this.openEditor();
     this.emitStatusChange();
   },
   computed: {
     ...linkerOptions.computed,
     gameLabel() {
-      return this.activeView === "weave-total" ? "数寻" : "数链";
+      return "数链";
     }
   },
   watch: {
@@ -161,14 +155,14 @@ export default {
       this.emitStatusChange();
     },
     openPlay() {
-      this.activeView = this.initialMode === "weave-total" ? "weave-total" : "play";
+      this.activeView = "linker";
       this.emitStatusChange();
     },
     applyDeveloperLogout() {
       this.isDeveloperMode = false;
       this.canUseLevelEditor = false;
       setDeveloperToken("");
-      if (this.activeView === "editor") this.activeView = this.initialMode === "weave-total" ? "weave-total" : "play";
+      if (this.activeView === "editor") this.activeView = "linker";
       this.emitStatusChange();
     },
     emitStatusChange() {

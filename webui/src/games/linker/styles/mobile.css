@@ -1,0 +1,62 @@
+@media (max-width: 640px) and (orientation: portrait) {
+  :root {
+    --board-stage-ratio: 10 / 16;
+    --board-stage-width-limit: calc(100vw - 78px);
+    --board-stage-height-limit: calc(100svh - var(--topbar-height) - 112px);
+    --board-max-width: min(var(--board-stage-width-limit), calc(var(--board-stage-height-limit) * 10 / 16));
+    --board-max-height: min(var(--board-stage-height-limit), calc(var(--board-stage-width-limit) * 16 / 10));
+  }
+
+  .view-play:not(.view-finder) {
+    height: auto;
+    min-height: calc(100svh - var(--topbar-height));
+    align-items: start;
+    align-content: start;
+    justify-items: center;
+    padding: 1px 8px max(12px, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .view-play:not(.view-finder) .board-wrap {
+    --mobile-board-pad: max(14px, calc(var(--cell-size) * var(--map-dot-scale) * 0.55));
+    align-self: start;
+    justify-self: center;
+    width: fit-content;
+    max-width: calc(100vw - 10px);
+    max-height: var(--board-max-height);
+    padding: var(--mobile-board-pad);
+    overflow: visible;
+  }
+
+  .view-play:not(.view-finder) .board {
+    margin: auto;
+  }
+
+  .view-play:not(.view-finder) .dot {
+    border-width: clamp(1px, calc(var(--cell-size) * 0.022), 3px);
+    box-shadow:
+      0 0 0 clamp(1px, calc(var(--cell-size) * 0.018), 2px) var(--ink),
+      0 clamp(2px, calc(var(--cell-size) * 0.04), 5px) 0 rgba(0, 0, 0, 0.16);
+  }
+
+  .view-play:not(.view-finder) .node.target .dot {
+    box-shadow:
+      0 0 0 clamp(1px, calc(var(--cell-size) * 0.02), 3px) var(--ink),
+      0 0 0 clamp(6px, calc(var(--cell-size) * 0.1), 14px) color-mix(in srgb, var(--dot-color) 44%, transparent),
+      0 0 clamp(10px, calc(var(--cell-size) * 0.18), 24px) color-mix(in srgb, var(--dot-color) 36%, transparent);
+  }
+
+  .view-play:not(.view-finder) .node.target .dot::after {
+    inset: clamp(-7px, calc(var(--cell-size) * -0.11), -3px);
+    border-width: clamp(1px, calc(var(--cell-size) * 0.022), 3px);
+  }
+
+  .view-play:not(.view-finder) .edge-grid path {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-grid-line-scale)));
+  }
+
+  .view-play:not(.view-finder) .edge-lines path,
+  .view-play:not(.view-finder) .edge-lines .preview-line {
+    stroke-width: max(1px, calc(var(--cell-size) * var(--map-line-scale)));
+  }
+}

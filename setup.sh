@@ -10,7 +10,7 @@ RESTART_REQUESTED=0
 NO_RESTART_SERVICE="${NO_RESTART_SERVICE:-0}"
 SERVICE_NAME="${SERVICE_NAME:-puzzles}"
 DEPLOY_STATIC="${DEPLOY_STATIC:-auto}"
-DEPLOY_WEB_ROOT="${DEPLOY_WEB_ROOT:-/var/www/linker}"
+DEPLOY_WEB_ROOT="${DEPLOY_WEB_ROOT:-/var/www/puzzles}"
 LOG_DIR="$ROOT_DIR/logs"
 
 usage() {
@@ -23,7 +23,7 @@ usage() {
   --no-restart        构建、同步后不重启 systemd 服务
   --deploy-static     构建后同步 webui/dist 到静态站点目录
   --no-deploy-static  构建后不同步静态站点目录
-  --web-root <path>   静态站点目录，默认 /var/www/linker
+  --web-root <path>   静态站点目录，默认 /var/www/puzzles
   --service <name>    systemd 服务名，默认 puzzles
   -h, --help          显示帮助
 
@@ -34,7 +34,7 @@ usage() {
   RESTART_SERVICE=1
   NO_RESTART_SERVICE=0
   DEPLOY_STATIC=auto
-  DEPLOY_WEB_ROOT=/var/www/linker
+  DEPLOY_WEB_ROOT=/var/www/puzzles
 EOF
 }
 
@@ -104,6 +104,23 @@ run_quiet() {
   fi
 }
 
+systemd_unit_exists() {
+  systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1
+}
+
+ensure_systemd_unit_current() {
+  if ! systemd_unit_exists; then
+    return
+  fi
+  local working_directory
+  working_directory="$(systemctl show "$SERVICE_NAME.service" -p WorkingDirectory --value 2>/dev/null || true)"
+  if [[ "$working_directory" == "$ROOT_DIR" ]]; then
+    return
+  fi
+  echo "systemd 服务工作目录不匹配，重新安装: ${working_directory:-未设置} -> $ROOT_DIR"
+  UV_BIN="$UV_BIN" SERVICE_NAME="$SERVICE_NAME" bash "$ROOT_DIR/deploy/install-systemd.sh"
+}
+
 if [[ -z "$UV_BIN" ]]; then
   if command -v uv >/dev/null 2>&1; then
     UV_BIN="$(command -v uv)"
@@ -136,16 +153,25 @@ echo "3/4 同步后端依赖"
 run_quiet "同步后端依赖" "$LOG_DIR/uv-sync.log" "$UV_BIN" sync --frozen --quiet
 
 echo "4/4 同步 sqlite 结构和关卡哈希"
-run_quiet "同步 sqlite 结构和关卡哈希" "$LOG_DIR/rebuild-level-indexes.log" "$UV_BIN" run python server/scripts/rebuild-level-indexes.py
+run_quiet "同步 Linker sqlite 结构和关卡哈希" "$LOG_DIR/rebuild-linker-level-indexes.log" "$UV_BIN" run python server/games/linker/scripts/rebuild-level-indexes.py
+run_quiet "同步 Finder sqlite 结构和关卡哈希" "$LOG_DIR/rebuild-finder-level-indexes.log" "$UV_BIN" run python server/games/finder/scripts/rebuild-level-indexes.py
+run_quiet "同步 Bridger sqlite 结构" "$LOG_DIR/rebuild-bridger-level-indexes.log" "$UV_BIN" run python server/games/bridger/scripts/rebuild-level-indexes.py
 
 if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
   echo "安装 systemd 服务: $SERVICE_NAME"
   UV_BIN="$UV_BIN" SERVICE_NAME="$SERVICE_NAME" bash "$ROOT_DIR/deploy/install-systemd.sh"
 fi
 
-if [[ "$NO_RESTART_SERVICE" != "1" ]] && systemctl list-unit-files "${SERVICE_NAME}.service" >/dev/null 2>&1; then
+if [[ "$NO_RESTART_SERVICE" != "1" ]] && systemd_unit_exists; then
+  ensure_systemd_unit_current
   echo "重启 systemd 服务: $SERVICE_NAME"
   sudo systemctl restart "$SERVICE_NAME"
+  sleep 1
+  if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+    sudo systemctl --no-pager --full status "$SERVICE_NAME" || true
+    echo "systemd 服务启动失败: $SERVICE_NAME" >&2
+    exit 1
+  fi
   sudo systemctl --no-pager --full status "$SERVICE_NAME"
 elif [[ "$RESTART_SERVICE" == "1" ]] && [[ "$NO_RESTART_SERVICE" != "1" ]]; then
   if [[ "$RESTART_REQUESTED" == "1" ]] || [[ "$INSTALL_SYSTEMD" == "1" ]]; then

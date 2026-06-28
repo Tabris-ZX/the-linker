@@ -1,16 +1,22 @@
 import vue from "@vitejs/plugin-vue";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const configPath = resolve(currentDir, "../config/config.yaml");
+const projectPath = resolve(currentDir, "../pyproject.toml");
+const backgroundsPath = resolve(currentDir, "public/backgrounds");
 const devFrontendPort = normalizePort(process.env.VITE_FRONTEND_PORT || readConfiguredFrontendDebugPort(), 5173);
 const devBackendPort = normalizePort(process.env.VITE_BACKEND_PORT || readConfiguredBackendPort(), 5174);
 const devBackendTarget = process.env.VITE_BACKEND_TARGET || `http://127.0.0.1:${devBackendPort}`;
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(readProjectVersion()),
+    __BACKGROUND_IMAGES__: JSON.stringify(readBackgroundImages())
+  },
   server: {
     host: "0.0.0.0",
     port: devFrontendPort,
@@ -30,6 +36,22 @@ export default defineConfig({
     emptyOutDir: true
   }
 });
+
+function readProjectVersion() {
+  if (!existsSync(projectPath)) return "0.0.0";
+  const source = readFileSync(projectPath, "utf-8");
+  return source.match(/^version\s*=\s*["']([^"']+)["']\s*$/m)?.[1] ?? "0.0.0";
+}
+
+function readBackgroundImages() {
+  if (!existsSync(backgroundsPath)) return [];
+  return readdirSync(backgroundsPath, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((fileName) => /\.(avif|webp|png|jpe?g)$/i.test(fileName))
+    .sort((left, right) => left.localeCompare(right, "en"))
+    .map((fileName) => `/backgrounds/${fileName}`);
+}
 
 function readConfiguredBackendPort() {
   return readConfiguredServerPort("backendPort");

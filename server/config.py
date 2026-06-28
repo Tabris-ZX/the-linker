@@ -33,6 +33,11 @@ class AppSettings:
     storage_method: str
     sqlite_database_file: Path
     linker_sqlite_database_file: Path
+    finder_levels_dir: Path
+    finder_levels_hash_file: Path
+    finder_levels_index_file: Path
+    finder_answers_dir: Path
+    finder_sqlite_database_file: Path
     bridger_sqlite_database_file: Path
 
 
@@ -52,6 +57,7 @@ def get_settings() -> AppSettings:
         or server_config.get("saveData")
     )
     linker_game_config = get_game_path_config(path_config, "linker")
+    finder_game_config = get_game_path_config(path_config, "finder")
     bridger_game_config = get_game_path_config(path_config, "bridger")
     linker_database_file = resolve_config_path(
         linker_config.get("database")
@@ -70,13 +76,21 @@ def get_settings() -> AppSettings:
         or storage_config.get("bridgerSqlitePath")
         or "data/db/bridger.db"
     )
+    finder_database_file = resolve_config_path(
+        finder_config.get("database")
+        or finder_config.get("sqlitePath")
+        or finder_game_config.get("database")
+        or storage_config.get("finderSqlitePath")
+        or "data/db/finder.db"
+    )
     linker_levels_dir = linker_config.get("levels") or path_config.get("levels") or "data/levels"
     linker_answers_dir = linker_config.get("answers") or path_config.get("answers") or "data/answers"
     linker_hash_file = linker_config.get("levelsHash") or path_config.get("levelsHash") or "data/levels-hash.json"
     linker_index_file = linker_config.get("levelsIndex") or path_config.get("levelsIndex") or "data/levels-index.json"
-    # Finder currently uses the same map data model as Linker. Reading it here makes the
-    # root config field explicit while keeping the runtime data source shared.
-    _finder_database_file = finder_config.get("database") or finder_config.get("sqlitePath")
+    finder_levels_dir = finder_config.get("levels") or finder_game_config.get("levels") or "data/finder/levels"
+    finder_answers_dir = finder_config.get("answers") or finder_game_config.get("answers") or "data/finder/answers"
+    finder_hash_file = finder_config.get("levelsHash") or finder_game_config.get("levelsHash") or "data/finder/levels-hash.json"
+    finder_index_file = finder_config.get("levelsIndex") or finder_game_config.get("levelsIndex") or "data/finder/levels-index.json"
     return AppSettings(
         backend_port=clamp_integer(
             server_config.get("backendPort"),
@@ -116,6 +130,11 @@ def get_settings() -> AppSettings:
         storage_method=storage_method,
         sqlite_database_file=linker_database_file,
         linker_sqlite_database_file=linker_database_file,
+        finder_levels_dir=resolve_config_path(finder_levels_dir),
+        finder_levels_hash_file=resolve_config_path(finder_hash_file),
+        finder_levels_index_file=resolve_config_path(finder_index_file),
+        finder_answers_dir=resolve_config_path(finder_answers_dir),
+        finder_sqlite_database_file=finder_database_file,
         bridger_sqlite_database_file=bridger_database_file,
     )
 

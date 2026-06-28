@@ -42,17 +42,18 @@ VITE_FRONTEND_PORT=5173 npm run dev
 
 - `webui/src`: 前端源码.
 - `webui/public`: 前端 public 资源, 包含背景图, 图标和点位贴图.
-- `server/games/linker`: 数链/数寻共享的后端路由、模型、服务和持久化.
-- `server/games/bridger`: 数桥后端路由、模型、服务和持久化.
-- `server/games/common`: 开发者校验、在线统计等公共 API.
+- `server/games`: 各游戏后端能力，默认使用 `routers.py`、`services.py`、`repositories.py`、`models.py` 单文件分层；游戏目录之间不互相引用。
+- `server/shared`: 跨游戏 API 或业务能力，例如开发者校验和在线统计。
+- `server/utils`: 无业务语义的后端通用工具，例如 HTTP、路径和安全辅助。
 - `config/config.yaml`: 运行配置, 路径配置和端口配置.
 - `config/settings/styles/map.json`: 棋盘视觉参数.
 - `config/settings/styles/themes.json`: 主题 token.
 - `config/settings/styles/points.json`: 点位颜色和贴图配置.
 - `data/levels`: 文件存储模式下的关卡本体.
 - `data/answers`: 文件存储模式下的答案线路.
-- `data/db/linker.db`: SQLite 存储模式下的主数据库.
-- `data/db/linker-backup.db`: SQLite 存储模式下的同步备份库.
+- `data/db/linker.db`: Linker 的 SQLite 数据库.
+- `data/db/finder.db`: Finder 的 SQLite 数据库，运行时不依赖 Linker 数据库或私有模块.
+- `data/db/bridger.db`: Bridger 的 SQLite 数据库.
 
 ## 地图数据
 
@@ -117,7 +118,7 @@ VITE_FRONTEND_PORT=5173 npm run dev
 存储方式由 `config/config.yaml` 的 `storage.method` 控制:
 
 - `file`: 使用 `data/levels` 和 `data/answers`.
-- `sqlite`: 使用 `data/db/linker.db`, 每次写入后同步到 `data/db/linker-backup.db`.
+- `sqlite`: 使用各游戏独立 SQLite 数据库，例如 Linker 使用 `data/db/linker.db`，Finder 使用 `data/db/finder.db`，Bridger 使用 `data/db/bridger.db`。写入时不再自动同步备份库；需要备份时调用保留的手动备份函数或单独脚本。
 
 ## 配置
 

@@ -2,13 +2,15 @@
   <div class="collection-shell">
     <header class="collection-nav">
       <button class="brand-button" type="button" @click="goHome">
-        <span class="brand-mark" aria-hidden="true">TL</span>
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/icon.webp?v=20260623" alt="">
+        </span>
         <span>THER</span>
       </button>
 
       <nav aria-label="主导航">
         <button type="button" :class="{ 'is-active': activeView === 'home' }" @click="goHome">首页</button>
-        <button type="button" :class="{ 'is-active': activeView === 'game' }" @click="goPlayPage">游玩页</button>
+        <button type="button" :class="{ 'is-active': activeView === 'game' }" @click="goPlayPage">游玩</button>
         <button
           type="button"
           :class="{ 'is-active': isEditorActive }"
@@ -29,10 +31,24 @@
           <button type="button" :disabled="!currentGameStatus.canReset" @click="resetCurrentGame">重置</button>
         </div>
         <div class="collection-global-actions" aria-label="全局操作">
+          <button type="button" class="developer-toggle-button" @click="unlockDeveloperMode">{{ developerLabel }}</button>
+          <a
+            class="github-link"
+            href="https://github.com/Tabris-ZX/the-linker"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub 项目"
+            title="GitHub"
+          >
+            <svg class="github-mark" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M8 0C3.58 0 0 3.68 0 8.22c0 3.63 2.29 6.71 5.47 7.8.4.08.55-.18.55-.4 0-.2-.01-.85-.01-1.55-2.01.38-2.53-.5-2.69-.96-.09-.24-.48-.96-.82-1.15-.28-.16-.68-.55-.01-.56.63-.01 1.08.59 1.23.84.72 1.24 1.87.89 2.33.68.07-.53.28-.89.51-1.09-1.78-.21-3.64-.91-3.64-4.04 0-.89.31-1.62.82-2.19-.08-.21-.36-1.04.08-2.16 0 0 .67-.22 2.2.84A7.42 7.42 0 0 1 8 4.01c.68 0 1.36.09 2 .27 1.53-1.06 2.2-.84 2.2-.84.44 1.12.16 1.95.08 2.16.51.57.82 1.3.82 2.19 0 3.14-1.87 3.83-3.65 4.04.29.25.54.75.54 1.52 0 1.1-.01 1.98-.01 2.25 0 .22.15.48.55.4A8.13 8.13 0 0 0 16 8.22C16 3.68 12.42 0 8 0Z"
+              />
+            </svg>
+          </a>
           <button type="button" @click="toggleGlobalRulePanel">玩法</button>
           <button type="button" @click="toggleGlobalSettings">设置</button>
-          <button type="button" @click="unlockDeveloperMode">{{ developerLabel }}</button>
-          <a href="https://github.com/Tabris-ZX/the-linker" target="_blank" rel="noreferrer" aria-label="GitHub 项目">GH</a>
         </div>
       </div>
     </header>
@@ -97,7 +113,7 @@
           <div class="home-heading">
             <span>THER编辑器</span>
             <h1 id="editor-home-title">选择编辑器</h1>
-            <p>数链和数桥提供关卡编辑器。数寻继续复用数链地图，不单独提供编辑器。</p>
+            <p>三款游戏都提供独立关卡编辑器，并使用各自独立的数据接口。</p>
           </div>
 
           <div class="home-game-grid" aria-label="编辑器列表">
@@ -106,44 +122,28 @@
               :key="game.id"
               type="button"
               class="home-game-card"
-              :disabled="!game.canEdit"
-              :aria-disabled="!game.canEdit"
-              :title="game.canEdit ? `进入${game.title}编辑器` : '数寻复用数链地图，不提供独立编辑器'"
+              :title="`进入${game.title}编辑器`"
               @click="selectEditorGame(game.id)"
             >
               <span class="home-game-mark" aria-hidden="true">{{ game.mark }}</span>
               <span class="home-game-copy">
-                <small>{{ game.canEdit ? '可编辑' : '复用数链' }}</small>
+                <small>可编辑</small>
                 <strong>{{ game.title }}</strong>
-                <span>{{ game.canEdit ? game.description : '当前没有独立编辑器。' }}</span>
+                <span>{{ game.description }}</span>
               </span>
             </button>
           </div>
         </div>
       </section>
       <section v-else class="game-host" :aria-label="activeGameTitle">
-        <LinkerGame
-          v-if="activeGame === 'play' || activeGame === 'weave-total'"
-          ref="linkerGame"
+        <component
+          :is="activeGameComponent"
+          v-if="activeGameComponent"
+          ref="activeGameRef"
           :key="`${activeView}-${activeGame}`"
-          :initial-mode="activeGame"
-          :start-in-editor="activeView === 'editor-game'"
-          :shared-map-style="globalMapStyle"
-          :shared-settings="globalSettings"
-          :developer-token="developerToken"
-          :is-global-developer-mode="isGlobalDeveloperMode"
+          v-bind="activeGameProps"
           @back-home="handleLocalBack"
           @developer-unlocked="handleGameDeveloperUnlocked"
-          @status-change="handleGameStatusChange"
-        />
-        <BridgeView
-          ref="bridgeGame"
-          v-else-if="activeGame === 'bridge'"
-          :key="`${activeView}-${activeGame}`"
-          :start-in-editor="activeView === 'editor-game'"
-          :developer-token="developerToken"
-          :is-developer-mode="isGlobalDeveloperMode"
-          @back-home="handleLocalBack"
           @status-change="handleGameStatusChange"
         />
       </section>
@@ -152,30 +152,49 @@
 </template>
 
 <script>
-import BridgeView from "./games/bridger/views/BridgeView.vue";
+import BridgerGame from "./games/bridger/BridgerGame.vue";
+import FinderGame from "./games/finder/FinderGame.vue";
 import LinkerGame from "./games/linker/LinkerGame.vue";
-import { appConfig, defaultPointPaletteId, pointPalettes, themes } from "./games/linker/config/index.js";
-import { setDeveloperToken, verifyDeveloperToken } from "./games/linker/router/levels.js";
-import GlobalRulePanel from "./shell/GlobalRulePanel.vue";
-import GlobalSettingsPanel from "./shell/GlobalSettingsPanel.vue";
-import HomeView from "./shell/HomeView.vue";
-import { gameCatalog } from "./shell/gameCatalog.js";
+import { setDeveloperToken, verifyDeveloperToken } from "./shared/api.js";
+import { applyBackgroundImage, chooseRandomBackgroundImage } from "./shared/background.js";
+import { appConfig, defaultPointPaletteId, pointPalettes, themes } from "./shared/config.js";
+import GlobalRulePanel from "./shared/shell/GlobalRulePanel.vue";
+import GlobalSettingsPanel from "./shared/shell/GlobalSettingsPanel.vue";
+import HomeView from "./shared/shell/HomeView.vue";
+import { gameCatalog } from "./shared/shell/gameCatalog.js";
 
-const GLOBAL_DEVELOPER_TOKEN_STORAGE_KEY = "the-linker-global-developer-token";
+const GLOBAL_DEVELOPER_TOKEN_STORAGE_KEY = "ther-puzzles-global-developer-token";
+const GLOBAL_PERSONALIZATION_STORAGE_KEY = "ther-puzzles-personalization";
+const GAME_ROUTE_ALIASES = {
+  linker: "linker",
+  finder: "finder",
+  bridger: "bridger"
+};
+const PLAY_ROUTE_BY_GAME = {
+  linker: "/play/linker",
+  finder: "/play/finder",
+  bridger: "/play/bridger"
+};
+const GAME_COMPONENTS = {
+  linker: "LinkerGame",
+  finder: "FinderGame",
+  bridger: "BridgerGame"
+};
 
 import "./shared/styles/base.css";
 import "./shared/styles/mobile-base.css";
-import "./shell/home.css";
-import "./games/linker/styles/play.css";
-import "./games/linker/styles/editor.css";
-import "./games/linker/styles/mobile-play.css";
-import "./games/linker/styles/mobile-weave.css";
-import "./games/bridger/styles/bridge.css";
+import "./shared/shell/home.css";
+import "./games/linker/styles/styles.css";
+import "./games/linker/styles/mobile.css";
+import "./games/finder/styles/styles.css";
+import "./games/finder/styles/mobile.css";
+import "./games/bridger/styles/styles.css";
 
 export default {
   name: "App",
   components: {
-    BridgeView,
+    BridgerGame,
+    FinderGame,
     GlobalRulePanel,
     GlobalSettingsPanel,
     HomeView,
@@ -206,7 +225,8 @@ export default {
       developerLogoutDialogOpen: false,
       developerTokenInput: "",
       developerToken: "",
-      developerStatus: ""
+      developerStatus: "",
+      isApplyingRoute: false
     };
   },
   computed: {
@@ -214,15 +234,26 @@ export default {
       return gameCatalog.find((game) => game.id === this.activeGame)?.title ?? "游戏";
     },
     editorCatalog() {
-      return gameCatalog.map((game) => ({
-        ...game,
-        canEdit: game.id === "play" || game.id === "bridge"
-      }));
+      return gameCatalog;
     },
     developerLabel() {
-      const linker = this.$refs.linkerGame;
-      if (linker?.isDeveloperMode) return linker.onlineCountText;
+      const game = this.getActiveGame();
+      if (game?.isDeveloperMode && game?.onlineCountText) return game.onlineCountText;
       return this.isGlobalDeveloperMode ? "已解锁" : "开发者";
+    },
+    activeGameComponent() {
+      return GAME_COMPONENTS[this.activeGame] ?? null;
+    },
+    activeGameProps() {
+      return {
+        initialMode: this.activeGame,
+        startInEditor: this.activeView === "editor-game",
+        sharedMapStyle: this.globalMapStyle,
+        sharedSettings: this.globalSettings,
+        developerToken: this.developerToken,
+        isGlobalDeveloperMode: this.isGlobalDeveloperMode,
+        isDeveloperMode: this.isGlobalDeveloperMode
+      };
     },
     isGlobalDeveloperMode() {
       return Boolean(this.developerToken);
@@ -247,7 +278,7 @@ export default {
       return this.activeGameTitle;
     },
     globalRuleLines() {
-      if (this.activeGame === "bridge") {
+      if (this.activeGame === "bridger") {
         return [
           "连接同一行或同一列的岛屿，桥不能跨过其它岛屿。",
           "两座岛之间最多可以有两座桥，桥不能交叉。",
@@ -264,28 +295,35 @@ export default {
     this.applyConfiguredBackground();
     this.applyGlobalMapStyle();
     this.applyGlobalTheme(this.globalSettings.theme);
+    this.applyRouteFromLocation({ replace: true });
+    window.addEventListener("popstate", this.handlePopState);
+  },
+  beforeUnmount() {
+    window.removeEventListener("popstate", this.handlePopState);
   },
   methods: {
     goHome() {
+      this.navigateToRoute("/home");
       this.activeView = "home";
     },
     goPlayPage() {
       if (!this.activeGame) {
-        this.openGame("play");
+        this.openGame("linker");
         return;
       }
+      this.navigateToRoute(this.getPlayRoute(this.activeGame));
       this.activeView = "game";
       this.$nextTick(() => {
-        this.getLinkerGame()?.openPlay?.();
-        this.getBridgeGame()?.openPlay?.();
-        this.syncLinkerSettings();
+        this.getActiveGame()?.openPlay?.();
+        this.syncSharedSettings();
       });
     },
     openGame(gameId) {
       this.activeGame = gameId;
       this.activeView = "game";
       this.resetCurrentGameStatus();
-      this.$nextTick(() => this.syncLinkerSettings());
+      this.navigateToRoute(this.getPlayRoute(gameId));
+      this.$nextTick(() => this.syncSharedSettings());
     },
     handleLocalBack() {
       if (this.activeView === "editor-game") {
@@ -294,11 +332,8 @@ export default {
       }
       this.goHome();
     },
-    getLinkerGame() {
-      return this.$refs.linkerGame ?? null;
-    },
-    getBridgeGame() {
-      return this.$refs.bridgeGame ?? null;
+    getActiveGame() {
+      return this.$refs.activeGameRef ?? null;
     },
     toggleGlobalRulePanel() {
       this.isGlobalRuleOpen = !this.isGlobalRuleOpen;
@@ -312,10 +347,6 @@ export default {
       if (this.isGlobalDeveloperMode) {
         this.developerLogoutDialogOpen = true;
         this.developerDialogOpen = false;
-        return;
-      }
-      if (this.getLinkerGame()?.unlockDeveloperMode) {
-        this.getLinkerGame().unlockDeveloperMode();
         return;
       }
       this.developerDialogOpen = true;
@@ -350,22 +381,29 @@ export default {
       if (!this.isGlobalDeveloperMode) return;
       this.activeView = "editor-home";
       this.resetCurrentGameStatus();
+      this.navigateToRoute("/editor");
     },
     selectEditorGame(gameId) {
-      if (!this.isGlobalDeveloperMode || (gameId !== "play" && gameId !== "bridge")) return;
+      if (!this.isGlobalDeveloperMode || !GAME_ROUTE_ALIASES[gameId]) return;
       this.activeGame = gameId;
       this.activeView = "editor-game";
       this.resetCurrentGameStatus();
-      this.$nextTick(() => this.syncLinkerSettings());
+      this.navigateToRoute(`/editor/${gameId}`);
+      this.$nextTick(() => {
+        this.getActiveGame()?.openEditor?.();
+        this.syncSharedSettings();
+      });
     },
     toggleCurrentLevels() {
       if (this.activeView === "editor-game") return;
-      this.getLinkerGame()?.toggleLevelPicker?.();
-      this.getBridgeGame()?.toggleLevelPanel?.();
+      const game = this.getActiveGame();
+      game?.toggleLevelPicker?.();
+      game?.toggleLevelPanel?.();
     },
     resetCurrentGame() {
-      this.getLinkerGame()?.resetPaths?.();
-      this.getBridgeGame()?.resetLevel?.();
+      const game = this.getActiveGame();
+      game?.resetPaths?.();
+      game?.resetLevel?.();
     },
     handleGameStatusChange(status) {
       this.currentGameStatus = {
@@ -394,8 +432,7 @@ export default {
       } catch {
         // Ignore unavailable storage.
       }
-      this.getLinkerGame()?.applyDeveloperLogout?.();
-      this.getBridgeGame()?.applyDeveloperLogout?.();
+      this.getActiveGame()?.applyDeveloperLogout?.();
       if (this.activeView === "editor-home") this.goHome();
       if (this.activeView === "editor-game") this.goPlayPage();
     },
@@ -416,18 +453,82 @@ export default {
         // Ignore unavailable storage.
       }
     },
-    syncLinkerSettings() {
-      const linker = this.getLinkerGame();
-      if (!linker) return;
-      if (linker.themes?.[this.globalSettings.theme]) linker.selectedTheme = this.globalSettings.theme;
-      if (linker.pointPalettes?.[this.globalSettings.palette]) linker.selectedPalette = this.globalSettings.palette;
-      linker.mapStyle = { ...this.globalMapStyle };
-      if (typeof linker.setAssistMode === "function") linker.setAssistMode(this.globalSettings.assistMode);
-      if (typeof linker.setLinkedBlinkMode === "function") linker.setLinkedBlinkMode(this.globalSettings.linkedBlink);
+    handlePopState() {
+      this.applyRouteFromLocation({ replace: false });
+    },
+    applyRouteFromLocation({ replace = false } = {}) {
+      const route = this.parseCurrentRoute();
+      this.isApplyingRoute = true;
+      if (route.view === "home") {
+        this.activeView = "home";
+        this.resetCurrentGameStatus();
+      } else if (route.view === "editor-home") {
+        this.activeView = this.isGlobalDeveloperMode ? "editor-home" : "home";
+        this.resetCurrentGameStatus();
+      } else if (route.view === "editor-game") {
+        if (this.isGlobalDeveloperMode && route.game) {
+          this.activeGame = route.game;
+          this.activeView = "editor-game";
+          this.resetCurrentGameStatus();
+          this.$nextTick(() => this.syncSharedSettings());
+        } else {
+          this.activeView = this.isGlobalDeveloperMode ? "editor-home" : "home";
+          this.resetCurrentGameStatus();
+        }
+      } else {
+        this.activeGame = route.game;
+        this.activeView = "game";
+        this.resetCurrentGameStatus();
+        this.$nextTick(() => this.syncSharedSettings());
+      }
+      this.isApplyingRoute = false;
+      if (replace && this.isGlobalDeveloperMode) this.replaceCurrentRoute();
+    },
+    parseCurrentRoute() {
+      const segments = window.location.pathname.split("/").filter(Boolean);
+      if (!segments.length || (segments.length === 1 && segments[0] === "home")) return { view: "home", game: "" };
+      if (segments.length === 1 && segments[0] === "editor") return { view: "editor-home", game: "" };
+      if (segments[0] === "editor") {
+        const game = GAME_ROUTE_ALIASES[segments[1]];
+        if (game) return { view: "editor-game", game };
+        return { view: "editor-home", game: "" };
+      }
+      if (segments[0] === "play") {
+        const game = GAME_ROUTE_ALIASES[segments[1]];
+        if (game) return { view: "game", game };
+      }
+      return { view: "home", game: "" };
+    },
+    replaceCurrentRoute() {
+      const targetPath = this.getCurrentRoutePath();
+      if (window.location.pathname === targetPath) return;
+      window.history.replaceState({}, "", targetPath);
+    },
+    navigateToRoute(path) {
+      if (this.isApplyingRoute || window.location.pathname === path) return;
+      window.history.pushState({}, "", path);
+    },
+    getCurrentRoutePath() {
+      if (this.activeView === "home") return "/home";
+      if (this.activeView === "editor-home") return "/editor";
+      if (this.activeView === "editor-game") return `/editor/${this.activeGame}`;
+      return this.getPlayRoute(this.activeGame);
+    },
+    getPlayRoute(gameId) {
+      return PLAY_ROUTE_BY_GAME[gameId] ?? "/play/linker";
+    },
+    syncSharedSettings() {
+      const game = this.getActiveGame();
+      if (!game) return;
+      if (game.themes?.[this.globalSettings.theme]) game.selectedTheme = this.globalSettings.theme;
+      if (game.pointPalettes?.[this.globalSettings.palette]) game.selectedPalette = this.globalSettings.palette;
+      if ("mapStyle" in game) game.mapStyle = { ...this.globalMapStyle };
+      if (typeof game.setAssistMode === "function") game.setAssistMode(this.globalSettings.assistMode);
+      if (typeof game.setLinkedBlinkMode === "function") game.setLinkedBlinkMode(this.globalSettings.linkedBlink);
     },
     loadGlobalSettings() {
       try {
-        const stored = JSON.parse(window.localStorage.getItem("the-linker-personalization") || "null");
+        const stored = JSON.parse(window.localStorage.getItem(GLOBAL_PERSONALIZATION_STORAGE_KEY) || "null");
         if (!stored || typeof stored !== "object") return;
         if (themes[stored.theme]) this.globalSettings.theme = stored.theme;
         if (pointPalettes[stored.palette]) this.globalSettings.palette = stored.palette;
@@ -442,7 +543,7 @@ export default {
     },
     saveGlobalSettings() {
       try {
-        window.localStorage.setItem("the-linker-personalization", JSON.stringify({
+        window.localStorage.setItem(GLOBAL_PERSONALIZATION_STORAGE_KEY, JSON.stringify({
           theme: this.globalSettings.theme,
           palette: this.globalSettings.palette,
           navLayout: "top",
@@ -459,13 +560,13 @@ export default {
       this.globalSettings = { ...this.globalSettings, [field]: value };
       if (field === "theme") this.applyGlobalTheme(value);
       this.saveGlobalSettings();
-      this.$nextTick(() => this.syncLinkerSettings());
+      this.$nextTick(() => this.syncSharedSettings());
     },
     updateGlobalMapStyle(field, value) {
       this.globalMapStyle = this.normalizeMapStyle({ ...this.globalMapStyle, [field]: value });
       this.applyGlobalMapStyle();
       this.saveGlobalSettings();
-      this.$nextTick(() => this.syncLinkerSettings());
+      this.$nextTick(() => this.syncSharedSettings());
     },
     normalizeMapStyle(style) {
       const limits = {
@@ -494,7 +595,7 @@ export default {
       this.applyGlobalTheme(this.globalSettings.theme);
       this.applyGlobalMapStyle();
       this.saveGlobalSettings();
-      this.$nextTick(() => this.syncLinkerSettings());
+      this.$nextTick(() => this.syncSharedSettings());
     },
     applyGlobalMapStyle() {
       document.documentElement.style.setProperty("--map-board-scale", this.globalMapStyle.boardScale);
@@ -529,31 +630,7 @@ export default {
       document.documentElement.style.setProperty("--background-blur", background.blur);
 
       const images = background.images?.length ? background.images : [background.image].filter(Boolean);
-      if (!images.length) {
-        document.documentElement.style.setProperty("--background-image", "none");
-        return;
-      }
-
-      const imagePaths = images.map((image) => new URL(image, window.location.href).href);
-      document.documentElement.style.setProperty("--background-image", `url("${imagePaths[0]}")`);
-
-      window.requestIdleCallback?.(() => this.verifyBackgroundImages(imagePaths))
-        ?? window.setTimeout(() => this.verifyBackgroundImages(imagePaths), 0);
-    },
-    async verifyBackgroundImages(imagePaths) {
-      for (const imagePath of imagePaths) {
-        const isAvailable = await new Promise((resolve) => {
-          const probe = new Image();
-          probe.onload = () => resolve(true);
-          probe.onerror = () => resolve(false);
-          probe.src = imagePath;
-        });
-        if (isAvailable) {
-          document.documentElement.style.setProperty("--background-image", `url("${imagePath}")`);
-          return;
-        }
-      }
-      document.documentElement.style.setProperty("--background-image", "none");
+      applyBackgroundImage(chooseRandomBackgroundImage(images));
     }
   }
 };

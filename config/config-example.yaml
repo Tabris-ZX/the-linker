@@ -29,8 +29,12 @@ linker:
   sqlitePath: data/db/linker.db
 
 finder:
-  # 数寻当前复用数链地图数据，保留独立根字段用于后续拆分
-  sqlitePath: data/db/linker.db
+  # 数寻使用独立数据和数据库，不读写数链私有数据
+  levels: data/finder/levels
+  answers: data/finder/answers
+  levelsHash: data/finder/levels-hash.json
+  levelsIndex: data/finder/levels-index.json
+  sqlitePath: data/db/finder.db
 
 bridger:
   # 数桥使用独立 SQLite 数据库

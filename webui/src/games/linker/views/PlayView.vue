@@ -1,5 +1,5 @@
 <template>
-  <section class="view view-play" :class="{ 'is-active': app.activeView === 'play' }" :hidden="app.activeView !== 'play'" aria-labelledby="game-title">
+  <section class="view view-play" :class="{ 'is-active': app.activeView === 'linker' }" :hidden="app.activeView !== 'linker'" aria-labelledby="game-title">
     <h1 id="game-title" class="sr-only">数链</h1>
     <section class="game-panel">
       <LevelPickerPanel />
@@ -7,7 +7,7 @@
         {{ app.developerStatusText || "暂无关卡" }}
       </div>
       <PlayBoardStage />
-      <div class="game-watermark" aria-hidden="true">v0.2.2@Tabris_ZX</div>
+      <GameWatermark />
 
       <div v-if="app.isWon && !app.isVictoryDismissed" class="victory-mark" role="status" aria-live="polite" aria-label="胜利">
         <div class="victory-main">
@@ -38,12 +38,14 @@
 </template>
 
 <script>
-import LevelPickerPanel from "../components/LevelPickerPanel.vue";
-import PlayBoardStage from "../components/play/PlayBoardStage.vue";
+import LevelPickerPanel from "../../../shared/components/LevelPickerPanel.vue";
+import GameWatermark from "../../../shared/components/GameWatermark.vue";
+import PlayBoardStage from "../components/PlayBoardStage.vue";
 
 export default {
   name: "PlayView",
   components: {
+    GameWatermark,
     LevelPickerPanel,
     PlayBoardStage
   },

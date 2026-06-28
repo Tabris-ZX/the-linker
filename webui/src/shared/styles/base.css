@@ -28,13 +28,16 @@
   --page-height: 810px;
   --cell-size: 88px;
   --map-board-scale: 1;
-  --board-max-width: 1200px;
-  --board-max-height: 600px;
+  --board-stage-ratio: 16 / 10;
+  --board-stage-width-limit: 80vw;
+  --board-stage-height-limit: 75dvh;
+  --board-max-width: min(var(--board-stage-width-limit), calc(var(--board-stage-height-limit) * 16 / 10));
+  --board-max-height: min(var(--board-stage-height-limit), calc(var(--board-stage-width-limit) * 10 / 16));
   --background-image: none;
   --background-opacity: 0;
   --background-blur: 0px;
-  --weave-unknown-color: #8a8f98;
-  --weave-excluded-color: #535a64;
+  --finder-unknown-color: #8a8f98;
+  --finder-excluded-color: #535a64;
 }
 
 :root[data-theme="night"] {
@@ -943,42 +946,44 @@ textarea,
   line-height: 1.35;
 }
 
-.board-wrap.weave-workspace {
+.board-wrap.finder-workspace {
   display: grid;
   align-items: start;
   justify-content: center;
   justify-items: center;
   width: 100%;
   max-width: none;
-  padding: 8px 0 28px;
-  margin-top: 4px;
+  padding: 0 0 28px;
+  margin-top: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.weave-main-panel {
+.finder-main-panel {
   display: grid;
-  grid-template-columns: minmax(0, auto) 318px;
+  grid-template-columns: max-content 318px;
   align-items: start;
   justify-content: center;
-  gap: 18px;
-  width: fit-content;
-  max-width: min(1360px, calc(100vw - 40px));
+  gap: max(24px, calc(var(--cell-size) * 0.45));
+  width: max-content;
+  max-width: calc(100vw - 40px);
   overflow-x: auto;
   overflow-y: visible;
   padding: 2px 2px 8px;
   scrollbar-width: thin;
 }
 
-.weave-board-shell {
-  --weave-clue-size: 2.4rem;
-  --board-max-width: clamp(260px, calc(100vw - 420px), 780px);
-  --board-max-height: clamp(200px, calc(100dvh - var(--topbar-height) - 180px), 520px);
+.finder-board-shell {
+  --finder-clue-size: 2.4rem;
+  --board-stage-width-limit: 60vw;
+  --board-stage-height-limit: 75dvh;
+  --board-max-width: min(var(--board-stage-width-limit), calc(var(--board-stage-height-limit) * 16 / 10));
+  --board-max-height: min(var(--board-stage-height-limit), calc(var(--board-stage-width-limit) * 10 / 16));
   display: grid;
-  grid-template-columns: var(--weave-clue-size) minmax(0, calc(var(--node-cols) * var(--cell-size)));
-  grid-template-rows: var(--weave-clue-size) minmax(0, calc(var(--node-rows) * var(--cell-size)));
+  grid-template-columns: var(--finder-clue-size) minmax(0, calc(var(--node-cols) * var(--cell-size)));
+  grid-template-rows: var(--finder-clue-size) minmax(0, calc(var(--node-rows) * var(--cell-size)));
   align-items: start;
   justify-items: start;
   width: fit-content;
@@ -988,19 +993,19 @@ textarea,
   border: 1px solid color-mix(in srgb, var(--button-ink) 50%, var(--line) 50%);
   border-radius: calc(var(--radius-panel) + 6px);
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 4%, transparent), transparent 44%),
-    rgb(from var(--surface-soft) r g b / 0.15);
+    linear-gradient(145deg, color-mix(in srgb, var(--button-ink) 1%, transparent), transparent 44%),
+    rgb(from var(--surface-soft) r g b / 0.01);
   overflow: visible;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   box-shadow:
     0 28px 70px -48px var(--shadow-color),
-    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 20%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--line) 8%, transparent);
-  backdrop-filter: blur(8px) saturate(1.02);
+    inset 0 1px 0 color-mix(in srgb, var(--button-ink) 8%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 4%, transparent);
+  backdrop-filter: blur(2px) saturate(1.02);
 }
 
-.weave-corner {
+.finder-corner {
   width: 100%;
   height: 100%;
   border-right: 1px solid color-mix(in srgb, var(--button-ink) 24%, transparent);
@@ -1008,7 +1013,7 @@ textarea,
   background: color-mix(in srgb, var(--surface) 8%, transparent);
 }
 
-.weave-top-clues {
+.finder-top-clues {
   display: grid;
   grid-template-columns: repeat(var(--node-cols), var(--cell-size));
   align-items: stretch;
@@ -1018,34 +1023,34 @@ textarea,
   margin-left: 0;
 }
 
-.weave-left-clues {
+.finder-left-clues {
   display: grid;
   grid-template-rows: repeat(var(--node-rows), var(--cell-size));
   gap: 0;
-  width: var(--weave-clue-size);
+  width: var(--finder-clue-size);
   height: calc(var(--node-rows) * var(--cell-size));
   min-height: calc(var(--node-rows) * var(--cell-size));
   margin-top: 0;
 }
 
-.weave-board-shell .board {
+.finder-board-shell .board {
   margin: calc(var(--cell-size) / 2) 0 0 calc(var(--cell-size) / 2);
 }
 
-.weave-clue-cell {
+.finder-clue-cell {
   display: grid;
   place-items: center;
   min-width: 0;
   padding: 2px 1px;
 }
 
-.weave-clue-items {
+.finder-clue-items {
   display: grid;
   place-items: center;
   width: 100%;
 }
 
-.weave-clue-item {
+.finder-clue-item {
   display: grid;
   place-items: center;
   padding: 0 2px;
@@ -1057,27 +1062,28 @@ textarea,
   white-space: nowrap;
 }
 
-.weave-total-clue {
+.finder-total-clue {
   --pair-color: var(--accent);
 }
 
-.weave-clue-item.is-met {
+.finder-clue-item.is-met {
   color: var(--success);
 }
 
-.weave-clue-item.is-under {
+.finder-clue-item.is-under {
   color: #111;
 }
 
-.weave-clue-item.is-over {
+.finder-clue-item.is-over {
   color: var(--danger);
   font-weight: 900;
 }
 
-.weave-side-panel {
+.finder-side-panel {
   position: sticky;
   top: calc(var(--topbar-height) + 12px);
   z-index: 4;
+  justify-self: start;
   display: grid;
   align-content: start;
   grid-template-rows: auto auto auto minmax(0, 1fr);
@@ -1096,7 +1102,7 @@ textarea,
   scrollbar-width: thin;
 }
 
-.weave-panel-section {
+.finder-panel-section {
   position: relative;
   display: grid;
   gap: 11px;
@@ -1112,23 +1118,23 @@ textarea,
   box-shadow: none;
 }
 
-.weave-feedback-section {
+.finder-feedback-section {
   min-height: 0;
   overflow: hidden;
 }
 
-.weave-panel-section + .weave-panel-section {
+.finder-panel-section + .finder-panel-section {
   border-top: 1px solid color-mix(in srgb, var(--line) 48%, transparent);
 }
 
-.weave-panel-section legend {
+.finder-panel-section legend {
   padding: 0;
   color: color-mix(in srgb, var(--accent-strong) 92%, var(--ink) 8%);
   font: 900 0.74rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
   letter-spacing: 0.08em;
 }
 
-.weave-console-title {
+.finder-console-title {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -1136,7 +1142,7 @@ textarea,
   min-width: 0;
 }
 
-.weave-console-title small {
+.finder-console-title small {
   order: 2;
   padding: 5px 7px;
   border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
@@ -1147,13 +1153,13 @@ textarea,
   letter-spacing: 0.1em;
 }
 
-.weave-console-title strong {
+.finder-console-title strong {
   min-width: 0;
   font: 900 1.2rem/1.05 "Trebuchet MS", "Noto Sans SC", sans-serif;
   text-wrap: balance;
 }
 
-.weave-tool-row {
+.finder-tool-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(44px, 44px));
   justify-content: start;
@@ -1161,7 +1167,7 @@ textarea,
   gap: 10px 9px;
 }
 
-.weave-pair-option {
+.finder-pair-option {
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -1169,13 +1175,13 @@ textarea,
   min-width: 0;
 }
 
-.weave-tool-row-meta {
+.finder-tool-row-meta {
   margin-top: -2px;
   padding-top: 10px;
   border-top: 1px solid color-mix(in srgb, var(--line) 42%, transparent);
 }
 
-.weave-pair-chip {
+.finder-pair-chip {
   min-width: 0;
   width: 44px;
   height: 44px;
@@ -1191,7 +1197,7 @@ textarea,
   transition: transform 140ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
-.weave-pair-chip:hover {
+.finder-pair-chip:hover {
   color: var(--ink);
   border-color: color-mix(in srgb, var(--pair-color) 76%, var(--ink) 24%);
   background:
@@ -1199,21 +1205,21 @@ textarea,
   transform: translateY(-1px);
 }
 
-.weave-pair-chip.is-active {
+.finder-pair-chip.is-active {
   color: var(--button-ink);
   border-color: color-mix(in srgb, var(--pair-color) 92%, var(--ink) 8%);
   background: linear-gradient(180deg, color-mix(in srgb, var(--pair-color) 88%, var(--button-ink) 12%), var(--pair-color));
   box-shadow: 0 12px 24px -18px color-mix(in srgb, var(--pair-color) 70%, var(--shadow-color) 30%), inset 0 1px 0 color-mix(in srgb, var(--button-ink) 34%, transparent);
 }
 
-.weave-pair-chip.is-unknown.is-active,
-.weave-pair-chip.is-unknown:hover,
-.weave-pair-chip.is-excluded.is-active,
-.weave-pair-chip.is-excluded:hover {
+.finder-pair-chip.is-unknown.is-active,
+.finder-pair-chip.is-unknown:hover,
+.finder-pair-chip.is-excluded.is-active,
+.finder-pair-chip.is-excluded:hover {
   color: #fff;
 }
 
-.weave-pair-distance {
+.finder-pair-distance {
   display: block;
   min-height: 1em;
   color: #111;
@@ -1221,25 +1227,25 @@ textarea,
   font-variant-numeric: tabular-nums;
 }
 
-.weave-pair-distance.is-empty {
+.finder-pair-distance.is-empty {
   color: #111;
 }
 
-.weave-pair-distance.is-met {
+.finder-pair-distance.is-met {
   color: var(--success);
 }
 
-.weave-pair-distance.is-miss {
+.finder-pair-distance.is-miss {
   color: var(--danger);
 }
 
-.weave-clear-row {
+.finder-clear-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.weave-clear-row button {
+.finder-clear-row button {
   min-height: 32px;
   padding: 6px 8px;
   border: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
@@ -1250,19 +1256,19 @@ textarea,
   font: 900 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.weave-clear-row button:hover {
+.finder-clear-row button:hover {
   border-color: color-mix(in srgb, var(--accent) 56%, var(--line) 44%);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface) 90%);
 }
 
-.weave-submit-row {
+.finder-submit-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 9px;
 }
 
-.weave-submit-row button {
+.finder-submit-row button {
   min-height: 44px;
   padding: 9px 16px;
   color: var(--button-ink);
@@ -1272,13 +1278,13 @@ textarea,
   font: 900 0.92rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.weave-submit-row button + button {
+.finder-submit-row button + button {
   color: var(--ink);
   background: color-mix(in srgb, var(--surface) 72%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--button-ink) 46%, transparent), 0 12px 22px -20px var(--shadow-color);
 }
 
-.weave-console-stats {
+.finder-console-stats {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1292,19 +1298,19 @@ textarea,
   font: 800 0.78rem/1 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.weave-console-stats strong {
+.finder-console-stats strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-size: 0.92rem;
 }
 
-.weave-status-text {
+.finder-status-text {
   margin: 0;
   color: var(--muted);
   font: 800 0.82rem/1.35 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.weave-feedback {
+.finder-feedback {
   display: grid;
   align-content: start;
   gap: 5px;
@@ -1315,11 +1321,11 @@ textarea,
   scrollbar-width: thin;
 }
 
-.weave-feedback strong {
+.finder-feedback strong {
   font: 900 0.9rem/1.2 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.weave-feedback p {
+.finder-feedback p {
   margin: 0;
   display: flex;
   justify-content: space-between;
@@ -1331,15 +1337,15 @@ textarea,
   font: 800 0.8rem/1.25 "Trebuchet MS", "Noto Sans SC", sans-serif;
 }
 
-.weave-feedback p.is-correct {
+.finder-feedback p.is-correct {
   color: var(--success);
 }
 
-.weave-feedback p.is-wrong {
+.finder-feedback p.is-wrong {
   color: var(--danger);
 }
 
-.dot.weave-mark-dot {
+.dot.finder-mark-dot {
   background: var(--dot-color);
   border-color: var(--ink);
   border-style: dashed;
@@ -1347,20 +1353,20 @@ textarea,
   box-shadow: 0 0 0 clamp(1px, calc(var(--cell-size) * 0.025), 3px) color-mix(in srgb, var(--dot-color) 28%, transparent);
 }
 
-.weave-mark-unknown .dot.weave-mark-dot {
-  background: color-mix(in srgb, var(--weave-unknown-color) 26%, var(--paper) 74%);
-  border-color: color-mix(in srgb, var(--weave-unknown-color) 72%, var(--ink) 28%);
+.finder-mark-unknown .dot.finder-mark-dot {
+  background: color-mix(in srgb, var(--finder-unknown-color) 26%, var(--paper) 74%);
+  border-color: color-mix(in srgb, var(--finder-unknown-color) 72%, var(--ink) 28%);
   color: var(--ink);
 }
 
-.weave-mark-excluded .dot.weave-mark-dot {
-  background: color-mix(in srgb, var(--weave-excluded-color) 18%, var(--paper) 82%);
-  border-color: color-mix(in srgb, var(--weave-excluded-color) 72%, var(--ink) 28%);
+.finder-mark-excluded .dot.finder-mark-dot {
+  background: color-mix(in srgb, var(--finder-excluded-color) 18%, var(--paper) 82%);
+  border-color: color-mix(in srgb, var(--finder-excluded-color) 72%, var(--ink) 28%);
   color: var(--ink);
 }
 
 @media (max-width: 1100px) {
-  .weave-main-panel {
+  .finder-main-panel {
     grid-template-columns: 1fr;
     justify-items: center;
     width: 100%;
@@ -1368,12 +1374,12 @@ textarea,
     overflow-x: visible;
   }
 
-  .weave-board-shell {
+  .finder-board-shell {
     --board-max-width: clamp(240px, calc(100vw - 56px), 720px);
     --board-max-height: clamp(180px, calc(100dvh - var(--topbar-height) - 140px), 560px);
   }
 
-  .weave-side-panel {
+  .finder-side-panel {
     position: static;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: min(720px, 100%);
@@ -1381,7 +1387,7 @@ textarea,
     overflow: visible;
   }
 
-  .weave-feedback-section {
+  .finder-feedback-section {
     grid-column: 1 / -1;
   }
 }
@@ -1648,7 +1654,7 @@ button:active,
 :root[data-theme="night"] .level-picker-panel,
 :root[data-theme="night"] .rule-panel,
 :root[data-theme="night"] .personalization-panel,
-:root[data-theme="night"] .weave-board-shell {
+:root[data-theme="night"] .finder-board-shell {
   border-color: color-mix(in srgb, var(--line) 82%, var(--ink) 18%);
   box-shadow: 0 22px 58px -38px var(--shadow-color), 4px 4px 0 var(--shadow-color-soft);
 }
@@ -1662,17 +1668,17 @@ button:active,
   background: var(--surface-glass);
 }
 
-:root[data-theme="night"] .weave-board-shell {
+:root[data-theme="night"] .finder-board-shell {
   background:
-    linear-gradient(145deg, color-mix(in srgb, #ffffff 2%, transparent), transparent 46%),
-    rgb(from var(--surface-soft) r g b / 0.15);
+    linear-gradient(145deg, color-mix(in srgb, #ffffff 1%, transparent), transparent 46%),
+    rgb(from var(--surface-soft) r g b / 0.01);
   box-shadow:
     0 30px 76px -48px var(--shadow-color),
-    inset 0 1px 0 color-mix(in srgb, #ffffff 10%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--line) 20%, transparent);
+    inset 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--line) 12%, transparent);
 }
 
-:root[data-theme="night"] .weave-side-panel {
+:root[data-theme="night"] .finder-side-panel {
   border-color: color-mix(in srgb, var(--line) 78%, var(--ink) 22%);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface-glass) 88%, #ffffff 2%), var(--surface-glass)),
@@ -1680,10 +1686,10 @@ button:active,
   box-shadow: 0 24px 64px -40px var(--shadow-color), inset 0 1px 0 color-mix(in srgb, #ffffff 8%, transparent);
 }
 
-:root[data-theme="night"] .weave-pair-chip,
-:root[data-theme="night"] .weave-console-stats,
-:root[data-theme="night"] .weave-submit-row button + button,
-:root[data-theme="night"] .weave-feedback p {
+:root[data-theme="night"] .finder-pair-chip,
+:root[data-theme="night"] .finder-console-stats,
+:root[data-theme="night"] .finder-submit-row button + button,
+:root[data-theme="night"] .finder-feedback p {
   background: color-mix(in srgb, var(--surface) 78%, transparent);
 }
 

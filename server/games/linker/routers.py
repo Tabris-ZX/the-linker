@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Request
 
-from server.security import authorize_developer_request, get_bearer_token
-from server.games.linker.services.generator import generate_editor_level
-from server.games.linker.services.good_checker import check_level_good
-from server.games.linker.services.levels import (
+from server.utils.security import authorize_developer_request, get_bearer_token
+from server.games.linker.generator import generate_editor_level
+from server.games.linker.good_checker import check_level_good
+from server.games.linker.services import (
     get_level_save_rate_limit,
     mark_level_save_started,
     read_level_answers,
@@ -19,7 +21,8 @@ from server.games.linker.services.levels import (
 )
 from server.utils.http import http_error, read_json_body
 
-router = APIRouter(prefix="/api/linker", tags=["linker-levels"])
+play_router = APIRouter(prefix="/api/play", tags=["linker-play"])
+editor_router = APIRouter(prefix="/api/editor/linker", tags=["linker-editor"])
 
 
 def get_visible_levels(request: Request, levels: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -31,7 +34,6 @@ def get_visible_levels(request: Request, levels: list[dict[str, Any]]) -> list[d
     return [level for level in levels if level.get("sourceCategory") == "stable"]
 
 
-@router.get("/levels/index", summary="List level index")
 async def get_levels_index(request: Request) -> list[dict[str, Any]]:
     """读取关卡目录。
 
@@ -41,7 +43,6 @@ async def get_levels_index(request: Request) -> list[dict[str, Any]]:
     return get_visible_levels(request, read_level_index())
 
 
-@router.post("/levels/index/rebuild", summary="Rebuild level index")
 async def rebuild_levels_index(request: Request) -> list[dict[str, Any]]:
     """重建关卡目录索引。
 
@@ -51,7 +52,6 @@ async def rebuild_levels_index(request: Request) -> list[dict[str, Any]]:
     return refresh_level_index()
 
 
-@router.post("/levels/generate", summary="Generate an editor level")
 async def generate_level(request: Request) -> dict[str, Any]:
     """调用完整生成器生成一张可载入编辑器的临时关卡。
 
@@ -62,7 +62,6 @@ async def generate_level(request: Request) -> dict[str, Any]:
     return generate_editor_level(payload)
 
 
-@router.post("/levels/check-good", summary="Check whether a square level has good authored paths")
 async def check_good_level(request: Request) -> dict[str, Any]:
     """检查方格关卡答案是否为好解。
 
@@ -77,7 +76,6 @@ async def check_good_level(request: Request) -> dict[str, Any]:
     return check_level_good(level, answers, options)
 
 
-@router.get("/levels/{level_id}", summary="Get level detail")
 async def get_level_detail(level_id: str, request: Request) -> dict[str, Any]:
     """按 id 读取完整关卡。
 
@@ -89,7 +87,6 @@ async def get_level_detail(level_id: str, request: Request) -> dict[str, Any]:
     return level
 
 
-@router.get("/level", summary="Get level detail by source path")
 async def get_level_detail_by_source_path(path: str, request: Request) -> dict[str, Any]:
     """按 sourcePath 读取完整关卡。
 
@@ -102,7 +99,6 @@ async def get_level_detail_by_source_path(path: str, request: Request) -> dict[s
     return level
 
 
-@router.get("/level/answers", summary="Get editor answers by source path")
 async def get_level_answers(path: str, request: Request) -> dict[str, Any]:
     """读取编辑器答案线路。
 
@@ -114,7 +110,6 @@ async def get_level_answers(path: str, request: Request) -> dict[str, Any]:
     return {"levelId": level.get("id"), "answers": read_level_answers(level)}
 
 
-@router.post("/levels", summary="Create or update a level")
 async def post_level(request: Request) -> dict[str, Any]:
     """保存关卡。
 
@@ -140,7 +135,6 @@ async def post_level(request: Request) -> dict[str, Any]:
         raise
 
 
-@router.post("/levels/review", summary="Review a test level")
 async def review_level(request: Request) -> dict[str, Any]:
     """审核测试关卡。
 
@@ -150,3 +144,15 @@ async def review_level(request: Request) -> dict[str, Any]:
     authorize_developer_request(request)
     review = await read_json_body(request)
     return review_test_level(review)
+
+
+play_router.add_api_route("/linker/levels/index", get_levels_index, methods=["GET"], summary="List linker level index")
+play_router.add_api_route("/linker/levels/{level_id}", get_level_detail, methods=["GET"], summary="Get linker level detail")
+play_router.add_api_route("/linker/level", get_level_detail_by_source_path, methods=["GET"], summary="Get linker level by source path")
+play_router.add_api_route("/linker/level/answers", get_level_answers, methods=["GET"], summary="Get linker answers by source path")
+
+editor_router.add_api_route("/levels/index/rebuild", rebuild_levels_index, methods=["POST"], summary="Rebuild linker level index")
+editor_router.add_api_route("/levels/generate", generate_level, methods=["POST"], summary="Generate a linker editor level")
+editor_router.add_api_route("/levels/check-good", check_good_level, methods=["POST"], summary="Check linker level good paths")
+editor_router.add_api_route("/levels", post_level, methods=["POST"], summary="Create or update a linker level")
+editor_router.add_api_route("/levels/review", review_level, methods=["POST"], summary="Review a linker test level")

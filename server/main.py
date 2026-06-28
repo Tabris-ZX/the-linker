@@ -6,9 +6,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 
 from server.config import get_settings
-from server.games.common import stats, verify
 from server.games.bridger import routers as bridger
+from server.games.finder import routers as finder
 from server.games.linker import routers as linker
+from server.shared import stats, verify
 from server.utils.http import http_exception_handler
 
 LOGGING_CONFIG = {
@@ -61,8 +62,12 @@ def create_app() -> FastAPI:
             response.headers["Vary"] = append_vary_header(response.headers.get("Vary"), "Authorization")
         return response
 
-    app.include_router(linker.router)
-    app.include_router(bridger.router)
+    app.include_router(linker.play_router)
+    app.include_router(finder.play_router)
+    app.include_router(linker.editor_router)
+    app.include_router(finder.editor_router)
+    app.include_router(bridger.play_router)
+    app.include_router(bridger.editor_router)
     app.include_router(stats.router)
     app.include_router(verify.router)
     return app

@@ -283,8 +283,8 @@ wheels = [
 ]
 
 [[package]]
-name = "the-linker-server"
-version = "0.1.0"
+name = "the-puzzles-server"
+version = "0.2.4"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
